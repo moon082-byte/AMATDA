@@ -4,115 +4,67 @@ import '../models/sub_task.dart';
 import '../models/task_item.dart';
 import '../providers/room_provider.dart';
 import '../theme/app_palette.dart';
+import '../theme/app_typography.dart';
+import 'inline_add_field.dart';
+import 'round_check.dart';
 
 /// 할 일 상세에서 하위 세부 체크리스트를 보여주고 추가하는 섹션
-class SubTaskSection extends StatefulWidget {
+class SubTaskSection extends StatelessWidget {
   final TaskItem task;
 
   const SubTaskSection({super.key, required this.task});
 
-  @override
-  State<SubTaskSection> createState() => _SubTaskSectionState();
-}
-
-class _SubTaskSectionState extends State<SubTaskSection> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _addSubTask() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
+  void _addSubTask(BuildContext context, String title) {
     final subTask = SubTask(
       id: 'sub_${DateTime.now().millisecondsSinceEpoch}',
-      title: text,
+      title: title,
     );
-    context.read<RoomProvider>().addSubTask(widget.task.id, subTask);
-    _controller.clear();
+    context.read<RoomProvider>().addSubTask(task.id, subTask);
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final task =
-        context.watch<RoomProvider>().taskById(widget.task.id) ?? widget.task;
+    final text = context.text;
+    final provider = context.read<RoomProvider>();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '세부 체크리스트',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: palette.subText,
-          ),
-        ),
-        const SizedBox(height: 8),
+        Text('세부 체크리스트', style: text.label.copyWith(fontSize: 13)),
+        const SizedBox(height: 6),
         ...task.subTasks.map(
-          (sub) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => context
-                      .read<RoomProvider>()
-                      .toggleSubTask(task.id, sub.id),
-                  child: Icon(
-                    sub.isDone ? Icons.check_circle : Icons.circle_outlined,
-                    size: 20,
-                    color: sub.isDone ? palette.accent : palette.checkboxIdle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    sub.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      decoration: sub.isDone
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                      color: sub.isDone ? palette.subText : palette.titleText,
+          (sub) => GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => provider.toggleSubTask(task.id, sub.id),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Row(
+                children: [
+                  RoundCheck(isDone: sub.isDone, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      sub.title,
+                      style: text.body.copyWith(
+                        fontSize: 14,
+                        decoration: sub.isDone
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                        decorationColor: palette.subText,
+                        color: sub.isDone ? palette.subText : palette.titleText,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                style: TextStyle(fontSize: 14, color: palette.titleText),
-                decoration: InputDecoration(
-                  hintText: '세부 항목 추가',
-                  isDense: true,
-                  filled: true,
-                  fillColor: palette.background,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                onSubmitted: (_) => _addSubTask(),
-              ),
-            ),
-            IconButton(
-              onPressed: _addSubTask,
-              icon: Icon(Icons.add_circle, color: palette.accent),
-            ),
-          ],
+        const SizedBox(height: 6),
+        InlineAddField(
+          hint: '세부 항목 추가',
+          onAdd: (value) => _addSubTask(context, value),
         ),
       ],
     );

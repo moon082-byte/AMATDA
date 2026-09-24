@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import '../theme/app_palette.dart';
+import '../theme/app_typography.dart';
+import '../utils/date_format.dart';
+import 'common/pressable.dart';
 import 'field_label.dart';
 
-/// 라벨 + 탭하면 날짜/시간을 고르는 필드 (바텀시트 공용)
+/// 라벨 + 탭하면 날짜/시간을 고르는 필드 (바텀시트 공용).
+/// 값이 있으면 오른쪽에 지우기 버튼을 보여준다.
 class DueDateField extends StatelessWidget {
   final String label;
   final DateTime? value;
   final String placeholder;
   final VoidCallback onTap;
+  final VoidCallback? onClear;
 
   const DueDateField({
     super.key,
@@ -15,40 +20,63 @@ class DueDateField extends StatelessWidget {
     required this.value,
     required this.placeholder,
     required this.onTap,
+    this.onClear,
   });
-
-  String _format(DateTime date) {
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    final h = date.hour.toString().padLeft(2, '0');
-    final min = date.minute.toString().padLeft(2, '0');
-    return '$m/$d $h:$min';
-  }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final text = context.text;
+    final hasValue = value != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         FieldLabel(label),
-        InkWell(
+        Pressable(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          pressedScale: 0.98,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            height: 52,
+            padding: const EdgeInsets.only(left: 16, right: 6),
             decoration: BoxDecoration(
-              color: palette.background,
-              borderRadius: BorderRadius.circular(14),
+              color: palette.fill,
+              borderRadius: BorderRadius.circular(AppPalette.fieldRadius),
             ),
             child: Row(
               children: [
-                Icon(Icons.event_outlined, size: 18, color: palette.subText),
-                const SizedBox(width: 8),
-                Text(
-                  value == null ? placeholder : _format(value!),
-                  style: TextStyle(color: palette.subText),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 18,
+                  color: hasValue ? palette.accent : palette.subText,
                 ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    hasValue ? formatRelativeDateTime(value!) : placeholder,
+                    style: text.body.copyWith(
+                      color: hasValue ? palette.titleText : palette.subText,
+                    ),
+                  ),
+                ),
+                if (hasValue && onClear != null)
+                  IconButton(
+                    onPressed: onClear,
+                    tooltip: '마감 기한 지우기',
+                    icon: Icon(
+                      Icons.cancel_rounded,
+                      size: 20,
+                      color: palette.checkboxIdle,
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      color: palette.subText,
+                    ),
+                  ),
               ],
             ),
           ),

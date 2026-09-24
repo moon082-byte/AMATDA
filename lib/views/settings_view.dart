@@ -3,86 +3,77 @@ import 'package:provider/provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_palette.dart';
+import '../theme/app_typography.dart';
+import '../widgets/common/page_header.dart';
 import '../widgets/settings_group.dart';
 import '../widgets/theme_mode_selector.dart';
 
-/// 설정 화면: 알림 On/Off, 테마 모드 전환
+/// 설정 화면: 알림 On/Off, 테마 모드 전환, 앱 정보
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final notif = context.watch<NotificationProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: palette.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 20, 40),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
           children: [
-            Row(
+            const PageHeader(title: '설정'),
+            const SizedBox(height: 28),
+            SettingsGroup(
+              title: '알림',
               children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    Icons.arrow_back_ios_new,
-                    size: 18,
-                    color: palette.titleText,
-                  ),
-                ),
-                Text(
-                  '설정',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: palette.titleText,
+                SettingsTile(
+                  icon: Icons.notifications_rounded,
+                  iconColor: palette.warning,
+                  title: '전체 알림',
+                  subtitle: '업무 리마인더 알림을 받아요',
+                  trailing: Switch(
+                    value: notif.enabled,
+                    onChanged: (_) => notif.toggle(),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: SettingsGroup(
-                title: '알림',
-                children: [
-                  Consumer<NotificationProvider>(
-                    builder: (context, notif, _) => SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        '전체 알림',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: palette.titleText,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '업무 리마인더 알림을 받아요',
-                        style: TextStyle(fontSize: 12, color: palette.subText),
-                      ),
-                      value: notif.enabled,
-                      activeThumbColor: palette.accent,
-                      onChanged: (_) => notif.toggle(),
+            const SizedBox(height: 28),
+            SettingsGroup(
+              title: '화면',
+              children: [
+                Column(
+                  children: [
+                    SettingsTile(
+                      icon: Icons.palette_rounded,
+                      iconColor: palette.accent,
+                      title: '테마',
+                      subtitle: '앱의 밝기 모드를 선택해요',
                     ),
-                  ),
-                ],
-              ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 14),
+                      child: ThemeModeSelector(
+                        value: themeProvider.themeMode,
+                        onChanged: themeProvider.setThemeMode,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: SettingsGroup(
-                title: '테마',
-                children: [
-                  Consumer<ThemeProvider>(
-                    builder: (context, themeProvider, _) => ThemeModeSelector(
-                      value: themeProvider.themeMode,
-                      onChanged: themeProvider.setThemeMode,
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 28),
+            SettingsGroup(
+              title: '정보',
+              children: [
+                SettingsTile(
+                  icon: Icons.info_rounded,
+                  iconColor: palette.subText,
+                  title: '버전',
+                  trailing: Text('1.0.0', style: context.text.caption),
+                ),
+              ],
             ),
           ],
         ),

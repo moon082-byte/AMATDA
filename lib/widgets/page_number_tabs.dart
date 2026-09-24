@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_palette.dart';
+import '../theme/app_typography.dart';
+import 'common/pressable.dart';
 
 /// 목록이 페이지 크기를 넘을 때 하단에 표시하는 숫자 탭
 class PageNumberTabs extends StatelessWidget {
@@ -18,34 +20,32 @@ class PageNumberTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     if (pageCount <= 1) return const SizedBox.shrink();
     final palette = context.palette;
+    final text = context.text;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
       child: Wrap(
         alignment: WrapAlignment.center,
-        spacing: 8,
-        runSpacing: 8,
+        spacing: 6,
+        runSpacing: 6,
         children: List.generate(pageCount, (index) {
           final selected = index == currentPage;
-          return GestureDetector(
+          return Pressable(
             onTap: () => onPageSelected(index),
-            child: Container(
-              width: 32,
-              height: 32,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 36,
+              height: 36,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: selected ? palette.accent : palette.card,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? palette.accent : palette.checkboxIdle,
-                ),
+                color: selected ? palette.titleText : palette.card,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 '${index + 1}',
-                style: TextStyle(
-                  color: selected ? Colors.white : palette.subText,
+                style: text.caption.copyWith(
+                  color: selected ? palette.card : palette.bodyText,
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
                 ),
               ),
             ),
