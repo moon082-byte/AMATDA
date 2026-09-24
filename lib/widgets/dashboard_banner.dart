@@ -1,66 +1,68 @@
 import 'package:flutter/material.dart';
 import '../theme/app_palette.dart';
+import '../theme/app_typography.dart';
+import 'common/app_card.dart';
 
-/// 메인 화면의 '오늘 할일' / '완료된 일들' 2x1 배너 카드
+/// 메인 화면의 '오늘 할일' / '완료된 일들' 요약 타일
 class DashboardBanner extends StatelessWidget {
   final String title;
-  final String countLabel;
+  final int count;
   final IconData icon;
+  final Color color;
+  final Color softColor;
   final VoidCallback onTap;
 
   const DashboardBanner({
     super.key,
     required this.title,
-    required this.countLabel,
+    required this.count,
     required this.icon,
+    required this.color,
+    required this.softColor,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final text = context.text;
 
-    return Material(
-      color: palette.card,
-      borderRadius: BorderRadius.circular(AppPalette.cardRadius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: palette.accentChipBackground,
-                  shape: BoxShape.circle,
+                  color: softColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: palette.accent, size: 20),
+                child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: palette.subText,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                countLabel,
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                  color: palette.titleText,
-                ),
-              ),
+              const Spacer(),
+              Icon(Icons.chevron_right_rounded, color: palette.checkboxIdle),
             ],
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(title, style: text.label),
+          const SizedBox(height: 2),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: '$count', style: text.display),
+                TextSpan(
+                  text: ' 개',
+                  style: text.title.copyWith(color: palette.subText),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
