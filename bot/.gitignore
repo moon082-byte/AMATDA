@@ -1,0 +1,4 @@
+node_modules/
+.wrangler/
+# 로컬 테스트용 비밀값 (봇 토큰 등) - 절대 커밋하지 않는다
+.dev.vars
