@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 import '../providers/room_provider.dart';
 import '../utils/links.dart';
 import '../utils/pick_date_time.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/due_date_field.dart';
-import '../widgets/field_label.dart';
 import '../widgets/labeled_text_field.dart';
-import '../widgets/reminder_chip_selector.dart';
+import '../widgets/reminder_list_editor.dart';
+import '../widgets/room_info_fields.dart';
 import '../widgets/work_links_field.dart';
 
 /// 업무방 만들기/수정 공용 입력 화면. [room]이 있으면 수정 모드로 동작한다.
@@ -30,8 +31,9 @@ class _RoomFormPageState extends State<RoomFormPage> {
       TextEditingController(text: link),
   ];
   late DateTime? _dueDate = widget.room?.dueDate;
-  late ReminderOption _reminder =
-      widget.room?.reminderOption ?? ReminderOption.none;
+  late List<TaskReminder> _reminders = widget.room?.reminders ?? const [];
+  late TelegramRoomType _type = widget.room?.type ?? TelegramRoomType.group;
+  late int _memberCount = widget.room?.memberCount ?? 1;
 
   bool get _isEdit => widget.room != null;
   bool get _canSubmit => _name.text.trim().isNotEmpty;
@@ -64,31 +66,25 @@ class _RoomFormPageState extends State<RoomFormPage> {
   void _submit() {
     if (!_canSubmit) return;
     final provider = context.read<RoomProvider>();
-    final name = _name.text.trim();
-    final telegram = normalizeUrl(_telegram.text);
-    final links = cleanLinks(_links.map((c) => c.text));
-
-    final room = widget.room;
-    if (room != null) {
-      provider.updateRoom(room.copyWithEdits(
-        name: name,
-        inviteLink: telegram,
-        workLinks: links,
-        dueDate: _dueDate,
-        reminderOption: _reminder,
-      ));
-    } else {
-      provider.addRoom(TelegramRoom(
-        id: 'room_${DateTime.now().millisecondsSinceEpoch}',
-        name: name,
-        type: TelegramRoomType.group,
-        inviteLink: telegram,
-        workLinks: links,
-        lastActivityAt: DateTime.now(),
-        dueDate: _dueDate,
-        reminderOption: _reminder,
-      ));
-    }
+    // 새 방이면 빈 방을 만든 뒤, 새 방/기존 방 모두 입력값으로 덮어쓴다
+    final base = widget.room ??
+        TelegramRoom(
+          id: 'room_${DateTime.now().millisecondsSinceEpoch}',
+          name: '',
+          type: _type,
+          inviteLink: '',
+          lastActivityAt: DateTime.now(),
+        );
+    final room = base.copyWithEdits(
+      name: _name.text.trim(),
+      type: _type,
+      memberCount: _memberCount,
+      inviteLink: normalizeUrl(_telegram.text),
+      workLinks: cleanLinks(_links.map((c) => c.text)),
+      dueDate: _dueDate,
+      reminders: _dueDate == null ? const [] : _reminders,
+    );
+    _isEdit ? provider.updateRoom(room) : provider.addRoom(room);
     Navigator.pop(context);
   }
 
@@ -106,6 +102,13 @@ class _RoomFormPageState extends State<RoomFormPage> {
             controller: _name,
             hint: '예: 마케팅팀 프로젝트',
             autofocus: !_isEdit,
+          ),
+          const SizedBox(height: 24),
+          RoomInfoFields(
+            type: _type,
+            memberCount: _memberCount,
+            onTypeChanged: (t) => setState(() => _type = t),
+            onMemberCountChanged: (n) => setState(() => _memberCount = n),
           ),
           const SizedBox(height: 24),
           LabeledTextField(
@@ -129,10 +132,11 @@ class _RoomFormPageState extends State<RoomFormPage> {
             onClear: () => setState(() => _dueDate = null),
           ),
           const SizedBox(height: 24),
-          const FieldLabel('리마인더 알림'),
-          ReminderChipSelector(
-            selected: _reminder,
-            onSelected: (option) => setState(() => _reminder = option),
+          ReminderListEditor(
+            label: '리마인더 알림',
+            dueDate: _dueDate,
+            value: _reminders,
+            onChanged: (r) => setState(() => _reminders = r),
           ),
           const SizedBox(height: 32),
           FilledButton(

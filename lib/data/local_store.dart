@@ -13,6 +13,8 @@ class LocalStore {
   static const _themeKey = 'theme_mode';
   static const _notifKey = 'notifications_enabled';
   static const _firedKey = 'fired_reminders';
+  static const _tgCodeKey = 'telegram_code';
+  static const _tgNameKey = 'telegram_name';
 
   final SharedPreferences _prefs;
 
@@ -70,5 +72,20 @@ class LocalStore {
     final list = keys.toList();
     final recent = list.length > 300 ? list.sublist(list.length - 300) : list;
     return _prefs.setStringList(_firedKey, recent);
+  }
+
+  /// 텔레그램 봇 연결 코드 (연결 전이면 null)
+  String? loadTelegramCode() => _prefs.getString(_tgCodeKey);
+
+  /// 연결된 텔레그램 이름 (연결되지 않았으면 null)
+  String? loadTelegramName() => _prefs.getString(_tgNameKey);
+
+  Future<void> saveTelegram({String? code, String? name}) async {
+    code == null
+        ? await _prefs.remove(_tgCodeKey)
+        : await _prefs.setString(_tgCodeKey, code);
+    name == null
+        ? await _prefs.remove(_tgNameKey)
+        : await _prefs.setString(_tgNameKey, name);
   }
 }

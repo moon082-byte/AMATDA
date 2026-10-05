@@ -6,10 +6,12 @@ import 'data/local_store.dart';
 import 'providers/notification_provider.dart';
 import 'providers/room_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/telegram_link.dart';
 import 'theme/app_theme.dart';
 import 'views/main_dashboard_view.dart';
 import 'widgets/phone_frame.dart';
 import 'widgets/reminder_host.dart';
+import 'widgets/telegram_sync_host.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +37,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(store: store),
         ),
+        ChangeNotifierProvider(create: (_) => TelegramLink(store: store)),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
@@ -45,7 +48,10 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.dark,
             themeMode: themeProvider.themeMode,
             builder: (context, child) => PhoneFrame(
-              child: ReminderHost(store: store, child: child!),
+              child: ReminderHost(
+                store: store,
+                child: TelegramSyncHost(child: child!),
+              ),
             ),
             home: const MainDashboardView(),
           );

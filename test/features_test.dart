@@ -8,11 +8,13 @@ import 'package:flutter_application_amatda/providers/room_provider.dart';
 import 'package:flutter_application_amatda/services/reminder_checker.dart';
 import 'package:flutter_application_amatda/utils/links.dart';
 
-TaskItem _task(String id, {DateTime? due, TaskReminder? reminder}) => TaskItem(
+TaskItem _task(String id,
+        {DateTime? due, List<TaskReminder> reminders = const []}) =>
+    TaskItem(
       id: id,
       title: id,
       dueDate: due,
-      reminder: reminder,
+      reminders: reminders,
       createdAt: DateTime(2026, 10, 1),
     );
 
@@ -76,10 +78,10 @@ void main() {
       final tasks = [
         _task('soon',
             due: DateTime(2026, 10, 5, 12, 20),
-            reminder: const TaskReminder(amount: 30, unit: ReminderUnit.minute)),
+            reminders: const [TaskReminder(amount: 30, unit: ReminderUnit.minute)]),
         _task('later',
             due: DateTime(2026, 10, 20),
-            reminder: const TaskReminder(amount: 1, unit: ReminderUnit.week)),
+            reminders: const [TaskReminder(amount: 1, unit: ReminderUnit.week)]),
         _task('no-reminder', due: DateTime(2026, 10, 5, 12, 5)),
       ];
       final due = collectDueReminders(
@@ -92,11 +94,42 @@ void main() {
       expect(again, isEmpty);
     });
 
+    test('알림을 여러 개 걸면 시각마다 따로 울린다', () {
+      final t = _task('multi', due: DateTime(2026, 10, 5, 13), reminders: const [
+        TaskReminder(amount: 2, unit: ReminderUnit.hour), // 11:00 (지남)
+        TaskReminder(amount: 30, unit: ReminderUnit.minute), // 12:30 (아직)
+      ]);
+      final first = collectDueReminders(
+          tasks: [t], rooms: const [], now: now, fired: {});
+      expect(first, hasLength(1));
+
+      final fired = {...first.single.alsoCovers, first.single.key};
+      final later = collectDueReminders(
+          tasks: [t],
+          rooms: const [],
+          now: DateTime(2026, 10, 5, 12, 31),
+          fired: fired);
+      expect(later, hasLength(1), reason: '30분 전 알림이 다시 울려야 한다');
+      expect(later.single.key, isNot(first.single.key));
+    });
+
+    test('한꺼번에 지난 알림 여러 개는 한 번만 알린다', () {
+      final t = _task('missed', due: DateTime(2026, 10, 5, 12, 10), reminders: const [
+        TaskReminder(amount: 1, unit: ReminderUnit.day),
+        TaskReminder(amount: 1, unit: ReminderUnit.hour),
+        TaskReminder(amount: 30, unit: ReminderUnit.minute),
+      ]);
+      final due = collectDueReminders(
+          tasks: [t], rooms: const [], now: now, fired: {});
+      expect(due, hasLength(1));
+      expect(due.single.alsoCovers, hasLength(3));
+    });
+
     test('완료했거나 마감이 한참 지난 할 일은 울리지 않는다', () {
       const r = TaskReminder(amount: 1, unit: ReminderUnit.day);
-      final done = _task('done', due: DateTime(2026, 10, 6), reminder: r)
+      final done = _task('done', due: DateTime(2026, 10, 6), reminders: [r])
           .markDone(true);
-      final stale = _task('stale', due: DateTime(2026, 10, 3), reminder: r);
+      final stale = _task('stale', due: DateTime(2026, 10, 3), reminders: [r]);
       expect(
         collectDueReminders(
             tasks: [done, stale], rooms: const [], now: now, fired: {}),
@@ -112,7 +145,7 @@ void main() {
         inviteLink: '',
         lastActivityAt: now,
         dueDate: DateTime(2026, 10, 5, 12, 30),
-        reminderOption: ReminderOption.oneHourBefore,
+        reminders: const [TaskReminder(amount: 1, unit: ReminderUnit.hour)],
       );
       final due = collectDueReminders(
           tasks: const [], rooms: [room], now: now, fired: {});
@@ -125,22 +158,31 @@ void main() {
     final room = p.rooms.first;
     p.updateRoom(room.copyWithEdits(
       name: '이름 변경',
+      type: TelegramRoomType.channel,
+      memberCount: 42,
       inviteLink: room.inviteLink,
       workLinks: const ['https://notion.so/a', 'https://blog.naver.com/b'],
-      reminderOption: ReminderOption.none,
     ));
     final task = p.activeTasks.first;
     p.updateTask(task.copyWithEdits(
       title: task.title,
       dueDate: DateTime(2026, 11, 1, 9),
-      reminder: const TaskReminder(amount: 2, unit: ReminderUnit.week),
+      reminders: const [
+        TaskReminder(amount: 2, unit: ReminderUnit.week),
+        TaskReminder(amount: 30, unit: ReminderUnit.minute),
+      ],
     ));
 
     final reopened = RoomProvider(store: await LocalStore.open());
     final savedRoom = reopened.roomById(room.id)!;
     expect(savedRoom.name, '이름 변경');
     expect(savedRoom.workLinks, hasLength(2));
-    expect(reopened.taskById(task.id)!.reminder!.label, '2주 전');
+    expect(savedRoom.type, TelegramRoomType.channel);
+    expect(savedRoom.memberCount, 42);
+    expect(
+      reopened.taskById(task.id)!.reminders.map((r) => r.label),
+      ['2주 전', '30분 전'],
+    );
   });
 
   test('링크 주소 다듬기와 서비스 이름', () {
@@ -151,5 +193,29 @@ void main() {
     expect(linkService('https://www.notion.so/x').$1, '노션');
     expect(linkService('https://example.com').$1, '웹 링크');
     expect(linkHost('https://www.notion.so/x'), 'notion.so');
+  });
+
+  test('예전 형식(리마인드 1개, 업무방 선택지)도 새 형식으로 읽는다', () async {
+    SharedPreferences.setMockInitialValues({
+      'rooms_v1': '[{"id":"r","name":"방","type":"group","inviteLink":"",'
+          '"lastActivityAt":"2026-10-01T09:00:00.000","dueDate":"2026-10-09T18:00:00.000",'
+          '"reminderOption":"oneHourBefore"}]',
+      'tasks_v1': '[{"id":"t","title":"할 일","createdAt":"2026-10-01T09:00:00.000",'
+          '"dueDate":"2026-10-09T18:00:00.000","reminder":{"amount":2,"unit":"day"}}]',
+    });
+    final p = RoomProvider(store: await LocalStore.open());
+    expect(p.roomById('r')!.reminders.single.label, '1시간 전');
+    expect(p.taskById('t')!.reminders.single.label, '2일 전');
+  });
+
+  test('리마인드 요약 라벨', () {
+    expect(remindersSummary(const []), '');
+    expect(
+      remindersSummary(const [
+        TaskReminder(amount: 30, unit: ReminderUnit.minute),
+        TaskReminder(amount: 1, unit: ReminderUnit.day),
+      ]),
+      '1일 전 외 1',
+    );
   });
 }

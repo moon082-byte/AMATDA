@@ -27,7 +27,7 @@ Map<String, Object?> roomToJson(TelegramRoom r) => {
       'unreadCount': r.unreadCount,
       'lastActivityAt': _date(r.lastActivityAt),
       'dueDate': _date(r.dueDate),
-      'reminderOption': r.reminderOption.name,
+      'reminders': _remindersToJson(r.reminders),
       'workLinks': r.workLinks,
     };
 
@@ -43,8 +43,8 @@ TelegramRoom roomFromJson(Map<String, dynamic> j) => TelegramRoom(
       unreadCount: (j['unreadCount'] as int?) ?? 0,
       lastActivityAt: _parseDate(j['lastActivityAt']) ?? DateTime.now(),
       dueDate: _parseDate(j['dueDate']),
-      reminderOption: _enumByName(
-          ReminderOption.values, j['reminderOption'], ReminderOption.none),
+      reminders: _remindersFromJson(j['reminders']) ??
+          _legacyRoomReminder(j['reminderOption']),
       workLinks: [
         for (final link in (j['workLinks'] as List? ?? const [])) '$link',
       ],
@@ -68,9 +68,7 @@ Map<String, Object?> taskToJson(TaskItem t) => {
         for (final n in t.notes)
           {'id': n.id, 'content': n.content, 'createdAt': _date(n.createdAt)},
       ],
-      'reminder': t.reminder == null
-          ? null
-          : {'amount': t.reminder!.amount, 'unit': t.reminder!.unit.name},
+      'reminders': _remindersToJson(t.reminders),
     };
 
 TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
@@ -100,7 +98,8 @@ TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
             createdAt: _parseDate(n['createdAt']) ?? DateTime.now(),
           ),
       ],
-      reminder: _reminderFromJson(j['reminder']),
+      reminders: _remindersFromJson(j['reminders']) ??
+          [?_reminderFromJson(j['reminder'])],
     );
 
 TaskReminder? _reminderFromJson(Object? v) {
@@ -110,3 +109,22 @@ TaskReminder? _reminderFromJson(Object? v) {
     unit: _enumByName(ReminderUnit.values, v['unit'], ReminderUnit.minute),
   );
 }
+
+List<Map<String, Object>> _remindersToJson(List<TaskReminder> list) =>
+    [for (final r in list) {'amount': r.amount, 'unit': r.unit.name}];
+
+List<TaskReminder>? _remindersFromJson(Object? v) {
+  if (v is! List) return null;
+  return [
+    for (final item in v) ?_reminderFromJson(item),
+  ].take(TaskReminder.maxCount).toList();
+}
+
+/// 예전 저장 형식(업무방 리마인더 선택지 1개)을 새 형식으로 바꾼다
+List<TaskReminder> _legacyRoomReminder(Object? name) => switch (name) {
+      'tenMinutesBefore' => const [TaskReminder(amount: 10, unit: ReminderUnit.minute)],
+      'thirtyMinutesBefore' => const [TaskReminder(amount: 30, unit: ReminderUnit.minute)],
+      'oneHourBefore' => const [TaskReminder(amount: 1, unit: ReminderUnit.hour)],
+      'oneDayBefore' => const [TaskReminder(amount: 1, unit: ReminderUnit.day)],
+      _ => const [],
+    };

@@ -61,7 +61,7 @@ class TelegramRoomCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${RoomAvatar.typeLabel(room.type)} · 멤버 ${room.memberCount}명',
+                '${room.type.label} · 멤버 ${room.memberCount}명',
                 style: text.caption,
               ),
               const Spacer(),

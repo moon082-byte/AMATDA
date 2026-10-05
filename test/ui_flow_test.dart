@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_application_amatda/main.dart';
 import 'package:flutter_application_amatda/models/task_item.dart';
 import 'package:flutter_application_amatda/models/task_reminder.dart';
+import 'package:flutter_application_amatda/models/telegram_room.dart';
 import 'package:flutter_application_amatda/providers/room_provider.dart';
+import 'package:flutter_application_amatda/views/room_form_page.dart';
 import 'package:flutter_application_amatda/widgets/reminder_banner.dart';
 import 'package:provider/provider.dart';
 
@@ -100,7 +102,7 @@ void main() {
       id: 'soon',
       title: '거래처 미팅 자료 보내기',
       dueDate: DateTime.now().add(const Duration(minutes: 20)),
-      reminder: const TaskReminder(amount: 30, unit: ReminderUnit.minute),
+      reminders: const [TaskReminder(amount: 30, unit: ReminderUnit.minute)],
       createdAt: DateTime.now(),
     ));
     await tester.pump(const Duration(seconds: 21)); // 20초마다 확인
@@ -118,5 +120,45 @@ void main() {
     await tester.tap(inBanner(find.bySemanticsLabel('닫기')));
     await tester.pumpAndSettle();
     expect(find.byType(ReminderBanner), findsNothing);
+  });
+
+  testWidgets('업무방 수정에서 방 종류·인원·리마인더를 바꿀 수 있다', (tester) async {
+    await _boot(tester);
+    await tester.tap(find.text('오늘 할일'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('팀 프로젝트 - 아맞다').first);
+    await tester.pumpAndSettle();
+    expect(find.text('그룹 · 멤버 5명'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('업무방 수정'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('채널'));
+    await tester.tap(find.byTooltip('인원 늘리기'));
+    await tester.pump();
+
+    // 기존 리마인더(1일 전) 1개에 '30분 전'을 추가해 2개로
+    final preset = find.text('+ 30분 전');
+    await tester.dragUntilVisible(
+      preset.hitTestable(),
+      find
+          .descendant(
+            of: find.byType(RoomFormPage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(preset);
+    await tester.pump();
+    expect(find.text('리마인더 알림 (2/5)'), findsOneWidget);
+
+    await tester.tap(find.text('저장').first);
+    await tester.pumpAndSettle();
+    expect(find.text('채널 · 멤버 6명'), findsOneWidget);
+    final room = _provider(tester).roomById('room_001')!;
+    expect(room.type, TelegramRoomType.channel);
+    expect(room.memberCount, 6);
+    expect(room.reminders.map((r) => r.label), ['1일 전', '30분 전']);
   });
 }

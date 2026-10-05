@@ -9,6 +9,7 @@ import '../utils/confirm_dialog.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/browser_notification_tile.dart';
 import '../widgets/settings_group.dart';
+import '../widgets/telegram_link_tile.dart';
 import '../widgets/theme_mode_selector.dart';
 
 /// 설정 화면: 알림 On/Off, 테마 모드 전환, 데이터 초기화, 앱 정보
@@ -50,6 +51,7 @@ class SettingsView extends StatelessWidget {
                 ),
               ),
               if (notif.enabled) const BrowserNotificationTile(),
+              if (notif.enabled) const TelegramLinkTile(),
             ],
           ),
           const SizedBox(height: 28),

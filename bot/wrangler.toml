@@ -1,0 +1,18 @@
+# 아맞다 텔레그램 알림봇 - Cloudflare Workers 설정 (설치 방법은 README.md 참고)
+name = "amatda-bot"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# 1분마다 보낼 알림이 있는지 확인한다
+[triggers]
+crons = ["* * * * *"]
+
+# 앱(GitHub Pages)에서만 봇 서버를 호출할 수 있게 한다
+[vars]
+ALLOWED_ORIGINS = "https://moon082-byte.github.io"
+
+# `npx wrangler d1 create amatda-bot` 실행 결과의 database_id를 아래에 넣는다
+[[d1_databases]]
+binding = "DB"
+database_name = "amatda-bot"
+database_id = "REPLACE_WITH_DATABASE_ID"

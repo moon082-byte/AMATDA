@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task_item.dart';
+import '../models/task_reminder.dart';
 import 'common/due_badge.dart';
 import 'common/tag_chip.dart';
 
@@ -19,17 +20,16 @@ class TaskMetaChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final doneSubTasks = task.subTasks.where((s) => s.isDone).length;
-    final reminder = task.reminder;
 
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
         DueBadge(dueDate: task.dueDate, isDone: task.isDone),
-        if (reminder != null && task.dueDate != null)
+        if (task.reminders.isNotEmpty && task.dueDate != null)
           TagChip.accent(
             context,
-            reminder.label,
+            remindersSummary(task.reminders),
             icon: Icons.notifications_rounded,
           ),
         if (roomName != null)

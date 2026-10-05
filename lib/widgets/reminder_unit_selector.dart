@@ -57,9 +57,9 @@ class ReminderUnitSelector extends StatelessWidget {
   }
 }
 
-/// 자주 쓰는 리마인드 값 바로가기 칩
+/// 자주 쓰는 리마인드 값 바로가기 칩. 누르면 알림이 하나 추가된다(이미 있으면 표시만).
 class ReminderPresets extends StatelessWidget {
-  final TaskReminder selected;
+  final List<TaskReminder> selected;
   final ValueChanged<TaskReminder> onSelected;
 
   const ReminderPresets({
@@ -85,9 +85,9 @@ class ReminderPresets extends StatelessWidget {
       spacing: 6,
       runSpacing: 6,
       children: presets.map((p) {
-        final isSelected = p == selected;
+        final isSelected = selected.contains(p);
         return Pressable(
-          onTap: () => onSelected(p),
+          onTap: isSelected ? null : () => onSelected(p),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
@@ -95,7 +95,7 @@ class ReminderPresets extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppPalette.chipRadius),
             ),
             child: Text(
-              p.label,
+              isSelected ? '✓ ${p.label}' : '+ ${p.label}',
               style: text.micro.copyWith(
                 color: isSelected ? palette.accent : palette.bodyText,
               ),

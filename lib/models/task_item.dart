@@ -19,7 +19,7 @@ class TaskItem {
   final DateTime createdAt;
   final List<SubTask> subTasks;
   final List<Note> notes;
-  final TaskReminder? reminder;
+  final List<TaskReminder> reminders;
 
   const TaskItem({
     required this.id,
@@ -33,14 +33,13 @@ class TaskItem {
     required this.createdAt,
     this.subTasks = const [],
     this.notes = const [],
-    this.reminder,
+    this.reminders = const [],
   });
 
-  /// 리마인드가 울릴 시각 (마감이나 리마인드가 없으면 null)
-  DateTime? get reminderAt {
+  /// 리마인드가 울릴 시각들 (마감이 없으면 빈 목록)
+  List<DateTime> get reminderTimes {
     final due = dueDate;
-    final r = reminder;
-    return due == null || r == null ? null : r.fireAt(due);
+    return due == null ? const [] : [for (final r in reminders) r.fireAt(due)];
   }
 
   TaskItem _copy({
@@ -50,7 +49,7 @@ class TaskItem {
     DateTime? Function()? completedAt,
     List<SubTask>? subTasks,
     List<Note>? notes,
-    TaskReminder? Function()? reminder,
+    List<TaskReminder>? reminders,
   }) {
     return TaskItem(
       id: id,
@@ -64,7 +63,7 @@ class TaskItem {
       createdAt: createdAt,
       subTasks: subTasks ?? this.subTasks,
       notes: notes ?? this.notes,
-      reminder: reminder != null ? reminder() : this.reminder,
+      reminders: reminders ?? this.reminders,
     );
   }
 
@@ -78,11 +77,11 @@ class TaskItem {
         completedAt: () => done ? DateTime.now() : null,
       );
 
-  /// 제목/마감기한/리마인드 수정 시 사용한다 (null이면 해제)
+  /// 제목/마감기한/리마인드 수정 시 사용한다 (마감이 null이면 해제)
   TaskItem copyWithEdits({
     required String title,
     DateTime? dueDate,
-    TaskReminder? reminder,
+    List<TaskReminder> reminders = const [],
   }) =>
-      _copy(title: title, dueDate: () => dueDate, reminder: () => reminder);
+      _copy(title: title, dueDate: () => dueDate, reminders: reminders);
 }

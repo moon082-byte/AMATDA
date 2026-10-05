@@ -7,7 +7,7 @@ import '../utils/pick_date_time.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/due_date_field.dart';
 import '../widgets/labeled_text_field.dart';
-import '../widgets/reminder_picker.dart';
+import '../widgets/reminder_list_editor.dart';
 
 /// 할 일 추가/수정 공용 입력 화면. [task]가 있으면 수정 모드로 동작한다.
 /// 입력칸을 화면 위쪽에 두어 모바일 키보드에 가리지 않게 한다.
@@ -25,7 +25,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
   late final _titleController =
       TextEditingController(text: widget.task?.title ?? '');
   late DateTime? _dueDate = widget.task?.dueDate;
-  late TaskReminder? _reminder = widget.task?.reminder;
+  late List<TaskReminder> _reminders = widget.task?.reminders ?? const [];
 
   bool get _isEdit => widget.task != null;
   bool get _canSubmit => _titleController.text.trim().isNotEmpty;
@@ -50,7 +50,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
   void _submit() {
     if (!_canSubmit) return;
     final title = _titleController.text.trim();
-    final reminder = _dueDate == null ? null : _reminder;
+    final reminders = _dueDate == null ? <TaskReminder>[] : _reminders;
     final provider = context.read<RoomProvider>();
 
     final task = widget.task;
@@ -58,14 +58,14 @@ class _TaskFormPageState extends State<TaskFormPage> {
       provider.updateTask(task.copyWithEdits(
         title: title,
         dueDate: _dueDate,
-        reminder: reminder,
+        reminders: reminders,
       ));
     } else {
       provider.addTask(TaskItem(
         id: 'task_${DateTime.now().millisecondsSinceEpoch}',
         title: title,
         dueDate: _dueDate,
-        reminder: reminder,
+        reminders: reminders,
         roomId: widget.roomId,
         createdAt: DateTime.now(),
       ));
@@ -97,10 +97,11 @@ class _TaskFormPageState extends State<TaskFormPage> {
             onClear: () => setState(() => _dueDate = null),
           ),
           const SizedBox(height: 24),
-          ReminderPicker(
+          ReminderListEditor(
+            label: '리마인드 알림',
             dueDate: _dueDate,
-            value: _reminder,
-            onChanged: (r) => setState(() => _reminder = r),
+            value: _reminders,
+            onChanged: (r) => setState(() => _reminders = r),
           ),
           const SizedBox(height: 32),
           FilledButton(
