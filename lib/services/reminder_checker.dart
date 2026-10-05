@@ -8,7 +8,15 @@ class DueReminder {
   final String title;
   final String body;
 
-  const DueReminder({required this.key, required this.title, required this.body});
+  /// 함께 '울린 것'으로 기록할 키들 (한꺼번에 지난 다른 알림 시각 포함)
+  final List<String> alsoCovers;
+
+  const DueReminder({
+    required this.key,
+    required this.title,
+    required this.body,
+    this.alsoCovers = const [],
+  });
 }
 
 /// 마감까지 남은 시간을 짧게 표현한다 ("10분", "3시간", "2일")
@@ -37,20 +45,27 @@ List<DueReminder> collectDueReminders({
   final result = <DueReminder>[];
   final staleBefore = now.subtract(const Duration(hours: 12));
 
-  void check(String kind, String id, String title, DateTime? at, DateTime? due) {
-    if (at == null || due == null || at.isAfter(now) || due.isBefore(staleBefore)) {
-      return;
-    }
-    final key = '$kind:$id:${at.toIso8601String()}';
-    if (fired.contains(key)) return;
-    result.add(DueReminder(key: key, title: title, body: _body(due, now)));
+  void check(String kind, String id, String title, List<DateTime> times,
+      DateTime? due) {
+    if (due == null || due.isBefore(staleBefore)) return;
+    // 여러 알림 시각이 한꺼번에 지났으면(앱을 오래 닫아 둔 경우) 한 번만 알린다
+    final passed = times.where((at) => !at.isAfter(now)).toList();
+    final keys = [for (final at in passed) '$kind:$id:${at.toIso8601String()}'];
+    final fresh = keys.where((k) => !fired.contains(k)).toList();
+    if (fresh.isEmpty) return;
+    result.add(DueReminder(
+      key: fresh.last,
+      title: title,
+      body: _body(due, now),
+      alsoCovers: keys,
+    ));
   }
 
   for (final t in tasks) {
-    if (!t.isDone) check('task', t.id, t.title, t.reminderAt, t.dueDate);
+    if (!t.isDone) check('task', t.id, t.title, t.reminderTimes, t.dueDate);
   }
   for (final r in rooms) {
-    check('room', r.id, '${r.name} 업무방', r.reminderAt, r.dueDate);
+    check('room', r.id, '${r.name} 업무방', r.reminderTimes, r.dueDate);
   }
   return result;
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
@@ -43,7 +44,7 @@ class RoomDetailHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${RoomAvatar.typeLabel(room.type)} · 멤버 ${room.memberCount}명',
+                      '${room.type.label} · 멤버 ${room.memberCount}명',
                       style: text.caption,
                     ),
                     const SizedBox(height: 6),
@@ -52,10 +53,10 @@ class RoomDetailHeader extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         DueBadge(dueDate: room.dueDate, dDay: true),
-                        if (room.reminderOption != ReminderOption.none)
+                        if (room.reminders.isNotEmpty && room.dueDate != null)
                           TagChip.neutral(
                             context,
-                            room.reminderOption.label,
+                            remindersSummary(room.reminders),
                             icon: Icons.notifications_rounded,
                           ),
                       ],

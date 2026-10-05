@@ -24,12 +24,6 @@ class RoomAvatar extends StatelessWidget {
         TelegramRoomType.channel => Icons.campaign_rounded,
       };
 
-  static String typeLabel(TelegramRoomType type) => switch (type) {
-        TelegramRoomType.private => '개인',
-        TelegramRoomType.group => '그룹',
-        TelegramRoomType.channel => '채널',
-      };
-
   Color get tone =>
       _tones[room.id.codeUnits.fold<int>(0, (a, b) => a + b) % _tones.length];
 

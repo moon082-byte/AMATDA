@@ -17,8 +17,11 @@ extension ReminderUnitLabel on ReminderUnit {
       };
 }
 
-/// 마감 [amount][unit] 전에 알려 주는 할 일 리마인드 (예: 30분 전, 2일 전)
+/// 마감 [amount][unit] 전에 알려 주는 리마인드 (예: 30분 전, 2일 전).
+/// 할 일과 업무방 모두 최대 [maxCount]개까지 걸 수 있다.
 class TaskReminder {
+  static const maxCount = 5;
+
   final int amount;
   final ReminderUnit unit;
 
@@ -38,4 +41,15 @@ class TaskReminder {
 
   @override
   int get hashCode => Object.hash(amount, unit);
+}
+
+/// 이른 알림(마감에서 먼 것)부터 정렬한다
+List<TaskReminder> sortReminders(Iterable<TaskReminder> list) =>
+    list.toList()..sort((a, b) => b.offset.compareTo(a.offset));
+
+/// 칩에 쓰는 요약: "30분 전", "1일 전 외 2"
+String remindersSummary(List<TaskReminder> list) {
+  if (list.isEmpty) return '';
+  final first = sortReminders(list).first.label;
+  return list.length == 1 ? first : '$first 외 ${list.length - 1}';
 }

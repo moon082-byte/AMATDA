@@ -60,7 +60,7 @@ class _ReminderHostState extends State<ReminderHost>
     );
     if (due.isEmpty) return;
 
-    _fired.addAll(due.map((r) => r.key));
+    _fired.addAll([for (final r in due) ...r.alsoCovers, for (final r in due) r.key]);
     widget.store?.saveFiredReminders(_fired);
     if (isPageHidden()) {
       for (final r in due) {
