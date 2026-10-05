@@ -19,6 +19,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
+      fontFamily: kFontFamily,
       fontFamilyFallback: kFontFallback,
       scaffoldBackgroundColor: p.background,
       colorScheme: ColorScheme.fromSeed(
@@ -70,6 +71,7 @@ class AppTheme {
             fontSize: 16,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
+            fontFamily: kFontFamily,
             fontFamilyFallback: kFontFallback,
           ),
           shape: RoundedRectangleBorder(
@@ -82,6 +84,7 @@ class AppTheme {
           foregroundColor: p.accent,
           textStyle: const TextStyle(
             fontWeight: FontWeight.w700,
+            fontFamily: kFontFamily,
             fontFamilyFallback: kFontFallback,
           ),
         ),

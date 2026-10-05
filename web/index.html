@@ -1,46 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
+    배포 경로(예: GitHub Pages의 /AMATDA/)는 `flutter build web --base-href`
+    값으로 아래 자리표시자가 바뀐다. 경로는 슬래시로 시작하고 끝나야 한다.
   -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="텔레그램 업무방과 연결해 할 일과 마감을 챙겨 주는 업무 리마인더">
+  <meta name="theme-color" content="#F2F4F6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17171C" media="(prefers-color-scheme: dark)">
 
-  <!-- iOS meta tags & icons -->
+  <!-- iOS 홈 화면 추가용 -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="flutter_application_amatda">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="아맞다">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>flutter_application_amatda</title>
+  <title>아맞다</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    :root { --bg: #F2F4F6; --text: #8B95A1; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #17171C; --text: #8B95A1; }
+    }
+    html, body { margin: 0; height: 100%; background: var(--bg); }
+    /* Flutter가 첫 화면을 그리기 전까지 보여주는 로딩 화면 */
+    #splash {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background: var(--bg); transition: opacity .25s ease;
+    }
+    #splash img { width: 72px; height: 72px; animation: pulse 1.4s ease-in-out infinite; }
+    #splash p {
+      margin: 0; color: var(--text); font-size: 14px;
+      font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+    #splash.hide { opacity: 0; pointer-events: none; }
+    @keyframes pulse { 50% { transform: scale(.92); opacity: .8; } }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="splash">
+    <img src="icons/Icon-192.png" alt="">
+    <p>아맞다 불러오는 중…</p>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('splash');
+      if (!splash) return;
+      splash.classList.add('hide');
+      setTimeout(function () { splash.remove(); }, 300);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

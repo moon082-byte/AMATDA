@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/notification_provider.dart';
+import '../providers/room_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
+import '../utils/confirm_dialog.dart';
 import '../widgets/common/page_header.dart';
 import '../widgets/settings_group.dart';
 import '../widgets/theme_mode_selector.dart';
 
-/// 설정 화면: 알림 On/Off, 테마 모드 전환, 앱 정보
+/// 설정 화면: 알림 On/Off, 테마 모드 전환, 데이터 초기화, 앱 정보
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
+
+  Future<void> _resetData(BuildContext context) async {
+    final confirmed = await confirmDelete(
+      context,
+      '모든 업무방과 할 일을 지우고 처음 샘플 데이터로 되돌려요.',
+    );
+    if (!context.mounted || !confirmed) return;
+    context.read<RoomProvider>().resetToSample();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('데이터를 초기화했어요')));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +73,26 @@ class SettingsView extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            SettingsGroup(
+              title: '데이터',
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _resetData(context),
+                  child: SettingsTile(
+                    icon: Icons.restart_alt_rounded,
+                    iconColor: palette.danger,
+                    title: '데이터 초기화',
+                    subtitle: '이 기기에 저장된 업무방과 할 일을 지워요',
+                    trailing: Icon(
+                      Icons.chevron_right_rounded,
+                      color: palette.checkboxIdle,
+                    ),
+                  ),
                 ),
               ],
             ),

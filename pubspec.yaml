@@ -37,6 +37,8 @@ dependencies:
   provider: ^6.1.5+1
   flutter_slidable: ^4.0.3
   table_calendar: ^3.2.1
+  shared_preferences: ^2.5.5
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +61,21 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Pretendard(SIL OFL 1.1)에서 한글 2,350자·영문·기호만 남긴 서브셋. 라이선스: assets/fonts/OFL.txt
+  assets:
+    - assets/fonts/OFL.txt
+  fonts:
+    - family: AmatdaSans
+      fonts:
+        - asset: assets/fonts/AmatdaSans-Medium.otf
+          weight: 500
+        - asset: assets/fonts/AmatdaSans-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/AmatdaSans-Bold.otf
+          weight: 700
+        - asset: assets/fonts/AmatdaSans-ExtraBold.otf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -21,6 +21,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('텔레그램 업무방'), findsOneWidget);
+    expect(find.text('팀 프로젝트 - 아맞다'), findsWidgets);
+
+    // 업무방 목록을 끝까지 넘기면 '새 업무방' 카드가 나온다
+    await tester.dragUntilVisible(
+      find.text('새 업무방'),
+      find.byType(ListView).at(1),
+      const Offset(-200, 0),
+    );
     expect(find.text('새 업무방'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
   });

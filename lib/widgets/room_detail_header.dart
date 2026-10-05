@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/telegram_room.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
@@ -20,6 +21,25 @@ class RoomDetailHeader extends StatelessWidget {
     required this.totalCount,
     required this.doneCount,
   });
+
+  /// 방 초대 링크를 텔레그램 앱(없으면 새 브라우저 탭)으로 연다
+  Future<void> _openTelegram(BuildContext context) async {
+    final uri = Uri.tryParse(room.inviteLink.trim());
+    final messenger = ScaffoldMessenger.of(context);
+    var ok = false;
+    if (uri != null && uri.hasScheme) {
+      try {
+        ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        ok = false;
+      }
+    }
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('열 수 있는 텔레그램 링크가 없어요')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +105,7 @@ class RoomDetailHeader extends StatelessWidget {
           ProgressBar(value: progress),
           const SizedBox(height: 20),
           FilledButton.icon(
-            onPressed: () => debugPrint('텔레그램 방 링크 이동: ${room.inviteLink}'),
+            onPressed: () => _openTelegram(context),
             style: FilledButton.styleFrom(
               backgroundColor: palette.accentSoft,
               foregroundColor: palette.accent,
