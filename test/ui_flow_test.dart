@@ -4,6 +4,7 @@ import 'package:flutter_application_amatda/main.dart';
 import 'package:flutter_application_amatda/models/task_item.dart';
 import 'package:flutter_application_amatda/models/task_reminder.dart';
 import 'package:flutter_application_amatda/providers/room_provider.dart';
+import 'package:flutter_application_amatda/widgets/reminder_banner.dart';
 import 'package:provider/provider.dart';
 
 Future<void> _boot(WidgetTester tester) async {
@@ -105,12 +106,17 @@ void main() {
     await tester.pump(const Duration(seconds: 21)); // 20초마다 확인
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(tester.takeException(), isNull);
-    expect(find.text('거래처 미팅 자료 보내기'), findsOneWidget);
-    expect(find.textContaining('남았어요'), findsOneWidget);
+    // 같은 제목이 메인 화면의 '오늘 마감 일정'에도 보일 수 있으므로(실행 시각에 따라)
+    // 배너 안에서만 찾는다
+    Finder inBanner(Finder f) =>
+        find.descendant(of: find.byType(ReminderBanner), matching: f);
 
-    await tester.tap(find.bySemanticsLabel('닫기'));
+    expect(tester.takeException(), isNull);
+    expect(inBanner(find.text('거래처 미팅 자료 보내기')), findsOneWidget);
+    expect(inBanner(find.textContaining('남았어요')), findsOneWidget);
+
+    await tester.tap(inBanner(find.bySemanticsLabel('닫기')));
     await tester.pumpAndSettle();
-    expect(find.text('거래처 미팅 자료 보내기'), findsNothing);
+    expect(find.byType(ReminderBanner), findsNothing);
   });
 }
