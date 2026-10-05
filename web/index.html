@@ -53,12 +53,19 @@
   </div>
   <script>
     window.addEventListener('flutter-first-frame', function () {
+      // 안드로이드 크롬: 키보드가 올라오면 화면 높이를 줄여 입력칸이 가려지지 않게 한다.
+      // (Flutter가 viewport 태그를 직접 만들기 때문에 첫 화면이 뜬 뒤에 덧붙인다)
+      var viewport = document.querySelector('meta[name=viewport]');
+      if (viewport && viewport.content.indexOf('interactive-widget') === -1) {
+        viewport.content += ', interactive-widget=resizes-content';
+      }
       var splash = document.getElementById('splash');
       if (!splash) return;
       splash.classList.add('hide');
       setTimeout(function () { splash.remove(); }, 300);
     });
   </script>
+  <script src="notify.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

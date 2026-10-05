@@ -1,6 +1,7 @@
 import '../models/note.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
+import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 
 /// 브라우저/기기 저장소에 넣기 위한 모델 ↔ JSON 변환
@@ -27,6 +28,7 @@ Map<String, Object?> roomToJson(TelegramRoom r) => {
       'lastActivityAt': _date(r.lastActivityAt),
       'dueDate': _date(r.dueDate),
       'reminderOption': r.reminderOption.name,
+      'workLinks': r.workLinks,
     };
 
 TelegramRoom roomFromJson(Map<String, dynamic> j) => TelegramRoom(
@@ -43,6 +45,9 @@ TelegramRoom roomFromJson(Map<String, dynamic> j) => TelegramRoom(
       dueDate: _parseDate(j['dueDate']),
       reminderOption: _enumByName(
           ReminderOption.values, j['reminderOption'], ReminderOption.none),
+      workLinks: [
+        for (final link in (j['workLinks'] as List? ?? const [])) '$link',
+      ],
     );
 
 Map<String, Object?> taskToJson(TaskItem t) => {
@@ -63,6 +68,9 @@ Map<String, Object?> taskToJson(TaskItem t) => {
         for (final n in t.notes)
           {'id': n.id, 'content': n.content, 'createdAt': _date(n.createdAt)},
       ],
+      'reminder': t.reminder == null
+          ? null
+          : {'amount': t.reminder!.amount, 'unit': t.reminder!.unit.name},
     };
 
 TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
@@ -92,4 +100,13 @@ TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
             createdAt: _parseDate(n['createdAt']) ?? DateTime.now(),
           ),
       ],
+      reminder: _reminderFromJson(j['reminder']),
     );
+
+TaskReminder? _reminderFromJson(Object? v) {
+  if (v is! Map || v['amount'] is! int) return null;
+  return TaskReminder(
+    amount: v['amount'] as int,
+    unit: _enumByName(ReminderUnit.values, v['unit'], ReminderUnit.minute),
+  );
+}

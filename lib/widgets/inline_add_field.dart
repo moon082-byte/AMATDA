@@ -42,6 +42,8 @@ class _InlineAddFieldState extends State<InlineAddField> {
 
     return TextField(
       controller: _controller,
+      // 키보드가 올라와도 입력칸 아래로 여유 공간을 두고 보이게 한다
+      scrollPadding: const EdgeInsets.only(bottom: 160),
       style: context.text.body.copyWith(
         fontSize: 14,
         color: palette.titleText,

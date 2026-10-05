@@ -8,6 +8,7 @@ import '../models/telegram_room.dart';
 
 /// 업무방, 할 일, 하위 체크리스트, 메모 상태를 관리.
 /// [store]가 있으면 변경될 때마다 저장하고, 처음 실행이면 샘플 데이터로 시작한다.
+/// 할 일 목록의 순서가 곧 화면 표시 순서다(드래그로 변경).
 class RoomProvider extends ChangeNotifier {
   final LocalStore? _store;
   final List<TelegramRoom> _rooms;
@@ -55,19 +56,10 @@ class RoomProvider extends ChangeNotifier {
   int get totalPendingCount => activeTasks.length;
   int get totalCompletedCount => _tasks.where((t) => t.isDone).length;
 
-  TelegramRoom? roomById(String id) {
-    for (final room in _rooms) {
-      if (room.id == id) return room;
-    }
-    return null;
-  }
+  TelegramRoom? roomById(String id) =>
+      _rooms.where((r) => r.id == id).firstOrNull;
 
-  TaskItem? taskById(String id) {
-    for (final task in _tasks) {
-      if (task.id == id) return task;
-    }
-    return null;
-  }
+  TaskItem? taskById(String id) => _tasks.where((t) => t.id == id).firstOrNull;
 
   List<TaskItem> tasksForRoom(String roomId) =>
       _tasks.where((t) => t.roomId == roomId).toList();
@@ -77,10 +69,17 @@ class RoomProvider extends ChangeNotifier {
       _tasks.where((t) => t.roomId == roomId && !t.isDone).toList();
 
   int pendingCountForRoom(String roomId) =>
-      _tasks.where((t) => t.roomId == roomId && !t.isDone).length;
+      activeTasksForRoom(roomId).length;
 
   void addRoom(TelegramRoom room) {
     _rooms.add(room);
+    notifyListeners();
+  }
+
+  void updateRoom(TelegramRoom updated) {
+    final index = _rooms.indexWhere((r) => r.id == updated.id);
+    if (index == -1) return;
+    _rooms[index] = updated;
     notifyListeners();
   }
 
@@ -96,48 +95,54 @@ class RoomProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateTask(TaskItem updated) {
-    final index = _tasks.indexWhere((t) => t.id == updated.id);
-    if (index == -1) return;
-    _tasks[index] = updated;
-    notifyListeners();
-  }
+  void updateTask(TaskItem updated) => _edit(updated.id, (_) => updated);
 
   void deleteTask(String taskId) {
     _tasks.removeWhere((t) => t.id == taskId);
     notifyListeners();
   }
 
-  void toggleTask(String taskId) {
-    final index = _tasks.indexWhere((t) => t.id == taskId);
-    if (index == -1) return;
-    _tasks[index] = _tasks[index].markDone(!_tasks[index].isDone);
+  /// 완료/미완료를 바꾼다. 목록 내 위치는 그대로라 되돌리면 원래 자리로 돌아온다.
+  void toggleTask(String taskId) => _edit(taskId, (t) => t.markDone(!t.isDone));
+
+  void addSubTask(String taskId, SubTask subTask) =>
+      _edit(taskId, (t) => t.copyWith(subTasks: [...t.subTasks, subTask]));
+
+  void toggleSubTask(String taskId, String subTaskId) => _edit(
+        taskId,
+        (t) => t.copyWith(subTasks: [
+          for (final s in t.subTasks)
+            s.id == subTaskId ? s.copyWith(isDone: !s.isDone) : s,
+        ]),
+      );
+
+  void addNote(String taskId, Note note) =>
+      _edit(taskId, (t) => t.copyWith(notes: [...t.notes, note]));
+
+  /// 화면에 보이는 목록([visibleIds]) 안에서 드래그로 순서를 바꾼다.
+  /// [newIndex]는 옮긴 항목을 뺀 뒤 기준의 최종 위치다(onReorderItem 규칙).
+  void reorderTasks(List<String> visibleIds, int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
+    final ids = List.of(visibleIds);
+    final movedId = ids.removeAt(oldIndex);
+    ids.insert(newIndex, movedId);
+
+    final moved = _tasks.firstWhere((t) => t.id == movedId);
+    _tasks.remove(moved);
+    // 새 위치 바로 다음 항목 앞에, 맨 끝이면 바로 앞 항목 뒤에 끼워 넣는다
+    if (newIndex + 1 < ids.length) {
+      _tasks.insert(_tasks.indexWhere((t) => t.id == ids[newIndex + 1]), moved);
+    } else {
+      final prev = _tasks.indexWhere((t) => t.id == ids[newIndex - 1]);
+      _tasks.insert(prev + 1, moved);
+    }
     notifyListeners();
   }
 
-  void addSubTask(String taskId, SubTask subTask) {
+  void _edit(String taskId, TaskItem Function(TaskItem) change) {
     final index = _tasks.indexWhere((t) => t.id == taskId);
     if (index == -1) return;
-    final updated = List.of(_tasks[index].subTasks)..add(subTask);
-    _tasks[index] = _tasks[index].copyWith(subTasks: updated);
-    notifyListeners();
-  }
-
-  void toggleSubTask(String taskId, String subTaskId) {
-    final index = _tasks.indexWhere((t) => t.id == taskId);
-    if (index == -1) return;
-    final updated = _tasks[index].subTasks.map((s) {
-      return s.id == subTaskId ? s.copyWith(isDone: !s.isDone) : s;
-    }).toList();
-    _tasks[index] = _tasks[index].copyWith(subTasks: updated);
-    notifyListeners();
-  }
-
-  void addNote(String taskId, Note note) {
-    final index = _tasks.indexWhere((t) => t.id == taskId);
-    if (index == -1) return;
-    final updated = List.of(_tasks[index].notes)..add(note);
-    _tasks[index] = _tasks[index].copyWith(notes: updated);
+    _tasks[index] = change(_tasks[index]);
     notifyListeners();
   }
 }

@@ -26,7 +26,9 @@ void main() {
     // 업무방 목록을 끝까지 넘기면 '새 업무방' 카드가 나온다
     await tester.dragUntilVisible(
       find.text('새 업무방'),
-      find.byType(ListView).at(1),
+      find.byWidgetPredicate(
+        (w) => w is ListView && w.scrollDirection == Axis.horizontal,
+      ),
       const Offset(-200, 0),
     );
     expect(find.text('새 업무방'), findsOneWidget);

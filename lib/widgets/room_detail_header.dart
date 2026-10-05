@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/telegram_room.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
+import '../utils/links.dart';
 import 'common/app_card.dart';
 import 'common/due_badge.dart';
 import 'common/progress_bar.dart';
 import 'common/room_avatar.dart';
 import 'common/tag_chip.dart';
+import 'link_picker_sheet.dart';
 
-/// 업무방 상세 화면 상단 요약 카드: 방 정보, 마감 D-Day, 진행률, 텔레그램 열기 버튼
+/// 업무방 상세 화면 상단 요약 카드: 방 정보, 마감 D-Day, 진행률,
+/// 텔레그램 열기 버튼, 외부 링크 열기 버튼(업무 링크가 있을 때만)
 class RoomDetailHeader extends StatelessWidget {
   final TelegramRoom room;
   final int totalCount;
@@ -21,25 +23,6 @@ class RoomDetailHeader extends StatelessWidget {
     required this.totalCount,
     required this.doneCount,
   });
-
-  /// 방 초대 링크를 텔레그램 앱(없으면 새 브라우저 탭)으로 연다
-  Future<void> _openTelegram(BuildContext context) async {
-    final uri = Uri.tryParse(room.inviteLink.trim());
-    final messenger = ScaffoldMessenger.of(context);
-    var ok = false;
-    if (uri != null && uri.hasScheme) {
-      try {
-        ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        ok = false;
-      }
-    }
-    if (!ok) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('열 수 있는 텔레그램 링크가 없어요')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +88,11 @@ class RoomDetailHeader extends StatelessWidget {
           ProgressBar(value: progress),
           const SizedBox(height: 20),
           FilledButton.icon(
-            onPressed: () => _openTelegram(context),
+            onPressed: () => room.inviteLink.trim().isEmpty
+                ? ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('등록된 텔레그램 링크가 없어요')),
+                  )
+                : openExternalLink(context, room.inviteLink),
             style: FilledButton.styleFrom(
               backgroundColor: palette.accentSoft,
               foregroundColor: palette.accent,
@@ -114,6 +101,26 @@ class RoomDetailHeader extends StatelessWidget {
             icon: const Icon(Icons.send_rounded, size: 18),
             label: const Text('텔레그램에서 열기'),
           ),
+          if (room.workLinks.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              // 링크가 하나면 바로 열고, 여러 개면 목록 팝업에서 고른다
+              onPressed: () => room.workLinks.length == 1
+                  ? openExternalLink(context, room.workLinks.first)
+                  : showLinkPicker(context, room.workLinks),
+              style: FilledButton.styleFrom(
+                backgroundColor: palette.fill,
+                foregroundColor: palette.bodyText,
+                minimumSize: const Size.fromHeight(48),
+              ),
+              icon: const Icon(Icons.link_rounded, size: 20),
+              label: Text(
+                room.workLinks.length == 1
+                    ? '외부링크 열기 · ${linkService(room.workLinks.first).$1}'
+                    : '외부링크 열기 · ${room.workLinks.length}개',
+              ),
+            ),
+          ],
         ],
       ),
     );

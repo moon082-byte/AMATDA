@@ -31,6 +31,7 @@ class LabeledTextField extends StatelessWidget {
         FieldLabel(label),
         TextField(
           controller: controller,
+          scrollPadding: const EdgeInsets.only(bottom: 160),
           autofocus: autofocus,
           keyboardType: keyboardType,
           onSubmitted: onSubmitted,
