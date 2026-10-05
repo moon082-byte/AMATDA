@@ -2,6 +2,7 @@
 //
 // - POST /telegram/webhook   텔레그램이 보내는 메시지 (/start <코드>, /stop, /status)
 // - GET  /setup              이 서버 주소로 텔레그램 웹훅·명령어 목록을 등록 (여러 번 호출해도 안전)
+// - GET  /api/info           봇 아이디·이름 확인
 // - GET  /api/link/:code     앱이 연결 여부 확인
 // - DELETE /api/link/:code   앱에서 연결 끊기
 // - PUT  /api/reminders/:code 앱이 알림 일정 전체를 올림 (기존 일정은 교체)
@@ -11,7 +12,7 @@
 
 import { getLink, replaceReminders, unlinkCodes } from './db.js';
 import { CODE_PATTERN, sanitizeReminders } from './logic.js';
-import { sendDueReminders, setup, webhook } from './telegram.js';
+import { botInfo, sendDueReminders, setup, webhook } from './telegram.js';
 
 export default {
   async fetch(request, env) {
@@ -35,6 +36,7 @@ async function route(request, env) {
 
   if (path === '/') return new Response('아맞다 알림봇이 동작 중이에요');
   if (path === '/setup' && request.method === 'GET') return setup(url, env);
+  if (path === '/api/info' && request.method === 'GET') return json(await botInfo(env), 200, request, env);
   if (path === '/telegram/webhook' && request.method === 'POST') return webhook(request, env);
 
   const m = /^\/api\/(link|reminders)\/([^/]+)$/.exec(path);

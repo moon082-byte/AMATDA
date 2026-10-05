@@ -37,6 +37,12 @@ export async function webhook(request, env) {
   return new Response('ok');
 }
 
+/** 봇 아이디·이름 (공개 정보). 앱 설정에 넣을 봇 아이디를 확인할 때 쓴다. */
+export async function botInfo(env) {
+  const me = await tg(env, 'getMe', {});
+  return me.ok ? { username: me.result.username, name: me.result.first_name } : { error: me.description };
+}
+
 export async function setup(url, env) {
   const hook = await tg(env, 'setWebhook', {
     url: `${url.origin}/telegram/webhook`,
