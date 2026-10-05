@@ -33,25 +33,30 @@ Cloudflare Workers(무료 플랜)에서 돌아갑니다.
 ```bash
 npx wrangler d1 create amatda-bot
 ```
-출력된 `database_id`를 `wrangler.toml`의 `REPLACE_WITH_DATABASE_ID` 자리에 넣고, 표를 만듭니다.
+출력된 `database_id`를 `wrangler.toml`의 `database_id`에 넣고(다른 계정에 새로 설치할 때만), 표를 만듭니다.
 ```bash
 npm run db:init
 ```
 
-### 4. 봇 토큰 등록 후 배포
+### 4. workers.dev 하위 도메인 등록 (계정당 한 번)
+[Cloudflare 대시보드 → Workers](https://dash.cloudflare.com/?to=/:account/workers/onboarding)에서 하위 도메인(예: `amatda`)을 등록합니다.
+봇 서버 주소가 `https://amatda-bot.<하위 도메인>.workers.dev`가 됩니다. 처음 등록하면 인증서 발급에 몇 분 걸립니다.
+
+### 5. 봇 토큰 등록 후 배포
 ```bash
 npx wrangler secret put BOT_TOKEN   # 1단계의 토큰을 붙여 넣기
 npm run deploy
 ```
-배포가 끝나면 `https://amatda-bot.<계정>.workers.dev` 주소가 나옵니다.
+배포가 끝나면 `https://amatda-bot.<하위 도메인>.workers.dev` 주소가 나옵니다.
 
-### 5. 텔레그램 웹훅 등록
-브라우저로 `https://amatda-bot.<계정>.workers.dev/setup`을 엽니다. "✅ 텔레그램 웹훅 등록 완료"가 나오면 끝입니다.
+### 6. 텔레그램 웹훅 등록
+브라우저로 `https://amatda-bot.<하위 도메인>.workers.dev/setup`을 엽니다. "✅ 텔레그램 웹훅 등록 완료"가 나오면 끝입니다.
+`/api/info`를 열면 봇 아이디를 확인할 수 있습니다.
 
-### 6. 앱에 봇 연결
+### 7. 앱에 봇 연결
 `lib/config/bot_config.dart`에 배포 주소와 봇 아이디를 넣고 앱을 다시 배포합니다.
 ```dart
-const kBotApiUrl = String.fromEnvironment('BOT_API_URL', defaultValue: 'https://amatda-bot.<계정>.workers.dev');
+const kBotApiUrl = String.fromEnvironment('BOT_API_URL', defaultValue: 'https://amatda-bot.<하위 도메인>.workers.dev');
 const kBotUsername = String.fromEnvironment('BOT_USERNAME', defaultValue: 'amatda_alarm_bot');
 ```
 
@@ -69,6 +74,7 @@ npm run logs                 # 배포된 봇 서버 로그 보기
 |---|---|
 | `POST /telegram/webhook` | 텔레그램이 보내는 메시지 (`/start <코드>`, `/stop`, `/status`) |
 | `GET /setup` | 텔레그램 웹훅·명령어 등록 (여러 번 호출해도 안전) |
+| `GET /api/info` | 봇 아이디·이름 확인 |
 | `GET /api/link/:code` | 앱이 연결 여부 확인 |
 | `DELETE /api/link/:code` | 앱에서 연결 끊기 |
 | `PUT /api/reminders/:code` | 앱이 알림 일정 전체를 올림 |

@@ -3,6 +3,10 @@ name = "amatda-bot"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
+# https://amatda-bot.<하위 도메인>.workers.dev 주소로 공개하고, 버전별 미리보기 주소는 만들지 않는다
+workers_dev = true
+preview_urls = false
+
 # 1분마다 보낼 알림이 있는지 확인한다
 [triggers]
 crons = ["* * * * *"]
@@ -11,8 +15,8 @@ crons = ["* * * * *"]
 [vars]
 ALLOWED_ORIGINS = "https://moon082-byte.github.io"
 
-# `npx wrangler d1 create amatda-bot` 실행 결과의 database_id를 아래에 넣는다
+# `npx wrangler d1 create amatda-bot`으로 만든 데이터베이스
 [[d1_databases]]
 binding = "DB"
 database_name = "amatda-bot"
-database_id = "REPLACE_WITH_DATABASE_ID"
+database_id = "8e78042c-ca97-457d-a00c-37effc983fd7"
