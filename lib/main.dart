@@ -9,6 +9,7 @@ import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
 import 'views/main_dashboard_view.dart';
 import 'widgets/phone_frame.dart';
+import 'widgets/reminder_host.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +44,9 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: themeProvider.themeMode,
-            builder: (context, child) => PhoneFrame(child: child!),
+            builder: (context, child) => PhoneFrame(
+              child: ReminderHost(store: store, child: child!),
+            ),
             home: const MainDashboardView(),
           );
         },

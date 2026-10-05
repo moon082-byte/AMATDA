@@ -4,9 +4,11 @@ import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import 'common/app_card.dart';
 import 'common/tag_chip.dart';
+import 'round_check.dart';
 import 'slidable_actions.dart';
 
-/// 아카이브 화면의 완료된 할 일 한 줄. 슬라이드하면 '복원'/'삭제' 버튼이 나타난다.
+/// 아카이브 화면의 완료된 할 일 한 줄. 체크 표시를 누르거나 밀어서 '복원'하면
+/// 할 일 목록의 원래 자리로 돌아간다. '삭제'는 영구 삭제.
 class ArchivedTaskTile extends StatelessWidget {
   final String title;
   final String? roomName;
@@ -41,19 +43,22 @@ class ArchivedTaskTile extends StatelessWidget {
           ),
         ),
         child: AppCard(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          padding: const EdgeInsets.fromLTRB(12, 12, 18, 12),
           child: Row(
             children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: palette.successSoft,
-                  shape: BoxShape.circle,
+              // 체크를 해제하면 진행 중 목록으로 되돌린다
+              Tooltip(
+                message: '체크 해제해서 되돌리기',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onRestore,
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: RoundCheck(isDone: true),
+                  ),
                 ),
-                child: Icon(Icons.check_rounded, size: 16, color: palette.success),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

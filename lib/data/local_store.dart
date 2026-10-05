@@ -12,6 +12,7 @@ class LocalStore {
   static const _tasksKey = 'tasks_v1';
   static const _themeKey = 'theme_mode';
   static const _notifKey = 'notifications_enabled';
+  static const _firedKey = 'fired_reminders';
 
   final SharedPreferences _prefs;
 
@@ -59,4 +60,15 @@ class LocalStore {
 
   Future<void> saveNotificationsEnabled(bool enabled) =>
       _prefs.setBool(_notifKey, enabled);
+
+  /// 이미 울린 리마인드 목록 (같은 알림이 두 번 울리지 않게)
+  Set<String> loadFiredReminders() =>
+      (_prefs.getStringList(_firedKey) ?? const []).toSet();
+
+  Future<void> saveFiredReminders(Set<String> keys) {
+    // 오래된 기록이 끝없이 쌓이지 않도록 최근 300개만 남긴다
+    final list = keys.toList();
+    final recent = list.length > 300 ? list.sublist(list.length - 300) : list;
+    return _prefs.setStringList(_firedKey, recent);
+  }
 }

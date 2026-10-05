@@ -1,6 +1,7 @@
 import '../models/note.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
+import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 
 /// 오늘 기준 [days]일 뒤의 [hour]:[minute] 시각
@@ -22,6 +23,10 @@ List<TelegramRoom> buildMockTelegramRooms() => [
         lastActivityAt: _at(0, 9, 30),
         dueDate: _at(3, 18),
         reminderOption: ReminderOption.oneDayBefore,
+        workLinks: const [
+          'https://www.notion.so/amatda-team',
+          'https://open.kakao.com/o/amatda',
+        ],
       ),
       TelegramRoom(
         id: 'room_002',
@@ -51,6 +56,7 @@ List<TaskItem> buildMockTaskItems() => [
         title: '주간 보고서 작성',
         description: '팀장님께 전달할 주간 업무 보고서 작성',
         dueDate: _at(2, 18),
+        reminder: const TaskReminder(amount: 1, unit: ReminderUnit.day),
         priority: TaskPriority.high,
         roomId: 'room_001',
         createdAt: _at(-2, 10),

@@ -4,9 +4,10 @@ import '../providers/room_provider.dart';
 import '../theme/app_typography.dart';
 import '../utils/confirm_dialog.dart';
 import '../utils/date_format.dart';
+import '../utils/task_actions.dart';
 import '../widgets/archived_task_tile.dart';
 import '../widgets/common/empty_state.dart';
-import '../widgets/common/page_header.dart';
+import '../widgets/common/app_page.dart';
 import '../widgets/page_number_tabs.dart';
 
 const _pageSize = 10;
@@ -54,39 +55,33 @@ class _ArchiveViewState extends State<ArchiveView> {
         title: task.title,
         roomName: provider.roomById(task.roomId ?? '')?.name,
         completedLabel: '${formatTime(doneAt)} 완료',
-        onRestore: () => provider.toggleTask(task.id),
+        onRestore: () => restoreTask(context, task),
         onDelete: () => _deletePermanently(task.id, task.title),
       ));
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
-          children: [
-            PageHeader(
-              title: '완료된 일들',
-              subtitle: archived.isEmpty
-                  ? '완료한 일이 여기에 모여요'
-                  : '지금까지 ${archived.length}개를 완료했어요',
-            ),
-            const SizedBox(height: 28),
-            if (pageItems.isEmpty)
-              const EmptyState(
-                icon: Icons.inventory_2_outlined,
-                title: '아직 완료한 일이 없어요',
-                message: '할 일을 체크하면 이곳에 기록돼요',
-              )
-            else
-              ...children,
-            PageNumberTabs(
-              pageCount: totalPages,
-              currentPage: page,
-              onPageSelected: (index) => setState(() => _page = index),
-            ),
-          ],
-        ),
-      ),
+    return AppPage(
+      title: '완료된 일들',
+      subtitle: archived.isEmpty
+          ? '완료한 일이 여기에 모여요'
+          : '지금까지 ${archived.length}개를 완료했어요 · 체크를 누르면 되돌려요',
+      slivers: [
+        paddedSliver(top: 20, [
+          if (pageItems.isEmpty)
+            const EmptyState(
+              icon: Icons.inventory_2_outlined,
+              title: '아직 완료한 일이 없어요',
+              message: '할 일을 체크하면 이곳에 기록돼요',
+            )
+          else
+            ...children,
+          PageNumberTabs(
+            pageCount: totalPages,
+            currentPage: page,
+            onPageSelected: (index) => setState(() => _page = index),
+          ),
+        ]),
+      ],
     );
   }
 }

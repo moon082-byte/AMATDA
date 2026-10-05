@@ -5,6 +5,7 @@ import '../providers/room_provider.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import '../utils/date_format.dart';
+import '../utils/task_actions.dart';
 import 'common/app_card.dart';
 import 'common/section_header.dart';
 import 'round_check.dart';
@@ -80,7 +81,9 @@ class _AgendaRow extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => provider.toggleTask(task.id),
+      onTap: () => task.isDone
+          ? restoreTask(context, task)
+          : toggleTaskWithUndo(context, task),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(

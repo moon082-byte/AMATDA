@@ -30,6 +30,22 @@ class AppTheme {
         error: p.danger,
       ),
       extensions: [p],
+      // 상단 바 큰 제목(펼침: headlineMedium / 접힘: titleLarge)
+      textTheme: TextTheme(
+        headlineMedium: TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.6,
+          height: 1.3,
+          color: p.titleText,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
+          color: p.titleText,
+        ),
+      ),
       splashFactory: NoSplash.splashFactory,
       highlightColor: p.fill.withValues(alpha: 0.6),
       dividerColor: p.border,
