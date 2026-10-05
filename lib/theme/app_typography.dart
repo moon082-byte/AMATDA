@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'app_palette.dart';
 
-/// 한글 글꼴 대체 순서. 번들 폰트(Pretendard)가 없으면 OS 기본 한글 글꼴을 쓴다.
+/// 앱에 포함된 기본 글꼴 (Pretendard 서브셋, assets/fonts 참고)
+const kFontFamily = 'AmatdaSans';
+
+/// 기본 글꼴에 없는 글자(희귀 한글 등)를 그릴 때 쓰는 OS 글꼴 순서.
 /// 테마 전체에 한 번만 지정하고, 아래 스타일들은 글꼴을 비워 두어 테마 설정을 물려받게 한다.
 const kFontFallback = [
-  'Pretendard',
   'Apple SD Gothic Neo',
   'Malgun Gothic',
   'Noto Sans KR',

@@ -1,11 +1,13 @@
 {
-    "name": "flutter_application_amatda",
-    "short_name": "flutter_application_amatda",
+    "name": "아맞다 - 업무 리마인더",
+    "short_name": "아맞다",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F2F4F6",
+    "theme_color": "#3182F6",
+    "description": "텔레그램 업무방과 연결해 할 일과 마감을 챙겨 주는 업무 리마인더",
+    "lang": "ko",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,13 +1,40 @@
 import 'package:flutter/foundation.dart';
+import '../data/local_store.dart';
+import '../data/sample_data.dart';
 import '../models/note.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
 import '../models/telegram_room.dart';
 
-/// 업무방, 할 일, 하위 체크리스트, 메모 상태를 관리
+/// 업무방, 할 일, 하위 체크리스트, 메모 상태를 관리.
+/// [store]가 있으면 변경될 때마다 저장하고, 처음 실행이면 샘플 데이터로 시작한다.
 class RoomProvider extends ChangeNotifier {
-  final List<TelegramRoom> _rooms = List.of(mockTelegramRooms);
-  final List<TaskItem> _tasks = List.of(mockTaskItems);
+  final LocalStore? _store;
+  final List<TelegramRoom> _rooms;
+  final List<TaskItem> _tasks;
+
+  RoomProvider({LocalStore? store})
+      : _store = store,
+        _rooms = store?.loadRooms() ?? buildMockTelegramRooms(),
+        _tasks = store?.loadTasks() ?? buildMockTaskItems();
+
+  /// 상태가 바뀔 때마다 저장소에도 기록한다
+  @override
+  void notifyListeners() {
+    _store?.saveData(_rooms, _tasks);
+    super.notifyListeners();
+  }
+
+  /// 모든 데이터를 지우고 샘플 데이터로 되돌린다
+  void resetToSample() {
+    _rooms
+      ..clear()
+      ..addAll(buildMockTelegramRooms());
+    _tasks
+      ..clear()
+      ..addAll(buildMockTaskItems());
+    notifyListeners();
+  }
 
   List<TelegramRoom> get rooms => List.unmodifiable(_rooms);
   List<TaskItem> get tasks => List.unmodifiable(_tasks);

@@ -1,0 +1,95 @@
+import '../models/note.dart';
+import '../models/sub_task.dart';
+import '../models/task_item.dart';
+import '../models/telegram_room.dart';
+
+/// 브라우저/기기 저장소에 넣기 위한 모델 ↔ JSON 변환
+
+String? _date(DateTime? d) => d?.toIso8601String();
+DateTime? _parseDate(Object? v) => v is String ? DateTime.tryParse(v) : null;
+
+T _enumByName<T extends Enum>(List<T> values, Object? name, T fallback) {
+  for (final v in values) {
+    if (v.name == name) return v;
+  }
+  return fallback;
+}
+
+Map<String, Object?> roomToJson(TelegramRoom r) => {
+      'id': r.id,
+      'name': r.name,
+      'type': r.type.name,
+      'inviteLink': r.inviteLink,
+      'memberCount': r.memberCount,
+      'profileImageUrl': r.profileImageUrl,
+      'isPinned': r.isPinned,
+      'unreadCount': r.unreadCount,
+      'lastActivityAt': _date(r.lastActivityAt),
+      'dueDate': _date(r.dueDate),
+      'reminderOption': r.reminderOption.name,
+    };
+
+TelegramRoom roomFromJson(Map<String, dynamic> j) => TelegramRoom(
+      id: j['id'] as String,
+      name: j['name'] as String,
+      type: _enumByName(
+          TelegramRoomType.values, j['type'], TelegramRoomType.group),
+      inviteLink: (j['inviteLink'] as String?) ?? '',
+      memberCount: (j['memberCount'] as int?) ?? 1,
+      profileImageUrl: j['profileImageUrl'] as String?,
+      isPinned: (j['isPinned'] as bool?) ?? false,
+      unreadCount: (j['unreadCount'] as int?) ?? 0,
+      lastActivityAt: _parseDate(j['lastActivityAt']) ?? DateTime.now(),
+      dueDate: _parseDate(j['dueDate']),
+      reminderOption: _enumByName(
+          ReminderOption.values, j['reminderOption'], ReminderOption.none),
+    );
+
+Map<String, Object?> taskToJson(TaskItem t) => {
+      'id': t.id,
+      'title': t.title,
+      'description': t.description,
+      'isDone': t.isDone,
+      'dueDate': _date(t.dueDate),
+      'completedAt': _date(t.completedAt),
+      'priority': t.priority.name,
+      'roomId': t.roomId,
+      'createdAt': _date(t.createdAt),
+      'subTasks': [
+        for (final s in t.subTasks)
+          {'id': s.id, 'title': s.title, 'isDone': s.isDone},
+      ],
+      'notes': [
+        for (final n in t.notes)
+          {'id': n.id, 'content': n.content, 'createdAt': _date(n.createdAt)},
+      ],
+    };
+
+TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
+      id: j['id'] as String,
+      title: j['title'] as String,
+      description: j['description'] as String?,
+      isDone: (j['isDone'] as bool?) ?? false,
+      dueDate: _parseDate(j['dueDate']),
+      completedAt: _parseDate(j['completedAt']),
+      priority: _enumByName(
+          TaskPriority.values, j['priority'], TaskPriority.medium),
+      roomId: j['roomId'] as String?,
+      createdAt: _parseDate(j['createdAt']) ?? DateTime.now(),
+      subTasks: [
+        for (final s in (j['subTasks'] as List? ?? const []))
+          SubTask(
+            id: s['id'] as String,
+            title: s['title'] as String,
+            isDone: (s['isDone'] as bool?) ?? false,
+          ),
+      ],
+      notes: [
+        for (final n in (j['notes'] as List? ?? const []))
+          Note(
+            id: n['id'] as String,
+            content: n['content'] as String,
+            createdAt: _parseDate(n['createdAt']) ?? DateTime.now(),
+          ),
+      ],
+    );

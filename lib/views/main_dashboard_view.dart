@@ -56,7 +56,7 @@ class _MainDashboardViewState extends State<MainDashboardView> {
                         Text.rich(
                           TextSpan(
                             children: pending == 0
-                                ? const [TextSpan(text: '오늘 할 일을\n모두 끝냈어요 🎉')]
+                                ? const [TextSpan(text: '오늘 할 일을\n모두 끝냈어요')]
                                 : [
                                     const TextSpan(text: '할 일 '),
                                     TextSpan(
