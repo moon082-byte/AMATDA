@@ -9,4 +9,7 @@ class Note {
     required this.content,
     required this.createdAt,
   });
+
+  Note copyWith({required String content}) =>
+      Note(id: id, content: content, createdAt: createdAt);
 }

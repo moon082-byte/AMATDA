@@ -8,6 +8,7 @@ import '../widgets/common/app_page.dart';
 import '../widgets/due_date_field.dart';
 import '../widgets/labeled_text_field.dart';
 import '../widgets/reminder_list_editor.dart';
+import '../widgets/room_picker.dart';
 
 /// 할 일 추가/수정 공용 입력 화면. [task]가 있으면 수정 모드로 동작한다.
 /// 입력칸을 화면 위쪽에 두어 모바일 키보드에 가리지 않게 한다.
@@ -26,6 +27,10 @@ class _TaskFormPageState extends State<TaskFormPage> {
       TextEditingController(text: widget.task?.title ?? '');
   late DateTime? _dueDate = widget.task?.dueDate;
   late List<TaskReminder> _reminders = widget.task?.reminders ?? const [];
+  late String? _roomId = widget.roomId;
+
+  /// 업무방 밖(오늘 할일 화면)에서 새로 추가할 때만 업무방을 고른다
+  bool get _pickRoom => widget.task == null && widget.roomId == null;
 
   bool get _isEdit => widget.task != null;
   bool get _canSubmit => _titleController.text.trim().isNotEmpty;
@@ -66,7 +71,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
         title: title,
         dueDate: _dueDate,
         reminders: reminders,
-        roomId: widget.roomId,
+        roomId: _roomId,
         createdAt: DateTime.now(),
       ));
     }
@@ -88,6 +93,13 @@ class _TaskFormPageState extends State<TaskFormPage> {
             autofocus: !_isEdit,
             onSubmitted: (_) => _submit(),
           ),
+          if (_pickRoom) ...[
+            const SizedBox(height: 24),
+            RoomPicker(
+              value: _roomId,
+              onChanged: (id) => setState(() => _roomId = id),
+            ),
+          ],
           const SizedBox(height: 24),
           DueDateField(
             label: '마감 기한',

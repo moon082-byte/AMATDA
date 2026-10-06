@@ -3,12 +3,12 @@ import 'package:provider/provider.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
 import '../providers/room_provider.dart';
-import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
+import '../utils/task_actions.dart';
 import 'inline_add_field.dart';
-import 'round_check.dart';
+import 'sub_task_row.dart';
 
-/// 할 일 상세에서 하위 세부 체크리스트를 보여주고 추가하는 섹션
+/// 할 일 상세에서 하위 세부 체크리스트를 보여주고 추가·수정·삭제하는 섹션
 class SubTaskSection extends StatelessWidget {
   final TaskItem task;
 
@@ -22,9 +22,19 @@ class SubTaskSection extends StatelessWidget {
     context.read<RoomProvider>().addSubTask(task.id, subTask);
   }
 
+  void _deleteSubTask(BuildContext context, SubTask sub) {
+    final provider = context.read<RoomProvider>();
+    final index = provider.deleteSubTask(task.id, sub.id);
+    if (index == -1) return;
+    showUndoSnackBar(
+      context,
+      '"${sub.title}" 항목을 삭제했어요',
+      () => provider.insertSubTask(task.id, sub, index),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
     final text = context.text;
     final provider = context.read<RoomProvider>();
 
@@ -32,35 +42,15 @@ class SubTaskSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('세부 체크리스트', style: text.label.copyWith(fontSize: 13)),
-        const SizedBox(height: 6),
-        ...task.subTasks.map(
-          (sub) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => provider.toggleSubTask(task.id, sub.id),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              child: Row(
-                children: [
-                  RoundCheck(isDone: sub.isDone, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      sub.title,
-                      style: text.body.copyWith(
-                        fontSize: 14,
-                        decoration: sub.isDone
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                        decorationColor: palette.subText,
-                        color: sub.isDone ? palette.subText : palette.titleText,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        const SizedBox(height: 2),
+        for (final sub in task.subTasks)
+          SubTaskRow(
+            key: ValueKey(sub.id),
+            subTask: sub,
+            onToggle: () => provider.toggleSubTask(task.id, sub.id),
+            onRename: (title) => provider.renameSubTask(task.id, sub.id, title),
+            onDelete: () => _deleteSubTask(context, sub),
           ),
-        ),
         const SizedBox(height: 6),
         InlineAddField(
           hint: '세부 항목 추가',

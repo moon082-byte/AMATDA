@@ -8,12 +8,16 @@ import 'reminder_row.dart';
 import 'reminder_unit_selector.dart';
 
 /// 리마인드 여러 개(최대 [TaskReminder.maxCount]개) 편집기.
-/// 할 일과 업무방이 함께 쓴다. 마감 기한이 없으면 추가할 수 없다.
+/// 할 일·업무방·루틴이 함께 쓴다. 기준 시각([dueDate])이 없으면 추가할 수 없다.
 class ReminderListEditor extends StatefulWidget {
   final String label;
   final DateTime? dueDate;
   final List<TaskReminder> value;
   final ValueChanged<List<TaskReminder>> onChanged;
+  final List<TaskReminder> presets;
+
+  /// 기준 시각이 없을 때 보여줄 안내
+  final String emptyMessage;
 
   const ReminderListEditor({
     super.key,
@@ -21,6 +25,8 @@ class ReminderListEditor extends StatefulWidget {
     required this.dueDate,
     required this.value,
     required this.onChanged,
+    this.presets = ReminderPresets.taskPresets,
+    this.emptyMessage = '마감 기한을 정하면 알림을 추가할 수 있어요',
   });
 
   @override
@@ -74,7 +80,7 @@ class _ReminderListEditorState extends State<ReminderListEditor> {
               borderRadius: BorderRadius.circular(AppPalette.fieldRadius),
             ),
             child: Text(
-              '마감 기한을 정하면 알림을 추가할 수 있어요',
+              widget.emptyMessage,
               style: text.body.copyWith(color: palette.subText),
             ),
           )
@@ -100,7 +106,11 @@ class _ReminderListEditorState extends State<ReminderListEditor> {
                 child: Text('아래에서 알림 시점을 골라 추가해 보세요',
                     style: text.caption),
               ),
-            ReminderPresets(selected: widget.value, onSelected: _add),
+            ReminderPresets(
+              selected: widget.value,
+              onSelected: _add,
+              presets: widget.presets,
+            ),
           ],
         ],
       ],

@@ -8,11 +8,19 @@ class SectionHeader extends StatelessWidget {
   final int? count;
   final Widget? trailing;
 
+  /// 개수 배지 색 (기본은 일정 색)
+  final Color? countColor;
+
+  /// 제목 앞 작은 색 점 (일정/루틴 구분용)
+  final Color? dotColor;
+
   const SectionHeader({
     super.key,
     required this.title,
     this.count,
     this.trailing,
+    this.countColor,
+    this.dotColor,
   });
 
   @override
@@ -26,13 +34,22 @@ class SectionHeader extends StatelessWidget {
         height: 32,
         child: Row(
           children: [
+            if (dotColor != null) ...[
+              Container(
+                width: 8,
+                height: 8,
+                decoration:
+                    BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+            ],
             Text(title, style: text.title.copyWith(fontWeight: FontWeight.w700)),
             if (count != null) ...[
               const SizedBox(width: 6),
               Text(
                 '$count',
                 style: text.title.copyWith(
-                  color: palette.accent,
+                  color: countColor ?? palette.accent,
                   fontWeight: FontWeight.w700,
                 ),
               ),

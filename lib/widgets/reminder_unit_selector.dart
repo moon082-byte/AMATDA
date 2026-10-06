@@ -61,19 +61,32 @@ class ReminderUnitSelector extends StatelessWidget {
 class ReminderPresets extends StatelessWidget {
   final List<TaskReminder> selected;
   final ValueChanged<TaskReminder> onSelected;
+  final List<TaskReminder> presets;
 
   const ReminderPresets({
     super.key,
     required this.selected,
     required this.onSelected,
+    this.presets = taskPresets,
   });
 
-  static const presets = [
+  /// 할 일·업무방용 (마감 전 알림)
+  static const taskPresets = [
+    TaskReminder(amount: 0, unit: ReminderUnit.minute),
     TaskReminder(amount: 10, unit: ReminderUnit.minute),
     TaskReminder(amount: 30, unit: ReminderUnit.minute),
     TaskReminder(amount: 1, unit: ReminderUnit.hour),
     TaskReminder(amount: 1, unit: ReminderUnit.day),
     TaskReminder(amount: 1, unit: ReminderUnit.week),
+  ];
+
+  /// 루틴용 (매번 정해 둔 시각 기준)
+  static const routinePresets = [
+    TaskReminder(amount: 0, unit: ReminderUnit.minute),
+    TaskReminder(amount: 5, unit: ReminderUnit.minute),
+    TaskReminder(amount: 10, unit: ReminderUnit.minute),
+    TaskReminder(amount: 30, unit: ReminderUnit.minute),
+    TaskReminder(amount: 1, unit: ReminderUnit.hour),
   ];
 
   @override

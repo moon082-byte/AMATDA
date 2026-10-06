@@ -10,10 +10,10 @@ class SubTask {
     this.isDone = false,
   });
 
-  SubTask copyWith({bool? isDone}) {
+  SubTask copyWith({String? title, bool? isDone}) {
     return SubTask(
       id: id,
-      title: title,
+      title: title ?? this.title,
       isDone: isDone ?? this.isDone,
     );
   }

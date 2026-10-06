@@ -10,7 +10,7 @@ import 'common/app_card.dart';
 import 'common/section_header.dart';
 import 'round_check.dart';
 
-/// 캘린더에서 고른 날짜에 마감인 할 일 목록
+/// 메인 화면 '오늘의 일정' 섹션: 캘린더에서 고른 날짜에 마감인 할 일 목록
 class DayAgenda extends StatelessWidget {
   final DateTime day;
 
@@ -31,8 +31,11 @@ class DayAgenda extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(
-          title: formatDateWithWeekday(day),
+          title: isSameDate(day, DateTime.now())
+              ? '오늘의 일정'
+              : '${formatDateWithWeekday(day)} 일정',
           count: tasks.isEmpty ? null : tasks.length,
+          dotColor: palette.accent,
         ),
         AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),

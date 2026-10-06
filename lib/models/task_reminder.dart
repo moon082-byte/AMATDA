@@ -18,7 +18,8 @@ extension ReminderUnitLabel on ReminderUnit {
 }
 
 /// 마감 [amount][unit] 전에 알려 주는 리마인드 (예: 30분 전, 2일 전).
-/// 할 일과 업무방 모두 최대 [maxCount]개까지 걸 수 있다.
+/// [amount]가 0이면 마감(루틴은 정해 둔 시각) 그 시각에 알린다.
+/// 할 일·업무방·루틴 모두 최대 [maxCount]개까지 걸 수 있다.
 class TaskReminder {
   static const maxCount = 5;
 
@@ -27,8 +28,8 @@ class TaskReminder {
 
   const TaskReminder({required this.amount, required this.unit});
 
-  /// "30분 전", "1주 전"
-  String get label => '$amount${unit.label} 전';
+  /// "30분 전", "1주 전", 0이면 "정시"
+  String get label => amount == 0 ? '정시' : '$amount${unit.label} 전';
 
   Duration get offset => unit.times(amount);
 

@@ -7,22 +7,33 @@ import '../providers/room_provider.dart';
 /// 실수로 체크했을 때 바로 원래 자리로 되돌릴 수 있게 한다.
 void toggleTaskWithUndo(BuildContext context, TaskItem task) {
   final provider = context.read<RoomProvider>();
-  final messenger = ScaffoldMessenger.of(context);
   provider.toggleTask(task.id);
-  messenger.hideCurrentSnackBar();
-  if (task.isDone) return;
+  if (task.isDone) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    return;
+  }
+  showUndoSnackBar(context, '"${task.title}" 완료했어요', () {
+    final current = provider.taskById(task.id);
+    if (current != null && current.isDone) provider.toggleTask(task.id);
+  });
+}
 
-  messenger.showSnackBar(SnackBar(
-    content: Text('"${task.title}" 완료했어요'),
-    duration: const Duration(seconds: 4),
-    action: SnackBarAction(
-      label: '실행 취소',
-      onPressed: () {
-        final current = provider.taskById(task.id);
-        if (current != null && current.isDone) provider.toggleTask(task.id);
-      },
-    ),
-  ));
+/// '실행 취소' 버튼이 달린 알림을 5초 동안 띄운다.
+/// (버튼이 있는 SnackBar는 기본값이 '계속 표시'라서 persist: false로 자동으로 닫히게 한다)
+void showUndoSnackBar(
+  BuildContext context,
+  String message,
+  VoidCallback onUndo, {
+  String undoLabel = '실행 취소',
+}) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 5),
+      persist: false,
+      action: SnackBarAction(label: undoLabel, onPressed: onUndo),
+    ));
 }
 
 /// 완료된 할 일을 진행 중 목록으로 되돌린다

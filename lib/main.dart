@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import 'data/local_store.dart';
 import 'providers/notification_provider.dart';
 import 'providers/room_provider.dart';
+import 'providers/routine_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/launch_link.dart';
 import 'services/telegram_link.dart';
 import 'theme/app_theme.dart';
 import 'views/main_dashboard_view.dart';
@@ -15,6 +17,7 @@ import 'widgets/telegram_sync_host.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  captureLaunchTarget();
   LicenseRegistry.addLicense(() async* {
     final ofl = await rootBundle.loadString('assets/fonts/OFL.txt');
     yield LicenseEntryWithLineBreaks(const ['Pretendard (AmatdaSans)'], ofl);
@@ -33,6 +36,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => RoomProvider(store: store)),
+        ChangeNotifierProvider(create: (_) => RoutineProvider(store: store)),
         ChangeNotifierProvider(create: (_) => ThemeProvider(store: store)),
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(store: store),

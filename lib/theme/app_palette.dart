@@ -19,6 +19,10 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color successSoft;
   final Color warning;
   final Color warningSoft;
+
+  /// 루틴(습관) 표시 색. 일정(할 일)은 [accent]를 쓴다.
+  final Color routine;
+  final Color routineSoft;
   final Color shadow;
 
   const AppPalette({
@@ -38,6 +42,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.successSoft,
     required this.warning,
     required this.warningSoft,
+    required this.routine,
+    required this.routineSoft,
     required this.shadow,
   });
 
@@ -58,6 +64,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
     successSoft: Color(0xFFE5F8EF),
     warning: Color(0xFFFE9800),
     warningSoft: Color(0xFFFFF4E0),
+    routine: Color(0xFF8B5CF6),
+    routineSoft: Color(0xFFF3EEFF),
     shadow: Color(0x0F1B2A3D),
   );
 
@@ -78,6 +86,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
     successSoft: Color(0xFF17332A),
     warning: Color(0xFFFFB547),
     warningSoft: Color(0xFF3A2D17),
+    routine: Color(0xFFA78BFA),
+    routineSoft: Color(0xFF2B2440),
     shadow: Color(0x00000000),
   );
 
@@ -85,28 +95,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
   static const double fieldRadius = 14.0;
   static const double chipRadius = 999.0;
 
+  /// 테마에서 색을 바꿔 쓰는 곳이 없어 그대로 돌려준다
   @override
-  AppPalette copyWith({Color? accent, Color? accentSoft}) {
-    return AppPalette(
-      background: background,
-      card: card,
-      fill: fill,
-      border: border,
-      titleText: titleText,
-      bodyText: bodyText,
-      subText: subText,
-      accent: accent ?? this.accent,
-      accentSoft: accentSoft ?? this.accentSoft,
-      checkboxIdle: checkboxIdle,
-      danger: danger,
-      dangerSoft: dangerSoft,
-      success: success,
-      successSoft: successSoft,
-      warning: warning,
-      warningSoft: warningSoft,
-      shadow: shadow,
-    );
-  }
+  AppPalette copyWith() => this;
 
   @override
   AppPalette lerp(ThemeExtension<AppPalette>? other, double t) {
@@ -129,6 +120,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
       successSoft: c(successSoft, other.successSoft),
       warning: c(warning, other.warning),
       warningSoft: c(warningSoft, other.warningSoft),
+      routine: c(routine, other.routine),
+      routineSoft: c(routineSoft, other.routineSoft),
       shadow: c(shadow, other.shadow),
     );
   }

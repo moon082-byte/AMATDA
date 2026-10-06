@@ -22,12 +22,16 @@ class TaskDetailCard extends StatefulWidget {
   final VoidCallback onDelete;
   final int? dragIndex;
 
+  /// 펼친 상태로 시작하고 화면에 보이도록 스크롤한다
+  final bool initiallyExpanded;
+
   const TaskDetailCard({
     super.key,
     required this.task,
     required this.onEdit,
     required this.onDelete,
     this.dragIndex,
+    this.initiallyExpanded = false,
   });
 
   @override
@@ -35,7 +39,23 @@ class TaskDetailCard extends StatefulWidget {
 }
 
 class _TaskDetailCardState extends State<TaskDetailCard> {
-  bool _expanded = false;
+  late bool _expanded = widget.initiallyExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initiallyExpanded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Scrollable.ensureVisible(
+            context,
+            alignment: 0.1,
+            duration: const Duration(milliseconds: 300),
+          );
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

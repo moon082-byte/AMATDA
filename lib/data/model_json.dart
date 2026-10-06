@@ -1,8 +1,11 @@
 import '../models/note.dart';
+import '../models/routine.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
 import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
+
+part 'routine_json.dart';
 
 /// 브라우저/기기 저장소에 넣기 위한 모델 ↔ JSON 변환
 

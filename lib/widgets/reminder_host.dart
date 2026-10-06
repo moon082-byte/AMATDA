@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../data/local_store.dart';
 import '../providers/notification_provider.dart';
 import '../providers/room_provider.dart';
+import '../providers/routine_provider.dart';
 import '../services/browser_notifications.dart';
 import '../services/telegram_link.dart';
 import '../services/reminder_checker.dart';
@@ -56,6 +57,7 @@ class _ReminderHostState extends State<ReminderHost>
     final due = collectDueReminders(
       tasks: provider.tasks,
       rooms: provider.rooms,
+      routines: context.read<RoutineProvider>().routines,
       now: DateTime.now(),
       fired: _fired,
     );

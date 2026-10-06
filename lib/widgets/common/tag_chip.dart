@@ -28,6 +28,17 @@ class TagChip extends StatelessWidget {
     );
   }
 
+  /// 루틴(보라) 계열 칩
+  factory TagChip.routine(BuildContext context, String label, {IconData? icon}) {
+    final p = context.palette;
+    return TagChip(
+      label: label,
+      foreground: p.routine,
+      background: p.routineSoft,
+      icon: icon,
+    );
+  }
+
   /// 무채색 계열 칩
   factory TagChip.neutral(BuildContext context, String label, {IconData? icon}) {
     final p = context.palette;

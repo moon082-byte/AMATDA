@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS reminders (
   fire_at INTEGER NOT NULL,              -- 보낼 시각 (epoch ms)
   due_at  INTEGER NOT NULL,              -- 마감 시각 (epoch ms, 오래 지난 알림 정리용)
   text    TEXT NOT NULL,                 -- 보낼 메시지 (앱이 만들어 보냄)
+  buttons TEXT,                          -- 메시지 아래 링크 버튼 JSON [{text, url}] (없으면 NULL)
   sent    INTEGER NOT NULL DEFAULT 0,    -- 1이면 이미 보냄
   PRIMARY KEY (code, key)
 );

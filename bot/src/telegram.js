@@ -1,7 +1,7 @@
 // 텔레그램 처리: 웹훅 명령어, 웹훅 등록, 1분마다 알림 발송
 
-import { codesForChat, pendingCount, unlinkCodes } from './db.js';
-import { CODE_PATTERN, MESSAGES, STALE_MS, cleanupBefore, parseCommand } from './logic.js';
+import { codesForChat, markSent, pendingCount, unlinkCodes } from './db.js';
+import { CODE_PATTERN, MESSAGES, STALE_MS, cleanupBefore, inlineKeyboard, parseCommand } from './logic.js';
 
 export async function webhook(request, env) {
   if (request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== (await webhookSecret(env))) {
@@ -77,24 +77,35 @@ async function tg(env, method, payload) {
   return { status: res.status, ...(await res.json().catch(() => ({ ok: false }))) };
 }
 
+/** 무료 요금제의 요청당 외부 호출 제한(50)을 넘지 않도록 1분에 보내는 최대 건수 */
+const SEND_LIMIT = 30;
+
 export async function sendDueReminders(env) {
   const now = Date.now();
   const { results } = await env.DB.prepare(
-    `SELECT r.code, r.key, r.text, l.chat_id FROM reminders r
+    `SELECT r.code, r.key, r.text, r.buttons, l.chat_id FROM reminders r
      JOIN links l ON l.code = r.code
      WHERE r.sent = 0 AND r.fire_at <= ? AND r.due_at >= ?
-     ORDER BY r.fire_at LIMIT 100`,
+     ORDER BY r.fire_at LIMIT ${SEND_LIMIT}`,
   ).bind(now, now - STALE_MS).all();
 
+  const done = [];
+  const blocked = new Set();
   for (const row of results) {
-    const res = await tg(env, 'sendMessage', { chat_id: row.chat_id, text: row.text });
+    if (blocked.has(row.code)) continue;
+    const message = { chat_id: row.chat_id, text: row.text };
+    const keyboard = inlineKeyboard(row.buttons);
+    let res = await tg(env, 'sendMessage', keyboard ? { ...message, reply_markup: keyboard } : message);
+    // 버튼 주소를 텔레그램이 거부하면 버튼 없이 글만 다시 보낸다
+    if (res.status === 400 && keyboard) res = await tg(env, 'sendMessage', message);
     if (res.status === 403) {
-      await unlinkCodes(env, [row.code]); // 사용자가 봇을 차단함
+      blocked.add(row.code); // 사용자가 봇을 차단함
     } else if (res.ok || res.status === 400) {
       // 400(잘못된 요청)은 다시 보내도 실패하므로 보낸 것으로 처리한다
-      await env.DB.prepare('UPDATE reminders SET sent = 1 WHERE code = ? AND key = ?')
-        .bind(row.code, row.key).run();
+      done.push(row);
     }
   }
+  await markSent(env, done);
+  await unlinkCodes(env, [...blocked]);
   await env.DB.prepare('DELETE FROM reminders WHERE due_at < ?').bind(cleanupBefore(now)).run();
 }

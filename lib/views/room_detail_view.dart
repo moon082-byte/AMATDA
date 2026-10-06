@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
 import '../theme/app_palette.dart';
 import '../utils/confirm_dialog.dart';
+import '../widgets/add_menu_fab.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/common/section_header.dart';
@@ -15,7 +16,10 @@ import 'form_routes.dart';
 class RoomDetailView extends StatelessWidget {
   final String roomId;
 
-  const RoomDetailView({super.key, required this.roomId});
+  /// 처음부터 펼쳐서 보여줄 할 일 (텔레그램 알림의 [앱에서 보기]로 들어온 경우)
+  final String? focusTaskId;
+
+  const RoomDetailView({super.key, required this.roomId, this.focusTaskId});
 
   Future<void> _deleteRoom(BuildContext context, String name) async {
     final confirmed = await confirmDelete(
@@ -61,14 +65,9 @@ class RoomDetailView extends StatelessWidget {
           icon: Icon(Icons.delete_outline_rounded, color: palette.danger),
         ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => openAddTask(context, roomId),
-        backgroundColor: palette.accent,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        shape: const StadiumBorder(),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('할 일 추가', style: TextStyle(fontWeight: FontWeight.w700)),
+      floatingActionButton: AddMenuFab(
+        onAddTask: () => openAddTask(context, roomId),
+        onAddRoutine: () => openAddRoutine(context),
       ),
       slivers: [
         paddedSliver(top: 8, [
@@ -102,6 +101,7 @@ class RoomDetailView extends StatelessWidget {
                 key: ValueKey(task.id),
                 task: task,
                 dragIndex: index,
+                initiallyExpanded: task.id == focusTaskId,
                 onEdit: () => openEditTask(context, task),
                 onDelete: () => _deleteTask(context, task.id, task.title),
               );
