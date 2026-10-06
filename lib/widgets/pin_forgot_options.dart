@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import '../services/pin_service.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
-import '../utils/maybe_provider.dart';
 
-/// PIN을 잊었을 때 고르는 방법
+/// PIN을 잊었을 때 고르는 방법: 구글로 다시 로그인(본인 확인 후 바로 새 PIN 입력),
+/// 텔레그램이 연결돼 있으면 재설정 코드 받기
 class PinForgotOptions extends StatelessWidget {
   final PinService pin;
   final VoidCallback onTelegram;
-  final VoidCallback onFresh;
+  final VoidCallback onRelogin;
 
-  const PinForgotOptions({super.key, required this.pin, required this.onTelegram, required this.onFresh});
+  const PinForgotOptions({
+    super.key,
+    required this.pin,
+    required this.onTelegram,
+    required this.onRelogin,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,15 +31,17 @@ class PinForgotOptions extends StatelessWidget {
           style: text.body.copyWith(color: palette.subText),
         ),
         const SizedBox(height: 24),
-        if (pin.freshLogin)
-          FilledButton(onPressed: onFresh, child: const Text('새 PIN 정하기')),
-        if (pin.telegram && !pin.freshLogin)
-          FilledButton(onPressed: onTelegram, child: const Text('텔레그램으로 재설정 코드 받기')),
-        const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: () => maybeProvider<AuthService>(context, listen: false)?.signOut(),
+        FilledButton(
+          onPressed: onRelogin,
           child: const Text('구글로 다시 로그인하기'),
         ),
+        if (pin.telegram) ...[
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: onTelegram,
+            child: const Text('텔레그램으로 재설정 코드 받기'),
+          ),
+        ],
       ],
     );
   }

@@ -26,6 +26,8 @@ class _PinLockViewState extends State<PinLockView> {
   @override
   void initState() {
     super.initState();
+    // 'PIN을 잊었어요 → 구글로 다시 로그인'하고 돌아왔으면 바로 새 PIN을 받는다
+    if (context.read<PinService>().takeResetIntent()) _mode = _Mode.resetFresh;
     // 잠금 남은 시간을 1초마다 다시 그린다
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       final until = context.read<PinService>().lockedUntil;
@@ -39,14 +41,13 @@ class _PinLockViewState extends State<PinLockView> {
     super.dispose();
   }
 
-  String? _lockText(PinService pin) {
-    final until = pin.lockedUntil;
-    if (until == null) return null;
-    final left = until.difference(DateTime.now());
-    if (left.isNegative) return null;
-    final m = left.inMinutes;
-    final s = (left.inSeconds % 60).toString().padLeft(2, '0');
-    return '잘못 입력해서 잠겼어요. $m:$s 뒤에 다시 입력할 수 있어요';
+  /// 구글로 다시 로그인한다. 돌아오면 [initState]에서 바로 새 PIN 입력으로 간다.
+  Future<void> _relogin(PinService pin) async {
+    final auth = maybeProvider<AuthService>(context, listen: false);
+    if (auth == null) return;
+    await pin.markResetIntent();
+    await auth.signOut();
+    await auth.signIn();
   }
 
   Future<void> _sendCode(PinService pin) async {
@@ -62,7 +63,7 @@ class _PinLockViewState extends State<PinLockView> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final pin = context.watch<PinService>();
-    final lock = _lockText(pin);
+    final lock = pin.lockText;
     final offline = pin.status == PinStatus.offline;
 
     final Widget body = switch (_mode) {
@@ -82,7 +83,7 @@ class _PinLockViewState extends State<PinLockView> {
       _Mode.forgot => PinForgotOptions(
           pin: pin,
           onTelegram: () => _sendCode(pin),
-          onFresh: () => setState(() => _mode = _Mode.resetFresh),
+          onRelogin: () => _relogin(pin),
         ),
       _Mode.resetWithCode => PinSequence(
           key: const ValueKey('code'),
@@ -95,7 +96,10 @@ class _PinLockViewState extends State<PinLockView> {
         ),
       _Mode.resetFresh => PinSequence(
           key: const ValueKey('fresh'),
-          steps: const [PinStepSpec('새 PIN 4자리'), PinStepSpec('새 PIN 한 번 더', confirms: 0)],
+          steps: const [
+            PinStepSpec('새 PIN 4자리', subtitle: '구글 로그인으로 본인 확인이 됐어요'),
+            PinStepSpec('새 PIN 한 번 더', confirms: 0),
+          ],
           onFinish: (v) => pin.reset(v[0]),
         ),
     };

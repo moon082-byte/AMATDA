@@ -52,6 +52,13 @@ extension LocalStoreAccount on LocalStore {
   Future<void> savePinEnabled(bool enabled) =>
       _prefs.setBool(_key('pin_enabled'), enabled);
 
+  /// 'PIN을 잊었어요 → 구글로 다시 로그인'을 눌렀는지 (계정 단위). 다시 로그인하면 바로 새 PIN을 받는다.
+  bool get pinResetPending => _prefs.getBool(_key('pin_reset_pending')) ?? false;
+
+  Future<void> savePinResetPending(bool pending) => pending
+      ? _prefs.setBool(_key('pin_reset_pending'), true)
+      : _prefs.remove(_key('pin_reset_pending'));
+
   /// 이 기기의 예전 데이터를 계정으로 가져올지 이미 물어봤는지 (기기 단위)
   bool get legacyImportAsked => _prefs.getBool(_importKey) ?? false;
 
