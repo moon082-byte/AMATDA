@@ -4,44 +4,46 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'data/local_store.dart';
 import 'providers/notification_provider.dart';
-import 'providers/room_provider.dart';
-import 'providers/routine_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/auth_service.dart';
 import 'services/launch_link.dart';
-import 'services/telegram_link.dart';
 import 'theme/app_theme.dart';
 import 'views/main_dashboard_view.dart';
+import 'widgets/auth_gate.dart';
 import 'widgets/phone_frame.dart';
-import 'widgets/reminder_host.dart';
-import 'widgets/telegram_sync_host.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  captureLaunchTarget();
+  final login = captureStartupParams();
   LicenseRegistry.addLicense(() async* {
     final ofl = await rootBundle.loadString('assets/fonts/OFL.txt');
     yield LicenseEntryWithLineBreaks(const ['Pretendard (AmatdaSans)'], ofl);
   });
-  runApp(MyApp(store: await LocalStore.open()));
+  final store = await LocalStore.open();
+  final auth = AuthService(store: store)
+    ..init(loginCode: login.code, loginError: login.error);
+  runApp(MyApp(store: store, auth: auth));
 }
 
 class MyApp extends StatelessWidget {
-  /// 데이터 저장소. 없으면(테스트 등) 저장하지 않고 샘플 데이터로 동작한다.
+  /// 기기 저장소. 없으면(테스트 등) 로그인 없이 저장하지 않고 샘플 데이터로 동작한다.
   final LocalStore? store;
 
-  const MyApp({super.key, this.store});
+  /// 구글 로그인 상태. 없으면 로그인 화면 없이 바로 앱을 보여준다(테스트 등).
+  final AuthService? auth;
+
+  const MyApp({super.key, this.store, this.auth});
 
   @override
   Widget build(BuildContext context) {
+    final auth = this.auth;
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => RoomProvider(store: store)),
-        ChangeNotifierProvider(create: (_) => RoutineProvider(store: store)),
         ChangeNotifierProvider(create: (_) => ThemeProvider(store: store)),
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(store: store),
         ),
-        ChangeNotifierProvider(create: (_) => TelegramLink(store: store)),
+        if (auth != null) ChangeNotifierProvider.value(value: auth),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
@@ -52,10 +54,7 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.dark,
             themeMode: themeProvider.themeMode,
             builder: (context, child) => PhoneFrame(
-              child: ReminderHost(
-                store: store,
-                child: TelegramSyncHost(child: child!),
-              ),
+              child: AuthGate(auth: auth, store: store, child: child!),
             ),
             home: const MainDashboardView(),
           );

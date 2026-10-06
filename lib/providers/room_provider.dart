@@ -9,7 +9,8 @@ import '../models/telegram_room.dart';
 part 'room_provider_details.dart';
 
 /// 업무방, 할 일, 하위 체크리스트, 메모 상태를 관리.
-/// [store]가 있으면 변경될 때마다 저장하고, 처음 실행이면 샘플 데이터로 시작한다.
+/// [store](계정별 저장소)가 있으면 변경될 때마다 저장하고, 새 계정은 빈 상태로 시작한다.
+/// [store]가 없으면(테스트·미리보기) 샘플 데이터로 시작한다.
 /// 할 일 목록의 순서가 곧 화면 표시 순서다(드래그로 변경).
 class RoomProvider extends ChangeNotifier {
   final LocalStore? _store;
@@ -18,8 +19,8 @@ class RoomProvider extends ChangeNotifier {
 
   RoomProvider({LocalStore? store})
       : _store = store,
-        _rooms = store?.loadRooms() ?? buildMockTelegramRooms(),
-        _tasks = store?.loadTasks() ?? buildMockTaskItems();
+        _rooms = store == null ? buildMockTelegramRooms() : store.loadRooms() ?? [],
+        _tasks = store == null ? buildMockTaskItems() : store.loadTasks() ?? [];
 
   /// 상태가 바뀔 때마다 저장소에도 기록한다
   @override
@@ -28,15 +29,28 @@ class RoomProvider extends ChangeNotifier {
     super.notifyListeners();
   }
 
-  /// 모든 데이터를 지우고 샘플 데이터로 되돌린다
-  void resetToSample() {
+  /// 모든 업무방과 할 일을 지운다 (로그인한 모든 기기에 반영된다)
+  void clearAll() => replaceAll(const [], const []);
+
+  /// 목록 전체를 바꾼다 (다른 기기에서 받은 데이터 반영)
+  void replaceAll(List<TelegramRoom> rooms, List<TaskItem> tasks) {
     _rooms
       ..clear()
-      ..addAll(buildMockTelegramRooms());
+      ..addAll(rooms);
     _tasks
       ..clear()
-      ..addAll(buildMockTaskItems());
+      ..addAll(tasks);
     notifyListeners();
+  }
+
+  /// 없는 항목만 덧붙이고 개수를 돌려준다 (같은 id면 지금 것을 남긴다)
+  int mergeMissing(List<TelegramRoom> rooms, List<TaskItem> tasks) {
+    final newRooms = rooms.where((r) => roomById(r.id) == null).toList();
+    final newTasks = tasks.where((t) => taskById(t.id) == null).toList();
+    _rooms.addAll(newRooms);
+    _tasks.addAll(newTasks);
+    notifyListeners();
+    return newRooms.length + newTasks.length;
   }
 
   List<TelegramRoom> get rooms => List.unmodifiable(_rooms);

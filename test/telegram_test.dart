@@ -7,33 +7,39 @@ import 'package:flutter_application_amatda/data/local_store.dart';
 import 'package:flutter_application_amatda/models/task_item.dart';
 import 'package:flutter_application_amatda/models/task_reminder.dart';
 import 'package:flutter_application_amatda/models/telegram_room.dart';
+import 'package:flutter_application_amatda/services/api_client.dart';
 import 'package:flutter_application_amatda/services/telegram_link.dart';
 import 'package:flutter_application_amatda/services/telegram_payload.dart';
 
 const _api = 'https://bot.example.dev';
 
-/// 봇 서버 흉내: 연결 상태와 받은 일정을 기억한다
+/// 봇 서버 흉내: 계정 하나의 텔레그램 연결 상태와 받은 일정을 기억한다
 class _FakeBot {
   bool linked = false;
+  int codes = 0;
   final puts = <List<dynamic>>[];
   late final client = MockClient((req) async {
+    expect(req.headers['Authorization'], 'Bearer tok');
     final path = req.url.path;
-    if (path.startsWith('/api/link/') && req.method == 'GET') {
-      return http.Response(
-          jsonEncode({'linked': linked, 'name': linked ? '민준' : null}), 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+    http.Response ok(Object body) => http.Response(jsonEncode(body), 200,
+        headers: {'content-type': 'application/json; charset=utf-8'});
+    if (path == '/api/telegram/code') return ok({'code': 'code${++codes}'});
+    if (path == '/api/telegram' && req.method == 'GET') {
+      return ok({'linked': linked, 'name': linked ? '민준' : null});
     }
-    if (path.startsWith('/api/link/') && req.method == 'DELETE') {
+    if (path == '/api/telegram' && req.method == 'DELETE') {
       linked = false;
-      return http.Response('{"linked":false}', 200);
+      return ok({'linked': false});
     }
-    if (path.startsWith('/api/reminders/') && req.method == 'PUT') {
+    if (path == '/api/reminders' && req.method == 'PUT') {
       if (!linked) return http.Response('{"linked":false}', 404);
       puts.add((jsonDecode(req.body) as Map)['reminders'] as List);
-      return http.Response('{"ok":true}', 200);
+      return ok({'ok': true});
     }
     return http.Response('not found', 404);
   });
+
+  ApiClient get api => ApiClient(baseUrl: _api, token: () => 'tok', client: client);
 }
 
 void main() {
@@ -77,16 +83,17 @@ void main() {
   });
 
   group('텔레그램 연결', () {
-    test('연결 → 확인 → 일정 업로드(변경 없으면 생략) → 끊기', () async {
+    test('코드 준비 → 연결 → 확인 → 일정 업로드(변경 없으면 생략) → 끊기', () async {
       final bot = _FakeBot();
-      final store = await LocalStore.open();
-      final link = TelegramLink(
-          store: store, client: bot.client, apiUrl: _api, botUsername: 'amatda_bot');
+      final store = (await LocalStore.open()).forUser('u_1');
+      final link = TelegramLink(api: bot.api, store: store, botUsername: 'amatda_bot');
 
       expect(link.available, isTrue);
-      final url = link.startUrl();
+      expect(link.startUrl(), isNull, reason: '코드를 아직 받지 않았으면 준비만 한다');
+      await link.prepare();
+      final url = link.startUrl()!;
       expect(url.host, 't.me');
-      expect(url.queryParameters['start'], hasLength(32));
+      expect(url.queryParameters['start'], 'code1');
       expect(link.pending, isTrue);
 
       expect(await link.refresh(), isFalse); // 아직 '시작'을 누르지 않음
@@ -102,11 +109,9 @@ void main() {
       await link.sync(payload);
       expect(bot.puts, hasLength(1), reason: '같은 일정은 다시 보내지 않는다');
 
-      // 다시 열어도 연결 상태가 유지된다
-      final reopened = TelegramLink(
-          store: await LocalStore.open(), client: bot.client,
-          apiUrl: _api, botUsername: 'amatda_bot');
-      expect(reopened.linked, isTrue);
+      // 다시 열어도 연결 상태가 유지된다 (같은 계정)
+      expect(TelegramLink(api: bot.api, store: store).linked, isTrue);
+      expect(TelegramLink(api: bot.api, store: store.forUser('u_2')).linked, isFalse);
 
       await link.disconnect();
       expect(link.linked, isFalse);
@@ -116,17 +121,16 @@ void main() {
 
     test('텔레그램에서 /stop 하면 다음 업로드 때 연결 해제로 바뀐다', () async {
       final bot = _FakeBot()..linked = true;
-      final link = TelegramLink(client: bot.client, apiUrl: _api, botUsername: 'b');
-      link.startUrl();
+      final link = TelegramLink(api: bot.api, botUsername: 'b');
       await link.refresh();
+      expect(link.linked, isTrue);
       bot.linked = false;
       await link.sync(const []);
       expect(link.linked, isFalse);
     });
 
-    test('봇 설정이 없으면 기능을 쓸 수 없다', () {
-      final link = TelegramLink(apiUrl: '', botUsername: '');
-      expect(link.available, isFalse);
+    test('로그인하지 않았으면(서버 연결 없음) 기능을 쓸 수 없다', () {
+      expect(TelegramLink(botUsername: 'b').available, isFalse);
     });
   });
 }

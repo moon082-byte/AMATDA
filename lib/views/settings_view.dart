@@ -7,6 +7,7 @@ import '../providers/theme_provider.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import '../utils/confirm_dialog.dart';
+import '../widgets/account_tile.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/browser_notification_tile.dart';
 import '../widgets/settings_group.dart';
@@ -20,11 +21,11 @@ class SettingsView extends StatelessWidget {
   Future<void> _resetData(BuildContext context) async {
     final confirmed = await confirmDelete(
       context,
-      '모든 업무방·할 일·루틴을 지우고 처음 샘플 데이터로 되돌려요.',
+      '모든 업무방·할 일·루틴을 지워요. 같은 계정으로 로그인한 모든 기기에서 지워져요.',
     );
     if (!context.mounted || !confirmed) return;
-    context.read<RoomProvider>().resetToSample();
-    context.read<RoutineProvider>().resetToSample();
+    context.read<RoomProvider>().clearAll();
+    context.read<RoutineProvider>().clearAll();
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('데이터를 초기화했어요')));
   }
@@ -39,6 +40,7 @@ class SettingsView extends StatelessWidget {
       title: '설정',
       slivers: [
         paddedSliver(top: 12, [
+          const AccountGroup(),
           SettingsGroup(
             title: '알림',
             children: [
@@ -90,7 +92,7 @@ class SettingsView extends StatelessWidget {
                   icon: Icons.restart_alt_rounded,
                   iconColor: palette.danger,
                   title: '데이터 초기화',
-                  subtitle: '이 기기에 저장된 업무방과 할 일을 지워요',
+                  subtitle: '모든 업무방·할 일·루틴을 지워요',
                   trailing: Icon(
                     Icons.chevron_right_rounded,
                     color: palette.checkboxIdle,

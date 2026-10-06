@@ -8,6 +8,7 @@ import '../widgets/calendar_card.dart';
 import '../widgets/dashboard_banner.dart';
 import '../widgets/day_agenda.dart';
 import '../widgets/day_routines.dart';
+import '../widgets/legacy_import.dart';
 import 'archive_view.dart';
 import 'launch_target.dart';
 import 'settings_view.dart';
@@ -33,7 +34,9 @@ class _MainDashboardViewState extends State<MainDashboardView> {
     super.initState();
     // 텔레그램 알림의 [앱에서 보기]로 들어왔으면 해당 항목 화면을 연다
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) openLaunchTarget(context);
+      if (!mounted) return;
+      openLaunchTarget(context);
+      offerLegacyImport(context);
     });
   }
 

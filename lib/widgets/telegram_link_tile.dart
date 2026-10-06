@@ -12,7 +12,14 @@ class TelegramLinkTile extends StatelessWidget {
 
   Future<void> _connect(BuildContext context, TelegramLink link) async {
     final messenger = ScaffoldMessenger.of(context);
-    await openExternalLink(context, link.startUrl().toString());
+    final url = link.startUrl();
+    if (url == null) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('연결을 준비하고 있어요. 잠시 뒤 다시 눌러 주세요'),
+      ));
+      return;
+    }
+    await openExternalLink(context, url.toString());
     messenger.showSnackBar(const SnackBar(
       content: Text('텔레그램에서 "시작"을 누른 뒤 이 앱으로 돌아와 주세요'),
       duration: Duration(seconds: 5),
@@ -49,7 +56,7 @@ class TelegramLinkTile extends StatelessWidget {
     );
 
     final (subtitle, trailing) = !link.available
-        ? ('봇 서버를 준비하고 있어요', null)
+        ? ('로그인하면 쓸 수 있어요', null)
         : link.linked
             ? (
                 '${link.chatName?.isNotEmpty == true ? '${link.chatName}님 ' : ''}텔레그램으로 알려드려요',

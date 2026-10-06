@@ -1,7 +1,7 @@
 // 봇 서버 DB(D1) 처리
 
 export const getLink = (env, code) =>
-  env.DB.prepare('SELECT chat_id, chat_name FROM links WHERE code = ?').bind(code).first();
+  env.DB.prepare('SELECT chat_id, chat_name, user_id FROM links WHERE code = ?').bind(code).first();
 
 export async function codesForChat(env, chatId) {
   const { results } = await env.DB.prepare('SELECT code FROM links WHERE chat_id = ?').bind(chatId).all();
@@ -60,4 +60,24 @@ export async function markSent(env, rows) {
        SELECT 1 FROM json_each(?1) AS j
        WHERE j.value ->> 'code' = reminders.code AND j.value ->> 'key' = reminders.key)`,
   ).bind(JSON.stringify(rows.map((r) => ({ code: r.code, key: r.key })))).run();
+}
+
+/** 일회용 값 저장 (oauth_states) */
+export async function putState(env, { state, kind, verifier = null, returnTo = null, userId = null, ttlMs }) {
+  const now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM oauth_states WHERE expires_at < ?').bind(now),
+    env.DB.prepare(
+      'INSERT INTO oauth_states (state, kind, verifier, return_to, user_id, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).bind(state, kind, verifier, returnTo, userId, now + ttlMs),
+  ]);
+}
+
+/** 일회용 값을 꺼내고 지운다. 없거나 만료됐으면 null */
+export async function takeState(env, state, kind) {
+  if (!state) return null;
+  const row = await env.DB.prepare(
+    'DELETE FROM oauth_states WHERE state = ? AND kind = ? RETURNING verifier, return_to, user_id, expires_at',
+  ).bind(state, kind).first();
+  return row && row.expires_at > Date.now() ? row : null;
 }
