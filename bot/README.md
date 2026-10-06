@@ -70,6 +70,11 @@ npm run deploy
    npx wrangler secret put OWNER_EMAIL            # 로그인 도입 전 기기 데이터·텔레그램 연결을 넘겨받을 계정
    ```
    `ALLOWED_EMAILS`에 없는 계정은 로그인할 수 없고, 목록에서 빼면 이미 로그인한 기기도 바로 막힙니다.
+5. 2차 비밀번호(PIN) 해시용 서버 비밀키를 무작위로 만들어 등록합니다(값을 따로 적어 둘 필요는 없습니다).
+   ```bash
+   node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64url'))" | npx wrangler secret put PIN_PEPPER
+   ```
+   이 값을 바꾸면 모든 사용자의 PIN이 맞지 않게 되니 한 번 등록한 뒤에는 바꾸지 마세요.
 
 ### 8. 앱에 서버 연결
 `lib/config/bot_config.dart`에 배포 주소와 봇 아이디를 넣고 앱을 다시 배포합니다.
@@ -92,6 +97,7 @@ npm run logs                 # 배포된 봇 서버 로그 보기
 ```bash
 npm run db:migrate           # migrations/0001_reminder_buttons.sql: 링크 버튼 칸 추가
 npm run db:migrate:accounts  # migrations/0002_accounts.sql: 사용자·세션·동기화 표, 계정별 텔레그램 연결
+npm run db:migrate:pin       # migrations/0003_pin.sql: 2차 비밀번호(PIN) 칸
 npm run deploy
 ```
 
@@ -103,6 +109,9 @@ npm run deploy
 | `GET /auth/google/callback` | 구글이 돌려보내는 주소 → `<앱 주소>?login=<일회용 코드>` |
 | `POST /auth/exchange` | 일회용 코드 → 로그인 토큰 |
 | `GET /auth/me`, `POST /auth/logout` | 내 정보, 로그아웃 🔒 |
+| `GET` / `PUT` / `DELETE /auth/pin` | PIN 상태 / 켜기·바꾸기 / 끄기 🔒 |
+| `POST /auth/pin/verify` | PIN 확인 (5번 틀리면 1분, 다시 5번 틀리면 30분 잠금) 🔒 |
+| `POST /auth/pin/reset/send`, `POST /auth/pin/reset` | 텔레그램 재설정 코드 보내기, 코드로 새 PIN 정하기 🔒 |
 | `POST /api/sync` | 바뀐 데이터 올리기·받기 (업무방·할 일·세부 항목·메모·루틴) 🔒 |
 | `POST /api/telegram/code` | 텔레그램 연결 코드 만들기 🔒 |
 | `GET` / `DELETE /api/telegram` | 텔레그램 연결 확인 / 끊기 🔒 |
@@ -112,4 +121,5 @@ npm run deploy
 | `GET /api/info` | 봇 아이디·이름 확인 |
 | `GET/DELETE /api/link/:code`, `PUT /api/reminders/:code` | 로그인 전 앱 호환용 (전환이 끝나면 삭제) |
 
-🔒 `Authorization: Bearer <로그인 토큰>`이 필요합니다.
+🔒 `Authorization: Bearer <로그인 토큰>`이 필요합니다. PIN을 켠 계정은 그 로그인에서 PIN을 확인하기 전까지
+`/api/...` 요청이 `423`(`pinRequired: true`)으로 거부됩니다.

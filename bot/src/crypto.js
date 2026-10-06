@@ -22,3 +22,26 @@ export async function pkceChallenge(verifier) {
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
   return base64url(new Uint8Array(hash));
 }
+
+/** HMAC-SHA256 (16진수) */
+export async function hmacHex(secret, text) {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text)));
+  return [...sig].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** 길이가 같은 문자열을 걸리는 시간이 내용과 무관하게 비교한다 */
+export function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/** 000000~999999 무작위 숫자 코드 */
+export function randomDigits(length = 6) {
+  const values = crypto.getRandomValues(new Uint32Array(length));
+  return [...values].map((v) => String(v % 10)).join('');
+}

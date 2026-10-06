@@ -5,6 +5,7 @@
 // - GET  /auth/google/callback                구글이 돌려보내는 주소
 // - POST /auth/exchange                       일회용 코드 → 로그인 토큰
 // - GET  /auth/me, POST /auth/logout          (로그인 필요)
+// - /auth/pin...                              2차 비밀번호 (pin.js)
 // 데이터 (로그인 필요, Authorization: Bearer <토큰>)
 // - POST /api/sync                            바뀐 데이터 올리기·받기 (sync.js)
 // - POST /api/telegram/code                   텔레그램 연결 코드 만들기 → t.me/<봇>?start=<코드>
@@ -15,7 +16,7 @@
 // - 1분마다(cron) 시각이 된 알림을 텔레그램으로 보낸다
 // 예전 앱 호환 (로그인 전환이 끝나면 지운다): GET/DELETE /api/link/:code, PUT /api/reminders/:code
 //
-// 필요한 설정: 비밀값 BOT_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS, OWNER_EMAIL
+// 필요한 설정: 비밀값 BOT_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS, OWNER_EMAIL, PIN_PEPPER
 //            D1 바인딩 DB, 변수 ALLOWED_ORIGINS(쉼표로 구분)
 
 import { exchangeLogin, finishLogin, logout, publicUser, requireUser, startLogin } from './auth.js';
@@ -23,6 +24,7 @@ import { getLink, putState, replaceReminders, unlinkCodes } from './db.js';
 import { HttpError, cors, json, readJson, text, validate } from './http.js';
 import { CODE_PATTERN, sanitizeReminders } from './logic.js';
 import { randomToken } from './crypto.js';
+import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
 import { sync } from './sync.js';
 import { botInfo, sendDueReminders, setup, webhook } from './telegram.js';
 
@@ -33,7 +35,7 @@ export default {
     try {
       return await route(request, env);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message }, e.status, request, env);
+      if (e instanceof HttpError) return json({ error: e.message, ...e.extra }, e.status, request, env);
       console.error(e);
       return json({ error: '서버 오류' }, 500, request, env);
     }
@@ -70,6 +72,14 @@ async function route(request, env) {
     await logout(user, env);
     return reply({ ok: true });
   }
+  if (path.startsWith('/auth/pin')) return reply(await pinRoute(path, method, user, request, env));
+
+  // ---- PIN을 켠 계정은 이 로그인에서 PIN을 확인해야 데이터에 접근할 수 있다 ----
+  if (user.pin_hash && !user.pin_ok_at) {
+    const e = new HttpError(423, 'PIN 확인이 필요해요');
+    e.extra = { pinRequired: true };
+    throw e;
+  }
   if (path === '/api/sync' && method === 'POST') return reply(await sync(user, await readJson(request), env));
 
   if (path === '/api/telegram/code' && method === 'POST') {
@@ -93,6 +103,18 @@ async function route(request, env) {
     return reply({ ok: true, count: items.length });
   }
   return reply({ error: '없는 주소예요' }, 404);
+}
+
+async function pinRoute(path, method, user, request, env) {
+  if (!env.PIN_PEPPER) throw new HttpError(503, 'PIN 설정(PIN_PEPPER)이 아직 없어요');
+  const body = method === 'GET' || path === '/auth/pin/reset/send' ? null : await readJson(request);
+  if (path === '/auth/pin' && method === 'GET') return pinStatus(user, env);
+  if (path === '/auth/pin' && method === 'PUT') return setPin(user, body, env);
+  if (path === '/auth/pin' && method === 'DELETE') return disablePin(user, body, env);
+  if (path === '/auth/pin/verify' && method === 'POST') return verifyPin(user, body, env);
+  if (path === '/auth/pin/reset/send' && method === 'POST') return sendResetCode(user, env);
+  if (path === '/auth/pin/reset' && method === 'POST') return resetPin(user, body, env);
+  throw new HttpError(404, '없는 주소예요');
 }
 
 /** 예전 앱(로그인 전)용 연결 코드 API. 계정 연결(user_id 있음)은 건드리지 못한다. */

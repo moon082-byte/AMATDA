@@ -167,3 +167,27 @@ export function checkIdClaims(claims, clientId, now) {
   if (Number(claims.exp) * 1000 < now) return '만료된 토큰이에요';
   return null;
 }
+
+// ---- 2차 비밀번호(PIN) ----
+
+export const PIN_PATTERN = /^\d{4}$/;
+export const PIN_MAX_TRIES = 5; // 연속으로 이만큼 틀리면 잠근다
+export const PIN_RESET_TTL = 10 * 60 * 1000; // 재설정 코드 유효시간
+export const PIN_RESET_MAX_TRIES = 5; // 재설정 코드를 이만큼 틀리면 코드를 버린다
+export const FRESH_LOGIN_MS = 10 * 60 * 1000; // 구글로 막 로그인한 세션은 코드 없이 PIN을 다시 정할 수 있다
+
+/** 몇 번째 잠금인지에 따른 잠금 시간: 처음 1분, 그 뒤로는 30분 */
+export function pinLockDuration(level) {
+  return level === 0 ? 60 * 1000 : 30 * 60 * 1000;
+}
+
+/**
+ * PIN 입력 결과에 따른 다음 상태. 맞으면 횟수·잠금 단계를 처음으로 돌린다.
+ * @param {{failed:number, lockedUntil:number, level:number}} state
+ */
+export function nextPinState(state, ok, now) {
+  if (ok) return { failed: 0, lockedUntil: 0, level: 0 };
+  const failed = state.failed + 1;
+  if (failed < PIN_MAX_TRIES) return { ...state, failed };
+  return { failed: 0, lockedUntil: now + pinLockDuration(state.level), level: state.level + 1 };
+}

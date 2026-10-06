@@ -6,10 +6,16 @@ class ApiException implements Exception {
   final int status;
   final String message;
 
-  const ApiException(this.status, this.message);
+  /// 서버가 함께 보낸 값 (예: PIN 남은 횟수 remaining, 잠금 해제 시각 lockedUntil)
+  final Map<String, dynamic> data;
+
+  const ApiException(this.status, this.message, [this.data = const {}]);
 
   bool get isOffline => status == 0;
   bool get isUnauthorized => status == 401 || status == 403;
+
+  /// PIN을 켠 계정인데 이 로그인에서 아직 PIN을 확인하지 않았다
+  bool get isPinRequired => status == 423 && data['pinRequired'] == true;
 
   @override
   String toString() => 'ApiException($status, $message)';
@@ -23,6 +29,9 @@ class ApiClient {
 
   /// 로그인이 만료되거나 계정이 막혔을 때 (401/403)
   void Function()? onUnauthorized;
+
+  /// 다른 기기에서 PIN을 켜거나 바꿔서 이 기기도 PIN을 다시 입력해야 할 때 (423)
+  void Function()? onPinRequired;
 
   ApiClient({
     required this.baseUrl,
@@ -59,9 +68,10 @@ class ApiClient {
       json = const {};
     }
     if (res.statusCode >= 200 && res.statusCode < 300) return json;
-    final error = ApiException(
-        res.statusCode, json['error'] as String? ?? '서버 오류 (${res.statusCode})');
+    final error = ApiException(res.statusCode,
+        json['error'] as String? ?? '서버 오류 (${res.statusCode})', json);
     if (error.isUnauthorized && token != null) onUnauthorized?.call();
+    if (error.isPinRequired) onPinRequired?.call();
     throw error;
   }
 }

@@ -46,6 +46,12 @@ extension LocalStoreAccount on LocalStore {
       ? _prefs.remove(_key(_tgNameKey))
       : _prefs.setString(_key(_tgNameKey), name);
 
+  /// PIN을 켰는지 마지막으로 확인한 값 (계정 단위). 오프라인일 때 앱을 열지 판단한다.
+  bool? get pinEnabled => _prefs.getBool(_key('pin_enabled'));
+
+  Future<void> savePinEnabled(bool enabled) =>
+      _prefs.setBool(_key('pin_enabled'), enabled);
+
   /// 이 기기의 예전 데이터를 계정으로 가져올지 이미 물어봤는지 (기기 단위)
   bool get legacyImportAsked => _prefs.getBool(_importKey) ?? false;
 

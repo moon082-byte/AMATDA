@@ -10,6 +10,7 @@ import '../utils/confirm_dialog.dart';
 import '../widgets/account_tile.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/browser_notification_tile.dart';
+import '../widgets/pin_settings_tile.dart';
 import '../widgets/settings_group.dart';
 import '../widgets/telegram_link_tile.dart';
 import '../widgets/theme_mode_selector.dart';
@@ -41,6 +42,7 @@ class SettingsView extends StatelessWidget {
       slivers: [
         paddedSliver(top: 12, [
           const AccountGroup(),
+          const PinSettingsGroup(),
           SettingsGroup(
             title: '알림',
             children: [
