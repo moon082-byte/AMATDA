@@ -5,6 +5,7 @@ import '../models/task_item.dart';
 import '../providers/room_provider.dart';
 import '../theme/app_typography.dart';
 import '../utils/confirm_dialog.dart';
+import '../utils/ids.dart';
 import 'inline_add_field.dart';
 import 'note_tile.dart';
 
@@ -17,7 +18,7 @@ class NoteSection extends StatelessWidget {
 
   void _addNote(BuildContext context, String content) {
     final note = Note(
-      id: 'note_${DateTime.now().millisecondsSinceEpoch}',
+      id: newId('note'),
       content: content,
       createdAt: DateTime.now(),
     );

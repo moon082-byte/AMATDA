@@ -4,14 +4,15 @@ import '../data/sample_data.dart';
 import '../models/routine.dart';
 
 /// 루틴(습관) 목록과 날짜별 완료 기록을 관리한다.
-/// [store]가 있으면 바뀔 때마다 저장하고, 처음 실행이면 샘플 루틴으로 시작한다.
+/// [store](계정별 저장소)가 있으면 바뀔 때마다 저장하고, 새 계정은 빈 상태로 시작한다.
+/// [store]가 없으면(테스트·미리보기) 샘플 루틴으로 시작한다.
 class RoutineProvider extends ChangeNotifier {
   final LocalStore? _store;
   final List<Routine> _routines;
 
   RoutineProvider({LocalStore? store})
       : _store = store,
-        _routines = store?.loadRoutines() ?? buildMockRoutines();
+        _routines = store == null ? buildMockRoutines() : store.loadRoutines() ?? [];
 
   /// 상태가 바뀔 때마다 저장소에도 기록한다
   @override
@@ -58,12 +59,23 @@ class RoutineProvider extends ChangeNotifier {
   void toggleDone(String id, DateTime day) =>
       _edit(id, (r) => r.toggledOn(day));
 
-  /// 모든 루틴을 지우고 샘플 루틴으로 되돌린다
-  void resetToSample() {
+  /// 모든 루틴을 지운다
+  void clearAll() => replaceAll(const []);
+
+  /// 목록 전체를 바꾼다 (다른 기기에서 받은 데이터 반영)
+  void replaceAll(List<Routine> routines) {
     _routines
       ..clear()
-      ..addAll(buildMockRoutines());
+      ..addAll(routines);
     notifyListeners();
+  }
+
+  /// 없는 루틴만 덧붙이고 개수를 돌려준다
+  int mergeMissing(List<Routine> routines) {
+    final added = routines.where((r) => routineById(r.id) == null).toList();
+    _routines.addAll(added);
+    notifyListeners();
+    return added.length;
   }
 
   void _edit(String id, Routine Function(Routine) change) {

@@ -84,3 +84,86 @@ export const MESSAGES = {
     '/status - 연결 상태와 예정된 알림 수\n' +
     '/stop - 연결 끊기',
 };
+
+// ---- 계정·동기화 ----
+
+/** 동기화하는 사용자 데이터 표 (DB 표 이름과 같다) */
+export const SYNC_TABLES = ['rooms', 'tasks', 'sub_tasks', 'notes', 'routines'];
+export const MAX_SYNC_ROWS = 500; // 한 번에 올릴 수 있는 변경 수
+export const MAX_PULL_ROWS = 1000; // 한 번에 내려주는 변경 수
+export const MAX_DATA = 20000; // 항목 하나의 내용(JSON) 최대 길이
+export const SESSION_IDLE_MS = 60 * 24 * 60 * 60 * 1000; // 60일 동안 안 쓰면 로그인 만료
+const ID_PATTERN = /^[A-Za-z0-9_.:-]{1,100}$/;
+
+/**
+ * 앱이 올린 변경 목록을 검사한다. 형식이 틀리면 예외, 잘못된 항목은 버린다.
+ * @returns {{since:number, changes:Record<string, {id:string, parentId:string|null, position:number, data:string, deleted:number}[]>, total:number}}
+ */
+export function sanitizeSyncChanges(body) {
+  const since = Number(body?.since ?? 0);
+  if (!Number.isInteger(since) || since < 0) throw new Error('since가 잘못됐어요');
+  const changes = {};
+  let total = 0;
+  for (const table of SYNC_TABLES) {
+    const list = body?.changes?.[table] ?? [];
+    if (!Array.isArray(list)) throw new Error(`${table}는 배열이어야 해요`);
+    const seen = new Set();
+    changes[table] = [];
+    for (const r of list) {
+      const id = typeof r?.id === 'string' ? r.id : '';
+      if (!ID_PATTERN.test(id) || seen.has(id)) continue;
+      const parentId = typeof r.parentId === 'string' && ID_PATTERN.test(r.parentId) ? r.parentId : null;
+      const data = typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? {});
+      if (data.length > MAX_DATA) continue;
+      seen.add(id);
+      changes[table].push({
+        id,
+        parentId,
+        position: Number.isInteger(r.position) ? r.position : 0,
+        data,
+        deleted: r.deleted ? 1 : 0,
+      });
+    }
+    total += changes[table].length;
+  }
+  if (total > MAX_SYNC_ROWS) throw new Error(`변경은 한 번에 최대 ${MAX_SYNC_ROWS}개까지예요`);
+  return { since, changes, total };
+}
+
+/** "a@x.com, B@y.com" → Set('a@x.com', 'b@y.com') */
+export function parseEmails(value) {
+  return new Set((value ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+
+/** 로그인 후 돌아갈 앱 주소. 허용된 곳(앱 주소·localhost)이 아니면 null. 검색어·# 부분은 뺀다. */
+export function safeReturnTo(value, allowedOrigins) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  const allowed = (allowedOrigins ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const local = /^http:\/\/localhost(:\d+)?$/.test(url.origin);
+  if (!allowed.includes(url.origin) && !local) return null;
+  return `${url.origin}${url.pathname}`;
+}
+
+/** 구글 ID 토큰(JWT)의 내용 부분을 읽는다 (구글 토큰 주소에서 직접 받은 토큰이라 서명 확인은 생략) */
+export function decodeJwtPayload(token) {
+  const part = String(token ?? '').split('.')[1];
+  if (!part) throw new Error('ID 토큰 형식이 아니에요');
+  const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+/** ID 토큰 내용 검사. 문제가 있으면 이유, 괜찮으면 null */
+export function checkIdClaims(claims, clientId, now) {
+  if (claims.aud !== clientId) return '다른 앱용 토큰이에요';
+  if (!['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss)) return '구글 토큰이 아니에요';
+  if (!claims.sub || !claims.email) return '계정 정보가 없어요';
+  if (claims.email_verified !== true && claims.email_verified !== 'true') return '이메일 인증이 안 된 계정이에요';
+  if (Number(claims.exp) * 1000 < now) return '만료된 토큰이에요';
+  return null;
+}

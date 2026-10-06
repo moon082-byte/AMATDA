@@ -26,16 +26,26 @@ LaunchTarget? parseLaunchTarget(Uri uri) {
   return (kind: kind, id: id);
 }
 
-/// 앱 시작 시 한 번 호출: 열 항목을 기억하고, 새로고침해도 다시 열리지 않게
-/// 주소창에서 ?open= 부분을 지운다.
-void captureLaunchTarget() {
+/// 구글 로그인에서 돌아왔을 때 주소에 붙는 값 (`?login=<일회용 코드>` 또는 `?login_error=<이유>`)
+typedef LoginResult = ({String? code, String? error});
+
+/// 앱 시작 시 한 번 호출: 열 항목과 로그인 결과를 읽어 두고, 새로고침해도
+/// 다시 처리되지 않게 주소창에서 해당 부분(?open=, ?login=)을 지운다.
+LoginResult captureStartupParams() {
   final uri = Uri.base;
   _pending = parseLaunchTarget(uri);
-  if (_pending == null) return;
-  final rest = Map.of(uri.queryParameters)..remove(_param);
-  final query = rest.isEmpty ? '' : '?${Uri(queryParameters: rest).query}';
-  final fragment = uri.hasFragment ? '#${uri.fragment}' : '';
-  replaceBrowserUrl('${uri.path}$query$fragment');
+  final params = uri.queryParameters;
+  final login = (code: params['login'], error: params['login_error']);
+  final rest = Map.of(params)
+    ..remove(_param)
+    ..remove('login')
+    ..remove('login_error');
+  if (rest.length != params.length) {
+    final query = rest.isEmpty ? '' : '?${Uri(queryParameters: rest).query}';
+    final fragment = uri.hasFragment ? '#${uri.fragment}' : '';
+    replaceBrowserUrl('${uri.path}$query$fragment');
+  }
+  return login;
 }
 
 /// 기억해 둔 항목을 꺼낸다 (한 번만)

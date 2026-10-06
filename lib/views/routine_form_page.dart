@@ -4,6 +4,7 @@ import '../models/routine.dart';
 import '../models/task_reminder.dart';
 import '../providers/routine_provider.dart';
 import '../utils/date_format.dart';
+import '../utils/ids.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/due_date_field.dart';
 import '../widgets/labeled_text_field.dart';
@@ -52,7 +53,7 @@ class _RoutineFormPageState extends State<RoutineFormPage> {
   /// 지금 입력값으로 만든 루틴 (새 루틴이면 새 id)
   Routine get _draft => (widget.routine ??
           Routine(
-            id: 'routine_${DateTime.now().millisecondsSinceEpoch}',
+            id: newId('routine'),
             name: '',
             weekdays: const {},
             createdAt: DateTime.now(),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 import '../providers/room_provider.dart';
+import '../utils/ids.dart';
 import '../utils/links.dart';
 import '../utils/pick_date_time.dart';
 import '../widgets/common/app_page.dart';
@@ -57,11 +58,10 @@ class _RoomFormPageState extends State<RoomFormPage> {
     if (picked != null && mounted) setState(() => _dueDate = picked);
   }
 
-  void _removeLink(int index) {
-    final removed = _links.removeAt(index);
-    setState(() {});
-    WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
-  }
+  void _removeLink(int index) => setState(() {
+        final removed = _links.removeAt(index);
+        WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
+      });
 
   void _submit() {
     if (!_canSubmit) return;
@@ -69,7 +69,7 @@ class _RoomFormPageState extends State<RoomFormPage> {
     // 새 방이면 빈 방을 만든 뒤, 새 방/기존 방 모두 입력값으로 덮어쓴다
     final base = widget.room ??
         TelegramRoom(
-          id: 'room_${DateTime.now().millisecondsSinceEpoch}',
+          id: newId('room'),
           name: '',
           type: _type,
           inviteLink: '',

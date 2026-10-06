@@ -1,6 +1,6 @@
 // 텔레그램 처리: 웹훅 명령어, 웹훅 등록, 1분마다 알림 발송
 
-import { codesForChat, markSent, pendingCount, unlinkCodes } from './db.js';
+import { codesForChat, markSent, pendingCount, takeState, unlinkCodes } from './db.js';
 import { CODE_PATTERN, MESSAGES, STALE_MS, cleanupBefore, inlineKeyboard, parseCommand } from './logic.js';
 
 export async function webhook(request, env) {
@@ -15,9 +15,17 @@ export async function webhook(request, env) {
   const chatId = msg.chat.id;
   const name = msg.chat.title ?? msg.from?.first_name ?? '';
   if (cmd.command === 'start') {
-    if (!CODE_PATTERN.test(cmd.arg)) {
+    // 로그인한 앱이 만든 연결 코드면 계정에 연결 (계정 연결은 code = user_id)
+    const account = await takeState(env, cmd.arg, 'tg');
+    if (account) {
+      await env.DB.prepare(
+        'INSERT OR REPLACE INTO links (code, chat_id, chat_name, created_at, user_id) VALUES (?, ?, ?, ?, ?)',
+      ).bind(account.user_id, chatId, name, Date.now(), account.user_id).run();
+      await tg(env, 'sendMessage', { chat_id: chatId, text: MESSAGES.welcome(name) });
+    } else if (!CODE_PATTERN.test(cmd.arg) || cmd.arg.startsWith('u_')) {
       await tg(env, 'sendMessage', { chat_id: chatId, text: MESSAGES.needCode });
     } else {
+      // 예전 앱(로그인 전)의 연결 방식 - 전환이 끝나면 지운다
       await env.DB.prepare(
         'INSERT OR REPLACE INTO links (code, chat_id, chat_name, created_at) VALUES (?, ?, ?, ?)',
       ).bind(cmd.arg, chatId, name, Date.now()).run();

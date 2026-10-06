@@ -4,6 +4,7 @@ import '../models/sub_task.dart';
 import '../models/task_item.dart';
 import '../providers/room_provider.dart';
 import '../theme/app_typography.dart';
+import '../utils/ids.dart';
 import '../utils/task_actions.dart';
 import 'inline_add_field.dart';
 import 'sub_task_row.dart';
@@ -16,7 +17,7 @@ class SubTaskSection extends StatelessWidget {
 
   void _addSubTask(BuildContext context, String title) {
     final subTask = SubTask(
-      id: 'sub_${DateTime.now().millisecondsSinceEpoch}',
+      id: newId('sub'),
       title: title,
     );
     context.read<RoomProvider>().addSubTask(task.id, subTask);

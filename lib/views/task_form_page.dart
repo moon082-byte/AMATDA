@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/task_item.dart';
 import '../models/task_reminder.dart';
 import '../providers/room_provider.dart';
+import '../utils/ids.dart';
 import '../utils/pick_date_time.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/due_date_field.dart';
@@ -67,7 +68,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
       ));
     } else {
       provider.addTask(TaskItem(
-        id: 'task_${DateTime.now().millisecondsSinceEpoch}',
+        id: newId('task'),
         title: title,
         dueDate: _dueDate,
         reminders: reminders,

@@ -54,7 +54,8 @@ void main() {
 
     test('바꾼 순서가 저장된다', () async {
       final store = await LocalStore.open();
-      final p = RoomProvider(store: store);
+      final p = RoomProvider(store: store)
+        ..replaceAll(const [], _providerWith(['a', 'b', 'c']).tasks);
       final before = _ids(p);
       p.reorderTasks(before, before.length - 1, 0);
       expect(_ids(RoomProvider(store: await LocalStore.open())).first,
@@ -154,7 +155,9 @@ void main() {
   });
 
   test('업무 링크와 리마인드가 저장 후에도 유지된다', () async {
-    final p = RoomProvider(store: await LocalStore.open());
+    final sample = RoomProvider(); // 저장소 없이 만들면 샘플 데이터
+    final p = RoomProvider(store: await LocalStore.open())
+      ..replaceAll(sample.rooms, sample.tasks);
     final room = p.rooms.first;
     p.updateRoom(room.copyWithEdits(
       name: '이름 변경',
