@@ -41,6 +41,14 @@ class PinService extends ChangeNotifier {
 
   PinStatus get status => _status;
 
+  /// 잠겨 있으면 남은 시간 안내 ("… 0:42 뒤에 다시 입력할 수 있어요"), 아니면 null
+  String? get lockText {
+    final left = lockedUntil?.difference(DateTime.now());
+    if (left == null || left.isNegative) return null;
+    final s = (left.inSeconds % 60).toString().padLeft(2, '0');
+    return '잘못 입력해서 잠겼어요. ${left.inMinutes}:$s 뒤에 다시 입력할 수 있어요';
+  }
+
   /// 앱을 열 때: PIN을 켠 계정이면 잠근다. 서버에 닿지 않으면 마지막으로 알던 설정을 따른다.
   Future<void> load() async {
     try {
@@ -58,6 +66,16 @@ class PinService extends ChangeNotifier {
       message = enabled ? (e.isOffline ? offlineMessage : e.message) : null;
       _set(enabled ? PinStatus.offline : PinStatus.unlocked);
     }
+  }
+
+  /// 'PIN을 잊었어요 → 구글로 다시 로그인'을 눌렀다고 기억해 둔다
+  Future<void> markResetIntent() => _store.savePinResetPending(true);
+
+  /// 구글로 막 다시 로그인했고 재설정하려던 중이면 true (한 번만)
+  bool takeResetIntent() {
+    final pending = _store.pinResetPending;
+    if (pending) _store.savePinResetPending(false);
+    return pending && freshLogin;
   }
 
   /// 다른 기기에서 PIN을 켜거나 바꿨을 때 다시 입력하게 한다

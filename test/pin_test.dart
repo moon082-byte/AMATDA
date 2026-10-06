@@ -27,11 +27,17 @@ Future<void> _type(WidgetTester tester, String digits) async {
   await tester.pump();
 }
 
-Future<FakeServer> _openApp(WidgetTester tester, FakeServer server) async {
+Future<FakeServer> _openApp(WidgetTester tester, FakeServer server,
+    {bool keepPrefs = false}) async {
   tester.view.physicalSize = const Size(390 * 2, 844 * 2);
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
-  SharedPreferences.setMockInitialValues({'session_v1': _session});
+  if (keepPrefs) {
+    final prefs = await tester.runAsync(SharedPreferences.getInstance);
+    await tester.runAsync(() => prefs!.setString('session_v1', _session));
+  } else {
+    SharedPreferences.setMockInitialValues({'session_v1': _session});
+  }
   final (store, auth) = await tester.runAsync(() async {
     final store = await LocalStore.open();
     final auth = AuthService(store: store, client: server.client, apiUrl: 'https://api.test');
@@ -133,6 +139,32 @@ void main() {
     await _type(tester, '2468');
     await tester.pumpAndSettle();
     expect(server.pin, '2468');
+    expect(find.text('오늘 할일'), findsOneWidget);
+  });
+
+  testWidgets('PIN을 잊으면 구글 재로그인이 먼저, 텔레그램 코드는 연결돼 있을 때만', (tester) async {
+    await _openApp(tester, FakeServer()
+      ..pin = '1357'
+      ..freshLogin = true);
+    await tester.tap(find.text('PIN을 잊었어요'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilledButton, '구글로 다시 로그인하기'), findsOneWidget);
+    expect(find.text('텔레그램으로 재설정 코드 받기'), findsOneWidget);
+    expect(find.text('새 PIN 정하기'), findsNothing);
+  });
+
+  testWidgets('구글로 다시 로그인하고 돌아오면 바로 새 PIN을 정한다', (tester) async {
+    final server = FakeServer()
+      ..pin = '1357'
+      ..freshLogin = true;
+    SharedPreferences.setMockInitialValues({'u:u_1:pin_reset_pending': true});
+    await _openApp(tester, server, keepPrefs: true);
+    expect(find.text('새 PIN 4자리'), findsOneWidget);
+    expect(find.text('구글 로그인으로 본인 확인이 됐어요'), findsOneWidget);
+    await _type(tester, '8642');
+    await _type(tester, '8642');
+    await tester.pumpAndSettle();
+    expect(server.pin, '8642');
     expect(find.text('오늘 할일'), findsOneWidget);
   });
 
