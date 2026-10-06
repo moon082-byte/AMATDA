@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CODE_PATTERN, parseCommand, sanitizeReminders } from '../src/logic.js';
+import { CODE_PATTERN, inlineKeyboard, parseCommand, sanitizeButtons, sanitizeReminders } from '../src/logic.js';
 
 test('명령어 해석', () => {
   assert.deepEqual(parseCommand('/start abcdefghijklmnop'), { command: 'start', arg: 'abcdefghijklmnop' });
@@ -35,4 +35,29 @@ test('알림 목록 검사: 형식이 틀리거나 너무 많으면 거부', () 
   assert.throws(() => sanitizeReminders({}));
   const many = Array.from({ length: 301 }, (_, i) => ({ key: `${i}`, fireAt: 1, dueAt: 1, text: 't' }));
   assert.throws(() => sanitizeReminders({ reminders: many }));
+});
+
+test('링크 버튼 검사: http(s) 주소만, 최대 6개', () => {
+  const buttons = sanitizeButtons([
+    { text: '📱 앱에서 보기', url: 'https://moon082-byte.github.io/AMATDA/?open=task:t1' },
+    { text: '노션', url: 'javascript:alert(1)' },
+    { text: '', url: 'https://a.com' },
+    { text: '공백 주소', url: 'https://a.com/b c' },
+    ...Array.from({ length: 8 }, (_, i) => ({ text: `링크${i}`, url: `http://x${i}.com` })),
+  ]);
+  assert.equal(buttons.length, 6);
+  assert.equal(buttons[0].text, '📱 앱에서 보기');
+  assert.deepEqual(sanitizeButtons('없음'), []);
+});
+
+test('알림에 버튼이 함께 저장되고 키보드로 바뀐다', () => {
+  const [item] = sanitizeReminders({
+    reminders: [{ key: 'a', fireAt: 1, dueAt: 2, text: 't', buttons: [{ text: '앱', url: 'https://a.com' }] }],
+  });
+  assert.deepEqual(item.buttons, [{ text: '앱', url: 'https://a.com' }]);
+  assert.deepEqual(inlineKeyboard(JSON.stringify(item.buttons)), {
+    inline_keyboard: [[{ text: '앱', url: 'https://a.com' }]],
+  });
+  assert.equal(inlineKeyboard(null), undefined);
+  assert.equal(inlineKeyboard('깨진 값'), undefined);
 });

@@ -1,4 +1,5 @@
 import '../models/note.dart';
+import '../models/routine.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
 import '../models/task_reminder.dart';
@@ -92,5 +93,32 @@ List<TaskItem> buildMockTaskItems() => [
         dueDate: _at(0, 15),
         priority: TaskPriority.low,
         createdAt: _at(-1, 11, 30),
+      ),
+    ];
+
+/// 처음 실행하거나 초기화했을 때 보여줄 샘플 루틴
+/// (리마인드는 비워 둔다: 처음 열자마자 알림이 뜨지 않게)
+List<Routine> buildMockRoutines() => [
+      Routine(
+        id: 'routine_001',
+        name: '아침 업무 메일 확인',
+        weekdays: weekDays,
+        hour: 9,
+        createdAt: _at(-7),
+      ),
+      Routine(
+        id: 'routine_002',
+        name: '물 한 잔 마시기',
+        weekdays: everyDay,
+        hour: 15,
+        createdAt: _at(-7),
+      ),
+      Routine(
+        id: 'routine_003',
+        name: '주간 회고 쓰기',
+        weekdays: const {DateTime.friday},
+        hour: 17,
+        minute: 30,
+        createdAt: _at(-7),
       ),
     ];

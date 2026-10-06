@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/room_provider.dart';
+import '../providers/routine_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
@@ -19,10 +20,11 @@ class SettingsView extends StatelessWidget {
   Future<void> _resetData(BuildContext context) async {
     final confirmed = await confirmDelete(
       context,
-      '모든 업무방과 할 일을 지우고 처음 샘플 데이터로 되돌려요.',
+      '모든 업무방·할 일·루틴을 지우고 처음 샘플 데이터로 되돌려요.',
     );
     if (!context.mounted || !confirmed) return;
     context.read<RoomProvider>().resetToSample();
+    context.read<RoutineProvider>().resetToSample();
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('데이터를 초기화했어요')));
   }

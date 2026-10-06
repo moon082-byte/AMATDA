@@ -5,6 +5,7 @@ export const CODE_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 
 export const MAX_REMINDERS = 300;
 export const MAX_TEXT = 1000;
+export const MAX_BUTTONS = 6;
 export const STALE_MS = 12 * 60 * 60 * 1000; // 마감이 12시간 넘게 지난 알림은 보내지 않는다
 
 /** "/start abc", "/start@봇이름 abc" → { command: 'start', arg: 'abc' } */
@@ -15,7 +16,7 @@ export function parseCommand(text) {
 
 /**
  * 앱이 보낸 알림 목록을 검사해 저장할 형태로 바꾼다. 잘못된 항목은 버린다.
- * @returns {{key:string, fireAt:number, dueAt:number, text:string}[]}
+ * @returns {{key:string, fireAt:number, dueAt:number, text:string, buttons:{text:string,url:string}[]}[]}
  */
 export function sanitizeReminders(body) {
   const list = Array.isArray(body?.reminders) ? body.reminders : null;
@@ -31,9 +32,34 @@ export function sanitizeReminders(body) {
     if (!key || !text || !Number.isFinite(fireAt) || !Number.isFinite(dueAt)) continue;
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push({ key, fireAt, dueAt, text });
+    result.push({ key, fireAt, dueAt, text, buttons: sanitizeButtons(r.buttons) });
   }
   return result;
+}
+
+/** 메시지 아래 링크 버튼: http(s) 주소만, 최대 [MAX_BUTTONS]개. 잘못된 버튼은 버린다. */
+export function sanitizeButtons(list) {
+  if (!Array.isArray(list)) return [];
+  const result = [];
+  for (const b of list) {
+    const text = typeof b?.text === 'string' ? b.text.trim().slice(0, 64) : '';
+    const url = typeof b?.url === 'string' ? b.url.trim() : '';
+    if (!text || url.length > 1000 || !/^https?:\/\/[^\s]+$/i.test(url)) continue;
+    result.push({ text, url });
+    if (result.length >= MAX_BUTTONS) break;
+  }
+  return result;
+}
+
+/** 저장된 버튼(JSON)을 텔레그램 인라인 키보드로 바꾼다 (한 줄에 버튼 하나). 없으면 undefined. */
+export function inlineKeyboard(buttonsJson) {
+  let buttons;
+  try {
+    buttons = sanitizeButtons(JSON.parse(buttonsJson ?? '[]'));
+  } catch {
+    return undefined;
+  }
+  return buttons.length ? { inline_keyboard: buttons.map((b) => [b]) } : undefined;
 }
 
 /** 오래돼서 지워도 되는 알림 기준 시각 */

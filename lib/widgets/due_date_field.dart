@@ -14,6 +14,10 @@ class DueDateField extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onClear;
 
+  /// 값 대신 보여줄 문구 (예: 루틴 시각 "09:00")
+  final String? valueText;
+  final IconData icon;
+
   const DueDateField({
     super.key,
     required this.label,
@@ -21,6 +25,8 @@ class DueDateField extends StatelessWidget {
     required this.placeholder,
     required this.onTap,
     this.onClear,
+    this.valueText,
+    this.icon = Icons.calendar_today_rounded,
   });
 
   @override
@@ -46,14 +52,16 @@ class DueDateField extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  Icons.calendar_today_rounded,
+                  icon,
                   size: 18,
                   color: hasValue ? palette.accent : palette.subText,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    hasValue ? formatRelativeDateTime(value!) : placeholder,
+                    hasValue
+                        ? valueText ?? formatRelativeDateTime(value!)
+                        : placeholder,
                     style: text.body.copyWith(
                       color: hasValue ? palette.titleText : palette.subText,
                     ),

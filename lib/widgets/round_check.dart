@@ -6,11 +6,15 @@ class RoundCheck extends StatelessWidget {
   final bool isDone;
   final double size;
 
-  const RoundCheck({super.key, required this.isDone, this.size = 26});
+  /// 체크했을 때 색 (기본은 일정 색 [AppPalette.accent])
+  final Color? color;
+
+  const RoundCheck({super.key, required this.isDone, this.size = 26, this.color});
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final doneColor = color ?? palette.accent;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 1.0, end: isDone ? 1.1 : 1.0),
@@ -24,9 +28,9 @@ class RoundCheck extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDone ? palette.accent : Colors.transparent,
+          color: isDone ? doneColor : Colors.transparent,
           border: Border.all(
-            color: isDone ? palette.accent : palette.checkboxIdle,
+            color: isDone ? doneColor : palette.checkboxIdle,
             width: 2,
           ),
         ),

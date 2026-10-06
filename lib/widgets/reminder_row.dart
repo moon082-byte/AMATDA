@@ -45,7 +45,7 @@ class _ReminderRowState extends State<ReminderRow> {
 
   void _step(int delta) {
     final r = widget.value;
-    final amount = (r.amount + delta).clamp(1, 999);
+    final amount = (r.amount + delta).clamp(0, 999);
     _amount.text = '$amount';
     widget.onChanged(TaskReminder(amount: amount, unit: r.unit));
   }
@@ -91,7 +91,7 @@ class _ReminderRowState extends State<ReminderRow> {
                   ),
                   onChanged: (v) {
                     final n = int.tryParse(v);
-                    if (n != null && n > 0) {
+                    if (n != null && n >= 0) {
                       widget.onChanged(TaskReminder(amount: n, unit: r.unit));
                     }
                   },

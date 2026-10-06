@@ -1,3 +1,4 @@
+import '../models/routine.dart';
 import '../models/task_item.dart';
 import '../models/telegram_room.dart';
 
@@ -34,11 +35,26 @@ String _body(DateTime due, DateTime now) {
       : '마감까지 ${formatRemaining(left)} 남았어요';
 }
 
+String _routineBody(DateTime at, DateTime now) {
+  final left = at.difference(now);
+  return left.inMinutes < 1
+      ? '루틴 시간이에요'
+      : '${formatRemaining(left)} 뒤 루틴 시간이에요';
+}
+
+/// 루틴 알림을 확인할 기간: 어제부터 가장 이른 리마인드가 닿는 날까지 (최대 5주)
+int routineWindowDays(Routine r) {
+  final longest = r.reminders.fold(Duration.zero,
+      (max, rem) => rem.offset > max ? rem.offset : max);
+  return (longest.inDays + 2).clamp(2, 36);
+}
+
 /// 알림 시각이 지났지만 아직 울리지 않은 리마인드를 모은다.
 /// 마감이 12시간 넘게 지난 것은 이미 늦었으므로 건너뛴다.
 List<DueReminder> collectDueReminders({
   required List<TaskItem> tasks,
   required List<TelegramRoom> rooms,
+  List<Routine> routines = const [],
   required DateTime now,
   required Set<String> fired,
 }) {
@@ -46,7 +62,7 @@ List<DueReminder> collectDueReminders({
   final staleBefore = now.subtract(const Duration(hours: 12));
 
   void check(String kind, String id, String title, List<DateTime> times,
-      DateTime? due) {
+      DateTime? due, [String Function(DateTime, DateTime) body = _body]) {
     if (due == null || due.isBefore(staleBefore)) return;
     // 여러 알림 시각이 한꺼번에 지났으면(앱을 오래 닫아 둔 경우) 한 번만 알린다
     final passed = times.where((at) => !at.isAfter(now)).toList();
@@ -56,7 +72,7 @@ List<DueReminder> collectDueReminders({
     result.add(DueReminder(
       key: fresh.last,
       title: title,
-      body: _body(due, now),
+      body: body(due, now),
       alsoCovers: keys,
     ));
   }
@@ -66,6 +82,14 @@ List<DueReminder> collectDueReminders({
   }
   for (final r in rooms) {
     check('room', r.id, '${r.name} 업무방', r.reminderTimes, r.dueDate);
+  }
+  final yesterday = DateTime(now.year, now.month, now.day - 1);
+  for (final r in routines) {
+    for (final at in r.occurrences(yesterday, routineWindowDays(r))) {
+      if (r.isDoneOn(at)) continue;
+      final times = [for (final rem in r.remindersFor(at)) rem.fireAt(at)];
+      check('routine', r.id, '${r.name} 루틴', times, at, _routineBody);
+    }
   }
   return result;
 }

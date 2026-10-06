@@ -6,6 +6,8 @@ import '../models/sub_task.dart';
 import '../models/task_item.dart';
 import '../models/telegram_room.dart';
 
+part 'room_provider_details.dart';
+
 /// 업무방, 할 일, 하위 체크리스트, 메모 상태를 관리.
 /// [store]가 있으면 변경될 때마다 저장하고, 처음 실행이면 샘플 데이터로 시작한다.
 /// 할 일 목록의 순서가 곧 화면 표시 순서다(드래그로 변경).
@@ -104,20 +106,6 @@ class RoomProvider extends ChangeNotifier {
 
   /// 완료/미완료를 바꾼다. 목록 내 위치는 그대로라 되돌리면 원래 자리로 돌아온다.
   void toggleTask(String taskId) => _edit(taskId, (t) => t.markDone(!t.isDone));
-
-  void addSubTask(String taskId, SubTask subTask) =>
-      _edit(taskId, (t) => t.copyWith(subTasks: [...t.subTasks, subTask]));
-
-  void toggleSubTask(String taskId, String subTaskId) => _edit(
-        taskId,
-        (t) => t.copyWith(subTasks: [
-          for (final s in t.subTasks)
-            s.id == subTaskId ? s.copyWith(isDone: !s.isDone) : s,
-        ]),
-      );
-
-  void addNote(String taskId, Note note) =>
-      _edit(taskId, (t) => t.copyWith(notes: [...t.notes, note]));
 
   /// 화면에 보이는 목록([visibleIds]) 안에서 드래그로 순서를 바꾼다.
   /// [newIndex]는 옮긴 항목을 뺀 뒤 기준의 최종 위치다(onReorderItem 규칙).

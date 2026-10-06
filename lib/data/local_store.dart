@@ -1,15 +1,17 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/routine.dart';
 import '../models/task_item.dart';
 import '../models/telegram_room.dart';
 import 'model_json.dart';
 
-/// 업무방/할 일/설정을 기기 저장소에 보관한다.
+/// 업무방/할 일/루틴/설정을 기기 저장소에 보관한다.
 /// 웹에서는 브라우저 localStorage, 앱에서는 기기 설정 저장소를 쓴다.
 class LocalStore {
   static const _roomsKey = 'rooms_v1';
   static const _tasksKey = 'tasks_v1';
+  static const _routinesKey = 'routines_v1';
   static const _themeKey = 'theme_mode';
   static const _notifKey = 'notifications_enabled';
   static const _firedKey = 'fired_reminders';
@@ -46,6 +48,11 @@ class LocalStore {
     await _prefs.setString(
         _tasksKey, jsonEncode(tasks.map(taskToJson).toList()));
   }
+
+  List<Routine>? loadRoutines() => _readList(_routinesKey, routineFromJson);
+
+  Future<void> saveRoutines(List<Routine> routines) => _prefs.setString(
+      _routinesKey, jsonEncode(routines.map(routineToJson).toList()));
 
   ThemeMode? loadThemeMode() {
     final name = _prefs.getString(_themeKey);
