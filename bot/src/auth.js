@@ -104,7 +104,8 @@ export async function requireUser(request, env) {
   if (!m) throw new HttpError(401, '로그인이 필요해요');
   const hash = await sha256Hex(m[1]);
   const row = await env.DB.prepare(
-    `SELECT s.last_used_at, u.id, u.email, u.name, u.picture
+    `SELECT s.last_used_at, s.created_at AS session_created_at, s.pin_ok_at,
+            u.id, u.email, u.name, u.picture, u.pin_hash
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
   ).bind(hash).first();
   const now = Date.now();

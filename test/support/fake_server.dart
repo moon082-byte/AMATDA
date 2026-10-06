@@ -18,6 +18,17 @@ class FakeServer {
   };
   int syncCalls = 0;
 
+  // ---- PIN (bot/src/pin.js와 같은 규칙) ----
+  String? pin;
+  bool pinVerified = false;
+  int pinFailed = 0;
+  int pinLockedUntil = 0;
+  int pinLevel = 0;
+  bool telegram = true;
+  bool freshLogin = false;
+  String? resetCode;
+  int now() => DateTime.now().millisecondsSinceEpoch;
+
   late final client = MockClient((req) async {
     if (offline) throw http.ClientException('offline');
     final path = req.url.path;
@@ -38,11 +49,84 @@ class FakeServer {
     }
     if (path == '/auth/me') return ok({'user': user});
     if (path == '/auth/logout') return ok({'ok': true});
+    if (path.startsWith('/auth/pin')) return _pin(path, req.method, body as Map, reply);
+    if (pin != null && !pinVerified) {
+      return reply(423, {'error': 'PIN 확인이 필요해요', 'pinRequired': true});
+    }
     if (path == '/api/telegram') return ok({'linked': false});
     if (path == '/api/telegram/code') return ok({'code': 'c'});
     if (path == '/api/sync') return ok(_sync(body as Map<String, dynamic>));
     return reply(404, {'error': '없는 주소'});
   });
+
+  http.Response _pin(String path, String method, Map body,
+      http.Response Function(int, Object) reply) {
+    http.Response? check(Object? value) {
+      if (pinLockedUntil > now()) {
+        return reply(423, {'error': '잘못 입력해서 잠겼어요', 'lockedUntil': pinLockedUntil});
+      }
+      if (value == pin) {
+        pinFailed = 0;
+        pinLevel = 0;
+        return null;
+      }
+      if (++pinFailed < 5) {
+        return reply(400, {'error': 'PIN이 맞지 않아요', 'remaining': 5 - pinFailed});
+      }
+      pinFailed = 0;
+      pinLockedUntil = now() + (pinLevel++ == 0 ? 60000 : 1800000);
+      return reply(423, {'error': '잘못 입력해서 잠겼어요', 'lockedUntil': pinLockedUntil});
+    }
+
+    http.Response save(Object? value) {
+      pin = value as String;
+      pinVerified = true;
+      return reply(200, {'ok': true, 'enabled': true});
+    }
+
+    if (path == '/auth/pin' && method == 'GET') {
+      return reply(200, {
+        'enabled': pin != null,
+        'verified': pinVerified,
+        'lockedUntil': pinLockedUntil > now() ? pinLockedUntil : null,
+        'remaining': 5 - pinFailed,
+        'telegram': telegram,
+        'freshLogin': freshLogin,
+      });
+    }
+    if (path == '/auth/pin/verify') {
+      final failed = check(body['pin']);
+      if (failed != null) return failed;
+      pinVerified = true;
+      return reply(200, {'ok': true});
+    }
+    if (path == '/auth/pin' && method == 'PUT') {
+      if (pin != null) {
+        final failed = check(body['current']);
+        if (failed != null) return failed;
+      }
+      return save(body['pin']);
+    }
+    if (path == '/auth/pin' && method == 'DELETE') {
+      final failed = check(body['current']);
+      if (failed != null) return failed;
+      pin = null;
+      return reply(200, {'ok': true, 'enabled': false});
+    }
+    if (path == '/auth/pin/reset/send') {
+      resetCode = '246810';
+      return reply(200, {'ok': true});
+    }
+    if (path == '/auth/pin/reset') {
+      if (!freshLogin && (resetCode == null || body['code'] != resetCode)) {
+        return reply(400, {'error': '재설정 코드가 맞지 않아요'});
+      }
+      resetCode = null;
+      pinLockedUntil = 0;
+      return save(body['pin']);
+    }
+    return reply(404, {'error': '없는 주소'});
+  }
 
   Map<String, Object> _sync(Map<String, dynamic> body) {
     syncCalls++;

@@ -76,7 +76,7 @@ export async function webhookSecret(env) {
   return [...hash].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 48);
 }
 
-async function tg(env, method, payload) {
+export async function tg(env, method, payload) {
   const res = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
