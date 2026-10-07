@@ -60,10 +60,6 @@ List<Map<String, Object>> buildTelegramReminders({
     add('task', t.id, t.dueDate, t.reminders,
         (r) => _message('[체크리스트 업무] ${t.title}', t.dueDate!, r, roomLink, workLinks));
   }
-  for (final r in rooms) {
-    add('room', r.id, r.dueDate, r.reminders,
-        (rem) => _message('[업무방 마감] ${r.name}', r.dueDate!, rem, roomLink, r.workLinks));
-  }
   final yesterday = DateTime(now.year, now.month, now.day - 1);
   final until = now.add(const Duration(days: kRoutineDaysAhead));
   for (final routine in routines) {

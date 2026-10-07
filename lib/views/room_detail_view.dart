@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
 import '../theme/app_palette.dart';
 import '../utils/confirm_dialog.dart';
+import '../utils/nearest_due.dart';
 import '../widgets/add_menu_fab.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
@@ -73,6 +74,7 @@ class RoomDetailView extends StatelessWidget {
         paddedSliver(top: 8, [
           RoomDetailHeader(
             room: room,
+            nearestTask: nearestDueTask(activeTasks),
             totalCount: allTasks.length,
             doneCount: allTasks.length - activeTasks.length,
           ),

@@ -7,6 +7,7 @@ import 'package:flutter_application_amatda/models/telegram_room.dart';
 import 'package:flutter_application_amatda/providers/room_provider.dart';
 import 'package:flutter_application_amatda/services/reminder_checker.dart';
 import 'package:flutter_application_amatda/utils/links.dart';
+import 'package:flutter_application_amatda/utils/nearest_due.dart';
 
 TaskItem _task(String id,
         {DateTime? due, List<TaskReminder> reminders = const []}) =>
@@ -86,12 +87,12 @@ void main() {
         _task('no-reminder', due: DateTime(2026, 10, 5, 12, 5)),
       ];
       final due = collectDueReminders(
-          tasks: tasks, rooms: const [], now: now, fired: {});
+          tasks: tasks, now: now, fired: {});
       expect(due.map((r) => r.title), ['soon']);
       expect(due.single.body, '마감까지 20분 남았어요');
 
       final again = collectDueReminders(
-          tasks: tasks, rooms: const [], now: now, fired: {due.single.key});
+          tasks: tasks, now: now, fired: {due.single.key});
       expect(again, isEmpty);
     });
 
@@ -101,13 +102,12 @@ void main() {
         TaskReminder(amount: 30, unit: ReminderUnit.minute), // 12:30 (아직)
       ]);
       final first = collectDueReminders(
-          tasks: [t], rooms: const [], now: now, fired: {});
+          tasks: [t], now: now, fired: {});
       expect(first, hasLength(1));
 
       final fired = {...first.single.alsoCovers, first.single.key};
       final later = collectDueReminders(
           tasks: [t],
-          rooms: const [],
           now: DateTime(2026, 10, 5, 12, 31),
           fired: fired);
       expect(later, hasLength(1), reason: '30분 전 알림이 다시 울려야 한다');
@@ -121,7 +121,7 @@ void main() {
         TaskReminder(amount: 30, unit: ReminderUnit.minute),
       ]);
       final due = collectDueReminders(
-          tasks: [t], rooms: const [], now: now, fired: {});
+          tasks: [t], now: now, fired: {});
       expect(due, hasLength(1));
       expect(due.single.alsoCovers, hasLength(3));
     });
@@ -133,24 +133,20 @@ void main() {
       final stale = _task('stale', due: DateTime(2026, 10, 3), reminders: [r]);
       expect(
         collectDueReminders(
-            tasks: [done, stale], rooms: const [], now: now, fired: {}),
+            tasks: [done, stale], now: now, fired: {}),
         isEmpty,
       );
     });
 
-    test('업무방 마감 리마인더도 울린다', () {
-      final room = TelegramRoom(
-        id: 'r1',
-        name: '기획',
-        type: TelegramRoomType.group,
-        inviteLink: '',
-        lastActivityAt: now,
-        dueDate: DateTime(2026, 10, 5, 12, 30),
-        reminders: const [TaskReminder(amount: 1, unit: ReminderUnit.hour)],
-      );
-      final due = collectDueReminders(
-          tasks: const [], rooms: [room], now: now, fired: {});
-      expect(due.single.title, '기획 업무방');
+    test('업무방에서는 마감이 가장 가까운 미완료 할 일을 보여준다', () {
+      final tasks = [
+        _task('later', due: DateTime(2026, 10, 9)),
+        _task('done', due: DateTime(2026, 10, 4)).markDone(true),
+        _task('soon', due: DateTime(2026, 10, 6)),
+        _task('none'),
+      ];
+      expect(nearestDueTask(tasks)?.title, 'soon');
+      expect(nearestDueTask([_task('none')]), isNull);
     });
   });
 

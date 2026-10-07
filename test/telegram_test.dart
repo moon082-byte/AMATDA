@@ -71,7 +71,7 @@ void main() {
       expect(items.last['text'], contains('10월 6일 (화) 13:00'));
     });
 
-    test('완료한 할 일, 마감이 한참 지난 것, 알림 없는 것은 빼고 업무방 마감은 포함', () {
+    test('완료한 할 일, 마감이 한참 지난 것, 알림 없는 것, 업무방 자체 마감은 뺀다', () {
       const r = [TaskReminder(amount: 1, unit: ReminderUnit.hour)];
       final room = TelegramRoom(
         id: 'r', name: '기획', type: TelegramRoomType.group, inviteLink: '',
@@ -82,8 +82,7 @@ void main() {
         task('stale', DateTime(2026, 10, 5), r),
         task('none', DateTime(2026, 10, 7), const []),
       ]);
-      expect(items.single['key'], startsWith('room:r:'));
-      expect(items.single['text'], startsWith('[업무방 마감] 기획\n[마감기한] '));
+      expect(items, isEmpty);
     });
   });
 

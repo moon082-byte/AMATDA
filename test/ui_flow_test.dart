@@ -7,6 +7,8 @@ import 'package:flutter_application_amatda/models/telegram_room.dart';
 import 'package:flutter_application_amatda/providers/room_provider.dart';
 import 'package:flutter_application_amatda/views/room_form_page.dart';
 import 'package:flutter_application_amatda/widgets/reminder_banner.dart';
+import 'package:flutter_application_amatda/widgets/round_check.dart';
+import 'package:flutter_application_amatda/widgets/task_detail_card.dart';
 import 'package:provider/provider.dart';
 
 Future<void> _boot(WidgetTester tester) async {
@@ -23,6 +25,12 @@ RoomProvider _provider(WidgetTester tester) =>
 List<String> _activeTitles(WidgetTester tester) =>
     [for (final TaskItem t in _provider(tester).activeTasks) t.title];
 
+/// 할 일 카드의 왼쪽 동그라미(체크 버튼)
+Finder _checkOf(String title) => find.descendant(
+      of: find.ancestor(of: find.text(title), matching: find.byType(TaskDetailCard)),
+      matching: find.byType(RoundCheckButton),
+    );
+
 void main() {
   testWidgets('할 일을 체크한 뒤 실행 취소하면 원래 자리로 돌아온다', (tester) async {
     await _boot(tester);
@@ -30,7 +38,7 @@ void main() {
     await tester.pumpAndSettle();
     final before = _activeTitles(tester);
 
-    await tester.tap(find.text(before.first));
+    await tester.tap(_checkOf(before.first));
     await tester.pump(); // 알림 애니메이션 시작
     await tester.pump(const Duration(milliseconds: 600)); // 다 올라올 때까지
     expect(find.text('실행 취소'), findsOneWidget);
@@ -122,7 +130,7 @@ void main() {
     expect(find.byType(ReminderBanner), findsNothing);
   });
 
-  testWidgets('업무방 수정에서 방 종류·인원·리마인더를 바꿀 수 있다', (tester) async {
+  testWidgets('업무방 수정에서 방 종류·인원을 바꾸고, 마감·리마인더 칸은 없다', (tester) async {
     await _boot(tester);
     await tester.tap(find.text('오늘 할일'));
     await tester.pumpAndSettle();
@@ -135,23 +143,9 @@ void main() {
     await tester.tap(find.text('채널'));
     await tester.tap(find.byTooltip('인원 늘리기'));
     await tester.pump();
-
-    // 기존 리마인더(1일 전) 1개에 '30분 전'을 추가해 2개로
-    final preset = find.text('+ 30분 전');
-    await tester.dragUntilVisible(
-      preset.hitTestable(),
-      find
-          .descendant(
-            of: find.byType(RoomFormPage),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-      const Offset(0, -200),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(preset);
-    await tester.pump();
-    expect(find.text('리마인더 알림 (2/5)'), findsOneWidget);
+    final form = find.byType(RoomFormPage);
+    expect(find.descendant(of: form, matching: find.textContaining('마감 기한')), findsNothing);
+    expect(find.descendant(of: form, matching: find.textContaining('리마인더')), findsNothing);
 
     await tester.tap(find.text('저장').first);
     await tester.pumpAndSettle();
@@ -159,6 +153,7 @@ void main() {
     final room = _provider(tester).roomById('room_001')!;
     expect(room.type, TelegramRoomType.channel);
     expect(room.memberCount, 6);
-    expect(room.reminders.map((r) => r.label), ['1일 전', '30분 전']);
+    expect(room.dueDate, isNull);
+    expect(room.reminders, isEmpty);
   });
 }

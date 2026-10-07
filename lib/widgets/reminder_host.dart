@@ -56,7 +56,6 @@ class _ReminderHostState extends State<ReminderHost>
     final provider = context.read<RoomProvider>();
     final due = collectDueReminders(
       tasks: provider.tasks,
-      rooms: provider.rooms,
       routines: context.read<RoutineProvider>().routines,
       now: DateTime.now(),
       fired: _fired,

@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 import '../providers/room_provider.dart';
 import '../utils/ids.dart';
 import '../utils/links.dart';
-import '../utils/pick_date_time.dart';
 import '../widgets/common/app_page.dart';
-import '../widgets/due_date_field.dart';
 import '../widgets/labeled_text_field.dart';
-import '../widgets/reminder_list_editor.dart';
 import '../widgets/room_info_fields.dart';
 import '../widgets/work_links_field.dart';
 
@@ -31,8 +27,6 @@ class _RoomFormPageState extends State<RoomFormPage> {
     for (final link in widget.room?.workLinks ?? const <String>[])
       TextEditingController(text: link),
   ];
-  late DateTime? _dueDate = widget.room?.dueDate;
-  late List<TaskReminder> _reminders = widget.room?.reminders ?? const [];
   late TelegramRoomType _type = widget.room?.type ?? TelegramRoomType.group;
   late int _memberCount = widget.room?.memberCount ?? 1;
 
@@ -53,11 +47,6 @@ class _RoomFormPageState extends State<RoomFormPage> {
     super.dispose();
   }
 
-  Future<void> _pickDueDate() async {
-    final picked = await pickDateTime(context, initial: _dueDate);
-    if (picked != null && mounted) setState(() => _dueDate = picked);
-  }
-
   void _removeLink(int index) => setState(() {
         final removed = _links.removeAt(index);
         WidgetsBinding.instance.addPostFrameCallback((_) => removed.dispose());
@@ -66,7 +55,8 @@ class _RoomFormPageState extends State<RoomFormPage> {
   void _submit() {
     if (!_canSubmit) return;
     final provider = context.read<RoomProvider>();
-    // 새 방이면 빈 방을 만든 뒤, 새 방/기존 방 모두 입력값으로 덮어쓴다
+    // 새 방이면 빈 방을 만든 뒤, 새 방/기존 방 모두 입력값으로 덮어쓴다.
+    // 업무방 자체의 마감·리마인더는 더 쓰지 않으므로(예전 값 포함) 비운다.
     final base = widget.room ??
         TelegramRoom(
           id: newId('room'),
@@ -81,8 +71,6 @@ class _RoomFormPageState extends State<RoomFormPage> {
       memberCount: _memberCount,
       inviteLink: normalizeUrl(_telegram.text),
       workLinks: cleanLinks(_links.map((c) => c.text)),
-      dueDate: _dueDate,
-      reminders: _dueDate == null ? const [] : _reminders,
     );
     _isEdit ? provider.updateRoom(room) : provider.addRoom(room);
     Navigator.pop(context);
@@ -122,21 +110,6 @@ class _RoomFormPageState extends State<RoomFormPage> {
             controllers: _links,
             onAdd: () => setState(() => _links.add(TextEditingController())),
             onRemove: _removeLink,
-          ),
-          const SizedBox(height: 24),
-          DueDateField(
-            label: '마감 기한',
-            value: _dueDate,
-            placeholder: '마감 기한 선택 (선택)',
-            onTap: _pickDueDate,
-            onClear: () => setState(() => _dueDate = null),
-          ),
-          const SizedBox(height: 24),
-          ReminderListEditor(
-            label: '리마인더 알림',
-            dueDate: _dueDate,
-            value: _reminders,
-            onChanged: (r) => setState(() => _reminders = r),
           ),
           const SizedBox(height: 32),
           FilledButton(

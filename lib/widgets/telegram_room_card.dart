@@ -14,6 +14,9 @@ const _cardWidth = 172.0;
 class TelegramRoomCard extends StatelessWidget {
   final TelegramRoom room;
   final int pendingTaskCount;
+
+  /// 방에서 마감이 가장 가까운 미완료 할 일의 마감 (D-Day 배지)
+  final DateTime? nearestDue;
   final int totalTaskCount;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
@@ -22,6 +25,7 @@ class TelegramRoomCard extends StatelessWidget {
     super.key,
     required this.room,
     required this.pendingTaskCount,
+    this.nearestDue,
     required this.totalTaskCount,
     required this.onTap,
     required this.onLongPress,
@@ -48,8 +52,8 @@ class TelegramRoomCard extends StatelessWidget {
                 children: [
                   RoomAvatar(room: room, size: 40),
                   const Spacer(),
-                  if (room.dueDate != null)
-                    DueBadge(dueDate: room.dueDate, dDay: true),
+                  if (nearestDue != null)
+                    DueBadge(dueDate: nearestDue, dDay: true),
                 ],
               ),
               const SizedBox(height: 12),
