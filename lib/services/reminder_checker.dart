@@ -1,6 +1,5 @@
 import '../models/routine.dart';
 import '../models/task_item.dart';
-import '../models/telegram_room.dart';
 
 /// 지금 울려야 하는 리마인드 한 건
 class DueReminder {
@@ -53,7 +52,6 @@ int routineWindowDays(Routine r) {
 /// 마감이 12시간 넘게 지난 것은 이미 늦었으므로 건너뛴다.
 List<DueReminder> collectDueReminders({
   required List<TaskItem> tasks,
-  required List<TelegramRoom> rooms,
   List<Routine> routines = const [],
   required DateTime now,
   required Set<String> fired,
@@ -79,9 +77,6 @@ List<DueReminder> collectDueReminders({
 
   for (final t in tasks) {
     if (!t.isDone) check('task', t.id, t.title, t.reminderTimes, t.dueDate);
-  }
-  for (final r in rooms) {
-    check('room', r.id, '${r.name} 업무방', r.reminderTimes, r.dueDate);
   }
   final yesterday = DateTime(now.year, now.month, now.day - 1);
   for (final r in routines) {

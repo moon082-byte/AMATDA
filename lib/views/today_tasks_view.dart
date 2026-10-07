@@ -18,7 +18,10 @@ class TodayTasksView extends StatefulWidget {
   /// 0: 오늘 할일, 1: 루틴
   final int initialTab;
 
-  const TodayTasksView({super.key, this.initialTab = 0});
+  /// 펼친 채로 보여줄 할 일 (메인 화면 일정에서 할 일을 눌러 들어온 경우)
+  final String? focusTaskId;
+
+  const TodayTasksView({super.key, this.initialTab = 0, this.focusTaskId});
 
   @override
   State<TodayTasksView> createState() => _TodayTasksViewState();
@@ -66,7 +69,9 @@ class _TodayTasksViewState extends State<TodayTasksView> {
           ),
           const SizedBox(height: 24),
         ]),
-        _tab == 0 ? const TodayTaskSlivers() : const RoutineSlivers(),
+        _tab == 0
+            ? TodayTaskSlivers(focusTaskId: widget.focusTaskId)
+            : const RoutineSlivers(),
       ],
     );
   }

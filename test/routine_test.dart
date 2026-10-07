@@ -67,7 +67,7 @@ void main() {
 
   test('루틴 리마인드는 시각이 되면 울리고, 오늘 완료했으면 울리지 않는다', () {
     List<DueReminder> due(Routine r, DateTime now) => collectDueReminders(
-        tasks: const [], rooms: const [], routines: [r], now: now, fired: {});
+        tasks: const [], routines: [r], now: now, fired: {});
 
     final r = _routine(reminders: const [_tenMin]);
     expect(due(r, _now), hasLength(1));
@@ -90,7 +90,7 @@ void main() {
     final now = DateTime(2026, 10, 6, 10, 1);
     expect(
         collectDueReminders(
-            tasks: const [], rooms: const [], routines: [made], now: now, fired: {}),
+            tasks: const [], routines: [made], now: now, fired: {}),
         isEmpty);
     final list = buildTelegramReminders(
         tasks: const [], rooms: const [], routines: [made], now: now);

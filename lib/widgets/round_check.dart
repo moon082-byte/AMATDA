@@ -47,3 +47,37 @@ class RoundCheck extends StatelessWidget {
     );
   }
 }
+
+/// 손가락으로 누르기 쉽도록 동그라미 주변([width]×44)까지 누를 수 있게 넓힌 체크 버튼
+class RoundCheckButton extends StatelessWidget {
+  final bool isDone;
+  final VoidCallback onTap;
+  final double size;
+  final double width;
+  final Alignment alignment;
+
+  const RoundCheckButton({
+    super.key,
+    required this.isDone,
+    required this.onTap,
+    this.size = 26,
+    this.width = 44,
+    this.alignment = Alignment.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: width,
+        height: 44,
+        child: Align(
+          alignment: alignment,
+          child: RoundCheck(isDone: isDone, size: size),
+        ),
+      ),
+    );
+  }
+}

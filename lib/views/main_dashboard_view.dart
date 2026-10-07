@@ -128,7 +128,13 @@ class _MainDashboardViewState extends State<MainDashboardView> {
                   setState(() => _selectedDay = dateOnly(day)),
             ),
             const SizedBox(height: 28),
-            DayAgenda(day: _selectedDay),
+            DayAgenda(
+              day: _selectedDay,
+              onOpenList: () => _push(const TodayTasksView()),
+              // 완료한 할 일은 '오늘 할일' 목록에 없으므로 목록만 연다
+              onOpenTask: (task) => _push(TodayTasksView(
+                  focusTaskId: task.isDone ? null : task.id)),
+            ),
             const SizedBox(height: 28),
             DayRoutines(
               day: _selectedDay,

@@ -5,6 +5,8 @@ import 'package:flutter_application_amatda/providers/room_provider.dart';
 import 'package:flutter_application_amatda/providers/routine_provider.dart';
 import 'package:flutter_application_amatda/services/launch_link.dart';
 import 'package:flutter_application_amatda/utils/date_format.dart';
+import 'package:flutter_application_amatda/widgets/round_check.dart';
+import 'package:flutter_application_amatda/widgets/task_detail_card.dart';
 import 'package:provider/provider.dart';
 
 Future<void> _boot(WidgetTester tester) async {
@@ -17,6 +19,12 @@ Future<void> _boot(WidgetTester tester) async {
 
 T _read<T>(WidgetTester tester) =>
     tester.element(find.byType(Scaffold).first).read<T>();
+
+/// 할 일 카드의 왼쪽 동그라미(체크 버튼)
+Finder _checkOf(String title) => find.descendant(
+      of: find.ancestor(of: find.text(title), matching: find.byType(TaskDetailCard)),
+      matching: find.byType(RoundCheckButton),
+    );
 
 /// [앱에서 보기]로 '주간 보고서' 할 일(task_001)을 펼친 채 연다
 Future<void> _openTask001(WidgetTester tester) async {
@@ -32,7 +40,7 @@ void main() {
     await tester.pumpAndSettle();
     final first = _read<RoomProvider>(tester).activeTasks.first.title;
 
-    await tester.tap(find.text(first));
+    await tester.tap(_checkOf(first));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('실행 취소'), findsOneWidget);
@@ -82,10 +90,46 @@ void main() {
       isTrue,
     );
 
-    await tester.tap(find.text('전체 보기 ›'));
+    await tester.tap(find.text('전체 보기 ›').last); // 위는 '오늘의 일정'의 전체 보기
     await tester.pumpAndSettle();
     expect(find.text('오늘의 루틴'), findsOneWidget);
     expect(find.textContaining('오늘 루틴'), findsOneWidget); // 부제목
+  });
+
+  testWidgets('메인의 오늘의 일정에서 할 일을 누르면 오늘 할일에서 펼쳐서 보여준다', (tester) async {
+    await _boot(tester);
+    await tester.tap(find.text('회의실 예약하기'));
+    await tester.pumpAndSettle();
+    expect(find.text('세부 체크리스트'), findsOneWidget);
+    expect(_read<RoomProvider>(tester).taskById('task_003')?.isDone, isFalse,
+        reason: '줄을 누르면 체크되지 않고 이동만 한다');
+
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('전체 보기 ›').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('진행 중인 할 일'), findsOneWidget); // 오늘 할일 부제목
+  });
+
+  testWidgets('오늘 할일: 항목을 누르면 펼치고 접히며, 체크는 동그라미로만', (tester) async {
+    await _boot(tester);
+    await tester.tap(find.text('오늘 할일'));
+    await tester.pumpAndSettle();
+    final first = _read<RoomProvider>(tester).activeTasks.first;
+
+    await tester.tap(find.text(first.title));
+    await tester.pumpAndSettle();
+    expect(find.text('세부 체크리스트'), findsOneWidget);
+    expect(_read<RoomProvider>(tester).taskById(first.id)!.isDone, isFalse);
+    await tester.tap(find.text(first.title));
+    await tester.pumpAndSettle();
+    expect(find.text('세부 체크리스트'), findsNothing);
+
+    await tester.tap(_checkOf(first.title));
+    await tester.pump();
+    expect(_read<RoomProvider>(tester).taskById(first.id)!.isDone, isTrue);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('세부 항목: 글자를 눌러 고치고, X로 지운 뒤 되돌린다', (tester) async {

@@ -14,10 +14,14 @@ import 'slidable_actions.dart';
 import 'sub_task_section.dart';
 import 'task_meta_chips.dart';
 
-/// 업무방 상세 화면의 할 일 카드. 탭하면 아코디언처럼 펼쳐져 하위 체크리스트와
-/// 메모를 보여준다. 왼쪽으로 밀면 수정/삭제, 윗부분을 꾹 누르면 순서를 바꿀 수 있다.
+/// 할 일 카드 ('오늘 할일' 목록, 업무방 상세). 탭하면 아코디언처럼 펼쳐져 하위 체크리스트와
+/// 메모를 보여주고, 완료 체크는 왼쪽 동그라미를 눌렀을 때만 된다.
+/// 왼쪽으로 밀면 수정/삭제, 윗부분을 꾹 누르면 순서를 바꿀 수 있다.
 class TaskDetailCard extends StatefulWidget {
   final TaskItem task;
+
+  /// 제목 아래에 보여줄 업무방 이름 ('오늘 할일' 목록에서만)
+  final String? roomName;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final int? dragIndex;
@@ -28,6 +32,7 @@ class TaskDetailCard extends StatefulWidget {
   const TaskDetailCard({
     super.key,
     required this.task,
+    this.roomName,
     required this.onEdit,
     required this.onDelete,
     this.dragIndex,
@@ -68,21 +73,22 @@ class _TaskDetailCardState extends State<TaskDetailCard> {
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _expanded = !_expanded),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
+        padding: const EdgeInsets.fromLTRB(8, 16, 12, 16),
         child: Row(
           children: [
-            GestureDetector(
+            RoundCheckButton(
+              isDone: task.isDone,
               onTap: () => toggleTaskWithUndo(context, task),
-              child: RoundCheck(isDone: task.isDone),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 4),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(task.title, style: text.title),
                   const SizedBox(height: 8),
-                  TaskMetaChips(task: task, showCounts: true),
+                  TaskMetaChips(
+                      task: task, roomName: widget.roomName, showCounts: true),
                 ],
               ),
             ),

@@ -22,8 +22,6 @@ List<TelegramRoom> buildMockTelegramRooms() => [
         isPinned: true,
         unreadCount: 3,
         lastActivityAt: _at(0, 9, 30),
-        dueDate: _at(3, 18),
-        reminders: const [TaskReminder(amount: 1, unit: ReminderUnit.day)],
         workLinks: const [
           'https://www.notion.so/amatda-team',
           'https://open.kakao.com/o/amatda',
@@ -45,8 +43,6 @@ List<TelegramRoom> buildMockTelegramRooms() => [
         memberCount: 128,
         unreadCount: 12,
         lastActivityAt: _at(0, 8),
-        dueDate: _at(10, 12),
-        reminders: const [TaskReminder(amount: 1, unit: ReminderUnit.hour)],
       ),
     ];
 

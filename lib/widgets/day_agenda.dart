@@ -10,11 +10,20 @@ import 'common/app_card.dart';
 import 'common/section_header.dart';
 import 'round_check.dart';
 
-/// 메인 화면 '오늘의 일정' 섹션: 캘린더에서 고른 날짜에 마감인 할 일 목록
+/// 메인 화면 '오늘의 일정' 섹션: 캘린더에서 고른 날짜에 마감인 할 일 목록.
+/// 할 일을 누르면 '오늘 할일'에서 펼쳐서 보여주고, 체크는 왼쪽 동그라미를 눌렀을 때만 된다.
+/// 제목 옆 '전체 보기'를 누르면 '오늘 할일'로 간다.
 class DayAgenda extends StatelessWidget {
   final DateTime day;
+  final VoidCallback onOpenList;
+  final ValueChanged<TaskItem> onOpenTask;
 
-  const DayAgenda({super.key, required this.day});
+  const DayAgenda({
+    super.key,
+    required this.day,
+    required this.onOpenList,
+    required this.onOpenTask,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +45,14 @@ class DayAgenda extends StatelessWidget {
               : '${formatDateWithWeekday(day)} 일정',
           count: tasks.isEmpty ? null : tasks.length,
           dotColor: palette.accent,
+          trailing: TextButton(
+            onPressed: onOpenList,
+            style: TextButton.styleFrom(foregroundColor: palette.subText),
+            child: const Text('전체 보기 ›'),
+          ),
         ),
         AppCard(
+          onTap: tasks.isEmpty ? onOpenList : null,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
           child: tasks.isEmpty
               ? Padding(
@@ -58,7 +73,11 @@ class DayAgenda extends StatelessWidget {
                   children: [
                     for (var i = 0; i < tasks.length; i++) ...[
                       if (i > 0) Divider(height: 1, color: palette.border),
-                      _AgendaRow(task: tasks[i], provider: provider),
+                      _AgendaRow(
+                        task: tasks[i],
+                        provider: provider,
+                        onOpen: () => onOpenTask(tasks[i]),
+                      ),
                     ],
                   ],
                 ),
@@ -71,8 +90,13 @@ class DayAgenda extends StatelessWidget {
 class _AgendaRow extends StatelessWidget {
   final TaskItem task;
   final RoomProvider provider;
+  final VoidCallback onOpen;
 
-  const _AgendaRow({required this.task, required this.provider});
+  const _AgendaRow({
+    required this.task,
+    required this.provider,
+    required this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,15 +108,20 @@ class _AgendaRow extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => task.isDone
-          ? restoreTask(context, task)
-          : toggleTaskWithUndo(context, task),
+      onTap: onOpen,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            RoundCheck(isDone: task.isDone, size: 22),
-            const SizedBox(width: 12),
+            RoundCheckButton(
+              isDone: task.isDone,
+              size: 22,
+              width: 40,
+              alignment: Alignment.centerLeft,
+              onTap: () => task.isDone
+                  ? restoreTask(context, task)
+                  : toggleTaskWithUndo(context, task),
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,20 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
 import '../utils/confirm_dialog.dart';
-import '../utils/task_actions.dart';
+import '../utils/nearest_due.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/common/section_header.dart';
 import '../widgets/reorder_handle.dart';
-import '../widgets/task_tile.dart';
+import '../widgets/task_detail_card.dart';
 import '../widgets/telegram_room_card.dart';
 import 'room_detail_view.dart';
 import 'form_routes.dart';
 
 /// '오늘 할일' 탭: 텔레그램 업무방 캐러셀 + 진행 중인 할 일 전체 목록.
-/// 할 일을 꾹 눌러 끌면 순서를 바꿀 수 있다.
+/// 할 일을 누르면 세부 항목이 펼쳐지고, 꾹 눌러 끌면 순서를 바꿀 수 있다.
 class TodayTaskSlivers extends StatelessWidget {
-  const TodayTaskSlivers({super.key});
+  /// 펼친 채로 보여줄 할 일 (메인 화면 일정에서 들어온 경우)
+  final String? focusTaskId;
+
+  const TodayTaskSlivers({super.key, this.focusTaskId});
 
   Future<void> _deleteRoom(BuildContext context, String id, String name) async {
     final confirmed = await confirmDelete(
@@ -60,6 +63,9 @@ class TodayTaskSlivers extends StatelessWidget {
                   return TelegramRoomCard(
                     room: room,
                     pendingTaskCount: provider.pendingCountForRoom(room.id),
+                    nearestDue: nearestDueTask(
+                            provider.activeTasksForRoom(room.id))
+                        ?.dueDate,
                     totalTaskCount: provider.tasksForRoom(room.id).length,
                     onTap: () => Navigator.push(
                       context,
@@ -99,12 +105,12 @@ class TodayTaskSlivers extends StatelessWidget {
             ),
             itemBuilder: (context, index) {
               final task = activeTasks[index];
-              return TaskTile(
+              return TaskDetailCard(
                 key: ValueKey(task.id),
                 task: task,
                 dragIndex: index,
+                initiallyExpanded: task.id == focusTaskId,
                 roomName: provider.roomById(task.roomId ?? '')?.name,
-                onToggle: () => toggleTaskWithUndo(context, task),
                 onEdit: () => openEditTask(context, task),
                 onDelete: () => _deleteTask(context, task.id, task.title),
               );

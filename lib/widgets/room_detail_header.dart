@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/task_item.dart';
 import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 import '../theme/app_palette.dart';
@@ -11,16 +12,20 @@ import 'common/room_avatar.dart';
 import 'common/tag_chip.dart';
 import 'link_picker_sheet.dart';
 
-/// 업무방 상세 화면 상단 요약 카드: 방 정보, 마감 D-Day, 진행률,
+/// 업무방 상세 화면 상단 요약 카드: 방 정보, 가장 가까운 할 일 마감(D-Day·알림), 진행률,
 /// 텔레그램 열기 버튼, 외부 링크 열기 버튼(업무 링크가 있을 때만)
 class RoomDetailHeader extends StatelessWidget {
   final TelegramRoom room;
+
+  /// 방에서 마감이 가장 가까운 미완료 할 일 (없으면 '마감 없음')
+  final TaskItem? nearestTask;
   final int totalCount;
   final int doneCount;
 
   const RoomDetailHeader({
     super.key,
     required this.room,
+    this.nearestTask,
     required this.totalCount,
     required this.doneCount,
   });
@@ -30,6 +35,7 @@ class RoomDetailHeader extends StatelessWidget {
     final palette = context.palette;
     final text = context.text;
     final progress = totalCount == 0 ? 0.0 : doneCount / totalCount;
+    final nearest = nearestTask;
 
     return AppCard(
       child: Column(
@@ -52,15 +58,24 @@ class RoomDetailHeader extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        DueBadge(dueDate: room.dueDate, dDay: true),
-                        if (room.reminders.isNotEmpty && room.dueDate != null)
+                        DueBadge(dueDate: nearest?.dueDate, dDay: true),
+                        if (nearest != null && nearest.reminders.isNotEmpty)
                           TagChip.neutral(
                             context,
-                            remindersSummary(room.reminders),
+                            remindersSummary(nearest.reminders),
                             icon: Icons.notifications_rounded,
                           ),
                       ],
                     ),
+                    if (nearest != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '가장 가까운 마감 · ${nearest.title}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.micro,
+                      ),
+                    ],
                   ],
                 ),
               ),
