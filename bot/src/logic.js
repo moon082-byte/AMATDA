@@ -62,6 +62,14 @@ export function inlineKeyboard(buttonsJson) {
   return buttons.length ? { inline_keyboard: buttons.map((b) => [b]) } : undefined;
 }
 
+/** 설정의 텔레그램 업무방 링크: http(s) 주소만, 비우면 ''. 잘못된 주소면 예외. */
+export function sanitizeRoomUrl(value) {
+  const url = typeof value === 'string' ? value.trim() : '';
+  if (!url) return '';
+  if (url.length > 500 || !/^https?:\/\/[^\s]+$/i.test(url)) throw new Error('http(s)로 시작하는 주소를 넣어 주세요');
+  return url;
+}
+
 /** 오래돼서 지워도 되는 알림 기준 시각 */
 export function cleanupBefore(now) {
   return now - 2 * 24 * 60 * 60 * 1000;

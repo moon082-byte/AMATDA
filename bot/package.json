@@ -6,10 +6,11 @@
   "scripts": {
     "test": "node --test",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute amatda-bot --remote --file=schema.sql && npm run db:migrate:accounts && npm run db:migrate:pin",
+    "db:init": "wrangler d1 execute amatda-bot --remote --file=schema.sql && npm run db:migrate:accounts && npm run db:migrate:pin && npm run db:migrate:tgroom",
     "db:migrate": "wrangler d1 execute amatda-bot --remote --file=migrations/0001_reminder_buttons.sql",
     "db:migrate:accounts": "wrangler d1 execute amatda-bot --remote --file=migrations/0002_accounts.sql",
     "db:migrate:pin": "wrangler d1 execute amatda-bot --remote --file=migrations/0003_pin.sql",
+    "db:migrate:tgroom": "wrangler d1 execute amatda-bot --remote --file=migrations/0004_tg_room_url.sql",
     "logs": "wrangler tail"
   },
   "devDependencies": {

@@ -9,7 +9,8 @@
 // 데이터 (로그인 필요, Authorization: Bearer <토큰>)
 // - POST /api/sync                            바뀐 데이터 올리기·받기 (sync.js)
 // - POST /api/telegram/code                   텔레그램 연결 코드 만들기 → t.me/<봇>?start=<코드>
-// - GET/DELETE /api/telegram                  텔레그램 연결 확인·끊기
+// - GET/DELETE /api/telegram                  텔레그램 연결 확인(+업무방 링크)·끊기
+// - PUT  /api/telegram/room                   텔레그램 업무방 링크 저장 (알림 메시지에 넣는다)
 // - PUT  /api/reminders                       알림 일정 전체 올리기
 // 텔레그램
 // - POST /telegram/webhook, GET /setup, GET /api/info
@@ -22,7 +23,7 @@
 import { exchangeLogin, finishLogin, logout, publicUser, requireUser, startLogin } from './auth.js';
 import { getLink, putState, replaceReminders, unlinkCodes } from './db.js';
 import { HttpError, cors, json, readJson, text, validate } from './http.js';
-import { CODE_PATTERN, sanitizeReminders } from './logic.js';
+import { CODE_PATTERN, sanitizeReminders, sanitizeRoomUrl } from './logic.js';
 import { randomToken } from './crypto.js';
 import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
 import { sync } from './sync.js';
@@ -89,7 +90,14 @@ async function route(request, env) {
   }
   if (path === '/api/telegram' && method === 'GET') {
     const link = await getLink(env, user.id);
-    return reply({ linked: !!link, name: link?.chat_name ?? null });
+    const me = await env.DB.prepare('SELECT tg_room_url FROM users WHERE id = ?').bind(user.id).first();
+    return reply({ linked: !!link, name: link?.chat_name ?? null, roomUrl: me?.tg_room_url ?? '' });
+  }
+  if (path === '/api/telegram/room' && method === 'PUT') {
+    const raw = await readJson(request);
+    const url = validate(() => sanitizeRoomUrl(raw?.url));
+    await env.DB.prepare('UPDATE users SET tg_room_url = ? WHERE id = ?').bind(url || null, user.id).run();
+    return reply({ roomUrl: url });
   }
   if (path === '/api/telegram' && method === 'DELETE') {
     await unlinkCodes(env, [user.id]);

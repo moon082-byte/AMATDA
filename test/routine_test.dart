@@ -108,12 +108,12 @@ void main() {
           tasks: const [], rooms: const [], routines: [_routine()], now: _now);
       expect(list, hasLength(7)); // 6일 09:00 ~ 12일 09:00 (13일 09:00은 7일 넘게 남아 제외)
       expect(list.map((r) => r['key']).toSet(), hasLength(7));
-      expect(list.first['text'] as String, contains('🔁 루틴 알림 (정시)'));
-      final buttons = list.first['buttons'] as List;
-      expect(buttons.single['url'], endsWith('?open=routine:r1'));
+      expect(list.first['text'] as String, startsWith('[루틴] '));
+      expect(list.first['text'] as String, contains('(정시)'));
+      expect(list.first['buttons'], isEmpty, reason: '업무방 링크가 없으면 버튼도 없다');
     });
 
-    test('할 일 알림에 [앱에서 보기]와 업무방 링크 버튼이 붙는다', () {
+    test('할 일 알림: 정해진 형식에 업무방 링크·업무링크 줄, 버튼은 업무방 링크 하나', () {
       final room = TelegramRoom(
         id: 'room1',
         name: '팀방',
@@ -132,13 +132,24 @@ void main() {
         createdAt: _now,
       );
       final item = buildTelegramReminders(
-          tasks: [task], rooms: [room], now: _now).single;
-      final buttons = item['buttons'] as List;
-      expect([for (final b in buttons) b['text']],
-          ['📱 앱에서 보기', '🔗 노션', '🔗 example.com']);
-      expect(buttons.first['url'], endsWith('?open=task:t1'));
-      expect(buttons[1]['url'], 'https://notion.so/team');
-      expect(item['text'] as String, isNot(contains('http')));
+          tasks: [task], rooms: [room], roomUrl: 't.me/+team', now: _now).single;
+      expect((item['text'] as String).split('\n'), [
+        '[체크리스트 업무] 보고서',
+        '[마감기한] 10월 6일 (화) 10:55 (10분 전)',
+        '[텔레그램 업무방] https://t.me/+team',
+        '[업무링크] https://notion.so/team',
+        '[업무링크] https://example.com/a',
+      ]);
+      expect(item['buttons'], [
+        {'text': '💬 텔레그램 업무방', 'url': 'https://t.me/+team'},
+      ]);
+
+      // 링크가 없으면 그 줄은 빠진다
+      final plain = buildTelegramReminders(
+          tasks: [task], rooms: const [], now: _now).single;
+      expect((plain['text'] as String).split('\n'), hasLength(2));
+      expect(plain['text'] as String, isNot(contains('http')));
+      expect(plain['buttons'], isEmpty);
     });
 
     test('너무 많으면 가까운 알림부터 300개만 올린다', () {
