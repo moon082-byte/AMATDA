@@ -68,6 +68,7 @@ class _TelegramSyncHostState extends State<TelegramSyncHost>
         tasks: _rooms.tasks,
         rooms: _rooms.rooms,
         routines: _routines.routines,
+        roomUrl: _link.roomUrl,
         now: DateTime.now(),
       ));
     });

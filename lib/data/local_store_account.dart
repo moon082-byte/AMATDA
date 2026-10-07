@@ -46,6 +46,13 @@ extension LocalStoreAccount on LocalStore {
       ? _prefs.remove(_key(_tgNameKey))
       : _prefs.setString(_key(_tgNameKey), name);
 
+  /// 설정의 텔레그램 업무방 링크 (계정 단위, 서버 값을 받기 전에 쓰기용)
+  String? loadTelegramRoomUrl() => _prefs.getString(_key('telegram_room_url'));
+
+  Future<void> saveTelegramRoomUrl(String url) => url.isEmpty
+      ? _prefs.remove(_key('telegram_room_url'))
+      : _prefs.setString(_key('telegram_room_url'), url);
+
   /// PIN을 켰는지 마지막으로 확인한 값 (계정 단위). 오프라인일 때 앱을 열지 판단한다.
   bool? get pinEnabled => _prefs.getBool(_key('pin_enabled'));
 
