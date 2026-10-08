@@ -4,6 +4,7 @@ import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 import '../utils/date_format.dart';
 import '../utils/links.dart';
+import 'launch_link.dart';
 
 /// 봇 서버에 한 번에 올릴 수 있는 알림 수 (봇 서버 MAX_REMINDERS와 같음)
 const kMaxTelegramReminders = 300;
@@ -15,25 +16,19 @@ const kRoutineDaysAhead = 7;
 /// - 앞으로 울릴 알림은 모두 포함 (루틴은 앞으로 [kRoutineDaysAhead]일 치)
 /// - 이미 지난 알림은 항목마다 가장 최근 것 하나만 포함(마감이 12시간 넘게 지났으면 제외)
 /// - 메시지 문구는 이 기기 시간대 기준으로 미리 만들어 보낸다
-/// - 메시지에 [텔레그램 업무방]([roomUrl], 설정에서 입력)과 [업무링크](업무방에 등록한 링크) 줄을 넣고,
-///   업무방 링크는 메시지 아래 버튼으로도 붙인다. 링크가 없으면 그 줄·버튼은 뺀다.
+/// - 할 일 알림에는 [업무링크](업무방에 등록한 링크) 줄을 넣는다 (없으면 뺀다)
+/// - 메시지 아래 [앱에서 보기] 버튼: 누르면 해당 항목 화면이 바로 열린다
 List<Map<String, Object>> buildTelegramReminders({
   required List<TaskItem> tasks,
   required List<TelegramRoom> rooms,
   List<Routine> routines = const [],
-  String roomUrl = '',
   required DateTime now,
 }) {
   final result = <Map<String, Object>>[];
   final staleBefore = now.subtract(const Duration(hours: 12));
-  final room = normalizeUrl(roomUrl);
-  final roomLink = room.startsWith('http') ? room : null;
-  final buttons = [
-    if (roomLink != null) {'text': '💬 텔레그램 업무방', 'url': roomLink},
-  ];
 
   void add(String kind, String id, DateTime? due, List<TaskReminder> reminders,
-      String Function(TaskReminder) text) {
+      String Function(TaskReminder) text, String openKind, String openId) {
     if (due == null || due.isBefore(staleBefore) || reminders.isEmpty) return;
     final sorted = sortReminders(reminders);
     final passed = sorted.where((r) => !r.fireAt(due).isAfter(now));
@@ -48,7 +43,9 @@ List<Map<String, Object>> buildTelegramReminders({
         'fireAt': at.millisecondsSinceEpoch,
         'dueAt': due.millisecondsSinceEpoch,
         'text': text(r),
-        'buttons': buttons,
+        'buttons': [
+          {'text': '📱 앱에서 보기', 'url': appLinkFor(openKind, openId)},
+        ],
       });
     }
   }
@@ -58,7 +55,7 @@ List<Map<String, Object>> buildTelegramReminders({
     final workLinks =
         rooms.where((r) => r.id == t.roomId).firstOrNull?.workLinks ?? const [];
     add('task', t.id, t.dueDate, t.reminders,
-        (r) => _message('[체크리스트 업무] ${t.title}', t.dueDate!, r, roomLink, workLinks));
+        (r) => _message(t.title, t.dueDate!, r, workLinks), 'task', t.id);
   }
   final yesterday = DateTime(now.year, now.month, now.day - 1);
   final until = now.add(const Duration(days: kRoutineDaysAhead));
@@ -67,7 +64,7 @@ List<Map<String, Object>> buildTelegramReminders({
       if (at.isAfter(until) || routine.isDoneOn(at)) continue;
       // 같은 루틴이라도 날짜마다 다른 알림이므로 날짜를 붙여 구분한다
       add('routine', '${routine.id}:${dayKey(at)}', at, routine.remindersFor(at),
-          (r) => _routineMessage(routine, at, r, roomLink));
+          (r) => _routineMessage(routine, at, r), 'routine', routine.id);
     }
   }
 
@@ -76,21 +73,18 @@ List<Map<String, Object>> buildTelegramReminders({
   return result.take(kMaxTelegramReminders).toList();
 }
 
-String _message(String title, DateTime due, TaskReminder r, String? roomLink,
-    List<String> workLinks) {
+String _message(String title, DateTime due, TaskReminder r, List<String> workLinks) {
   return [
-    title,
+    '[체크리스트 업무] $title',
     '[마감기한] ${formatDateWithWeekday(due)} ${formatTime(due)} (${r.label})',
-    if (roomLink != null) '[텔레그램 업무방] $roomLink',
     for (final link in workLinks.map(normalizeUrl))
       if (link.startsWith('http')) '[업무링크] $link',
   ].join('\n');
 }
 
-String _routineMessage(Routine routine, DateTime at, TaskReminder r, String? roomLink) {
+String _routineMessage(Routine routine, DateTime at, TaskReminder r) {
   return [
     '[루틴] ${routine.name}',
     '[일시] ${formatDateWithWeekday(at)} ${formatTime(at)} · ${routine.repeatLabel} (${r.label})',
-    if (roomLink != null) '[텔레그램 업무방] $roomLink',
   ].join('\n');
 }

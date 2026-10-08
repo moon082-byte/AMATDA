@@ -6,6 +6,7 @@ extension LocalStoreAccount on LocalStore {
   static const _syncKey = 'sync_v1';
   static const _tgNameKey = 'telegram_chat';
   static const _importKey = 'legacy_import_done';
+  static const _launchKey = 'pending_launch_v1';
 
   /// 로그인 토큰과 사용자 정보 (기기 단위). 없으면 null.
   ({String token, Map<String, dynamic> user})? loadSession() {
@@ -46,12 +47,24 @@ extension LocalStoreAccount on LocalStore {
       ? _prefs.remove(_key(_tgNameKey))
       : _prefs.setString(_key(_tgNameKey), name);
 
-  /// 설정의 텔레그램 업무방 링크 (계정 단위, 서버 값을 받기 전에 쓰기용)
-  String? loadTelegramRoomUrl() => _prefs.getString(_key('telegram_room_url'));
+  /// 구글 로그인으로 넘어가는 동안 기억해 둔 '열려던 항목' (기기 단위, 30분 동안만 유효).
+  /// 꺼내면 지운다.
+  String? takePendingLaunch({DateTime? now}) {
+    final raw = _prefs.getString(_launchKey);
+    if (raw == null) return null;
+    _prefs.remove(_launchKey);
+    try {
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      final at = DateTime.fromMillisecondsSinceEpoch(j['at'] as int);
+      final fresh = (now ?? DateTime.now()).difference(at) < const Duration(minutes: 30);
+      return fresh ? j['value'] as String : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
-  Future<void> saveTelegramRoomUrl(String url) => url.isEmpty
-      ? _prefs.remove(_key('telegram_room_url'))
-      : _prefs.setString(_key('telegram_room_url'), url);
+  Future<void> savePendingLaunch(String value) => _prefs.setString(_launchKey,
+      jsonEncode({'value': value, 'at': DateTime.now().millisecondsSinceEpoch}));
 
   /// PIN을 켰는지 마지막으로 확인한 값 (계정 단위). 오프라인일 때 앱을 열지 판단한다.
   bool? get pinEnabled => _prefs.getBool(_key('pin_enabled'));

@@ -16,7 +16,6 @@ const _api = 'https://bot.example.dev';
 /// 봇 서버 흉내: 계정 하나의 텔레그램 연결 상태와 받은 일정을 기억한다
 class _FakeBot {
   bool linked = false;
-  String roomUrl = '';
   int codes = 0;
   final puts = <List<dynamic>>[];
   late final client = MockClient((req) async {
@@ -26,11 +25,7 @@ class _FakeBot {
         headers: {'content-type': 'application/json; charset=utf-8'});
     if (path == '/api/telegram/code') return ok({'code': 'code${++codes}'});
     if (path == '/api/telegram' && req.method == 'GET') {
-      return ok({'linked': linked, 'name': linked ? '민준' : null, 'roomUrl': roomUrl});
-    }
-    if (path == '/api/telegram/room' && req.method == 'PUT') {
-      roomUrl = (jsonDecode(req.body) as Map)['url'] as String;
-      return ok({'roomUrl': roomUrl});
+      return ok({'linked': linked, 'name': linked ? '민준' : null});
     }
     if (path == '/api/telegram' && req.method == 'DELETE') {
       linked = false;
@@ -121,23 +116,6 @@ void main() {
       expect(link.linked, isFalse);
       expect(link.pending, isFalse);
       expect(bot.linked, isFalse);
-    });
-
-    test('업무방 링크는 계정에 저장되고, 다른 기기에서 바꾼 값도 받아온다', () async {
-      final bot = _FakeBot()..linked = true;
-      final store = (await LocalStore.open()).forUser('u_1');
-      final link = TelegramLink(api: bot.api, store: store, botUsername: 'b');
-      await link.refresh();
-      expect(link.roomUrl, '');
-
-      expect(await link.saveRoomUrl('https://t.me/+team'), isNull);
-      expect(bot.roomUrl, 'https://t.me/+team');
-      expect(TelegramLink(api: bot.api, store: store).roomUrl, 'https://t.me/+team',
-          reason: '다시 열어도 서버 응답 전에 바로 쓸 수 있다');
-
-      bot.roomUrl = 'https://t.me/+other'; // 다른 기기에서 바꿈
-      expect(await link.refresh(), isTrue);
-      expect(link.roomUrl, 'https://t.me/+other');
     });
 
     test('텔레그램에서 /stop 하면 다음 업로드 때 연결 해제로 바뀐다', () async {

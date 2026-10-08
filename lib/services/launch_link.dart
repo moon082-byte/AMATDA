@@ -16,8 +16,11 @@ String appLinkFor(String kind, String id) =>
     '$kAppUrl?$_param=$kind:${Uri.encodeQueryComponent(id)}';
 
 /// 주소에서 열 항목을 읽는다. 형식이 맞지 않으면 null.
-LaunchTarget? parseLaunchTarget(Uri uri) {
-  final value = uri.queryParameters[_param];
+LaunchTarget? parseLaunchTarget(Uri uri) =>
+    _parseValue(uri.queryParameters[_param]);
+
+/// `task:<id>` → 열 항목. 형식이 맞지 않으면 null.
+LaunchTarget? _parseValue(String? value) {
   final sep = value?.indexOf(':') ?? -1;
   if (value == null || sep <= 0) return null;
   final kind = value.substring(0, sep);
@@ -47,6 +50,15 @@ LoginResult captureStartupParams() {
   }
   return login;
 }
+
+/// 아직 열지 않은 항목 (`task:<id>` 형식, 없으면 null). 로그인하러 떠나기 전에 저장해 둔다.
+String? pendingLaunchValue() {
+  final t = _pending;
+  return t == null ? null : '${t.kind}:${t.id}';
+}
+
+/// 로그인하고 돌아왔을 때 저장해 둔 항목을 되살린다
+void restoreLaunchTarget(String? value) => _pending ??= _parseValue(value);
 
 /// 기억해 둔 항목을 꺼낸다 (한 번만)
 LaunchTarget? takeLaunchTarget() {

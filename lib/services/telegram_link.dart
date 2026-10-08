@@ -15,7 +15,6 @@ class TelegramLink extends ChangeNotifier {
   final String botUsername;
 
   String? _name;
-  String _roomUrl;
   String? _code;
   DateTime? _codeAt;
   bool _pending = false;
@@ -27,8 +26,7 @@ class TelegramLink extends ChangeNotifier {
     LocalStore? store,
     this.botUsername = kBotUsername,
   })  : _store = store,
-        _name = store?.loadTelegramName(),
-        _roomUrl = store?.loadTelegramRoomUrl() ?? '';
+        _name = store?.loadTelegramName();
 
   /// 로그인돼 있고 봇 아이디가 설정돼 있어야 쓸 수 있다
   bool get available => _api != null && botUsername.isNotEmpty;
@@ -37,8 +35,6 @@ class TelegramLink extends ChangeNotifier {
   /// 텔레그램을 열었고 '시작'을 기다리는 중
   bool get pending => _pending && !linked;
   String? get chatName => _name;
-  /// 설정에 넣은 텔레그램 업무방 링크 (알림 메시지에 넣는다, 없으면 '')
-  String get roomUrl => _roomUrl;
 
   bool get _codeFresh =>
       _code != null && DateTime.now().difference(_codeAt!) < _codeLifetime;
@@ -80,8 +76,7 @@ class TelegramLink extends ChangeNotifier {
       final name =
           res['linked'] == true ? (res['name'] as String? ?? '') : null;
       if (name == null) prepare();
-      final roomChanged = _setRoomUrl(res['roomUrl'] as String? ?? '');
-      if (name == _name) return roomChanged;
+      if (name == _name) return false;
       _setName(name);
       return true;
     } on ApiException catch (e) {
@@ -99,26 +94,6 @@ class TelegramLink extends ChangeNotifier {
     } on ApiException catch (e) {
       debugPrint('텔레그램 연결 해제 요청 실패: $e');
     }
-  }
-
-  /// 업무방 링크를 저장한다 (모든 기기에 적용). 실패하면 이유를 돌려준다.
-  Future<String?> saveRoomUrl(String url) async {
-    if (!available) return '로그인이 필요해요';
-    try {
-      final res = await _api!.put('/api/telegram/room', {'url': url});
-      _setRoomUrl(res['roomUrl'] as String? ?? '');
-      return null;
-    } on ApiException catch (e) {
-      return e.isOffline ? '인터넷 연결 후 다시 시도해 주세요' : e.message;
-    }
-  }
-
-  bool _setRoomUrl(String url) {
-    if (url == _roomUrl) return false;
-    _roomUrl = url;
-    _store?.saveTelegramRoomUrl(url);
-    notifyListeners(); // 알림 일정도 새 링크로 다시 올라간다
-    return true;
   }
 
   /// 알림 일정을 봇 서버에 올린다 (바뀐 게 없으면 보내지 않는다)
