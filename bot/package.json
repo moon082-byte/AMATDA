@@ -4,13 +4,14 @@
   "type": "module",
   "description": "아맞다 텔레그램 알림봇 (Cloudflare Worker)",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test \"test/*.test.js\"",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute amatda-bot --remote --file=schema.sql && npm run db:migrate:accounts && npm run db:migrate:pin && npm run db:migrate:tgroom",
+    "db:init": "wrangler d1 execute amatda-bot --remote --file=schema.sql && npm run db:migrate:accounts && npm run db:migrate:pin && npm run db:migrate:tgroom && npm run db:migrate:nag",
     "db:migrate": "wrangler d1 execute amatda-bot --remote --file=migrations/0001_reminder_buttons.sql",
     "db:migrate:accounts": "wrangler d1 execute amatda-bot --remote --file=migrations/0002_accounts.sql",
     "db:migrate:pin": "wrangler d1 execute amatda-bot --remote --file=migrations/0003_pin.sql",
     "db:migrate:tgroom": "wrangler d1 execute amatda-bot --remote --file=migrations/0004_tg_room_url.sql",
+    "db:migrate:nag": "wrangler d1 execute amatda-bot --remote --file=migrations/0005_nag.sql",
     "logs": "wrangler tail"
   },
   "devDependencies": {

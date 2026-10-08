@@ -9,27 +9,26 @@
 // 데이터 (로그인 필요, Authorization: Bearer <토큰>)
 // - POST /api/sync                            바뀐 데이터 올리기·받기 (sync.js)
 // - POST /api/telegram/code                   텔레그램 연결 코드 만들기 → t.me/<봇>?start=<코드>
-// - GET/DELETE /api/telegram                  텔레그램 연결 확인(+업무방 링크)·끊기
-// - PUT  /api/telegram/room                   텔레그램 업무방 링크 저장 (알림 메시지에 넣는다)
+// - GET/DELETE /api/telegram                  텔레그램 연결 확인·끊기 (tg_routes.js)
+// - PUT  /api/telegram/nag                    끈질긴 알림 켜기·끄기
 // - PUT  /api/reminders                       알림 일정 전체 올리기
+// - POST /api/reminders/ack                   끈질긴 알림 끄기 (앱의 [앱에서 보기]로 연 경우)
 // 텔레그램
 // - POST /telegram/webhook, GET /setup, GET /api/info
-// - 1분마다(cron) 시각이 된 알림을 텔레그램으로 보낸다
+// - 1분마다(cron) 시각이 된 알림을 텔레그램으로 보낸다 (끈질긴 알림은 nag.js)
 // 예전 앱 호환 (로그인 전환이 끝나면 지운다): GET/DELETE /api/link/:code, PUT /api/reminders/:code
 //
 // 필요한 설정: 비밀값 BOT_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS, OWNER_EMAIL, PIN_PEPPER
 //            D1 바인딩 DB, 변수 ALLOWED_ORIGINS(쉼표로 구분)
 
 import { exchangeLogin, finishLogin, logout, publicUser, requireUser, startLogin } from './auth.js';
-import { getLink, putState, replaceReminders, unlinkCodes } from './db.js';
+import { getLink, replaceReminders, unlinkCodes } from './db.js';
 import { HttpError, cors, json, readJson, text, validate } from './http.js';
-import { CODE_PATTERN, sanitizeReminders, sanitizeRoomUrl } from './logic.js';
-import { randomToken } from './crypto.js';
+import { CODE_PATTERN, sanitizeReminders } from './logic.js';
 import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
 import { sync } from './sync.js';
 import { botInfo, sendDueReminders, setup, webhook } from './telegram.js';
-
-const TG_CODE_TTL = 30 * 60 * 1000;
+import { telegramRoute } from './tg_routes.js';
 
 export default {
   async fetch(request, env) {
@@ -63,7 +62,8 @@ async function route(request, env) {
   if (path === '/auth/google/callback' && method === 'GET') return finishLogin(url, env);
   if (path === '/auth/exchange' && method === 'POST') return reply(await exchangeLogin(await readJson(request), env));
 
-  const legacy = /^\/api\/(link|reminders)\/([^/]+)$/.exec(path);
+  // 예전 앱 호환 주소 (/api/reminders/ack는 로그인 API라 제외)
+  const legacy = path === '/api/reminders/ack' ? null : /^\/api\/(link|reminders)\/([^/]+)$/.exec(path);
   if (legacy) return legacyRoute(legacy[1], legacy[2], request, env, reply);
 
   // ---- 여기부터는 로그인 필요 ----
@@ -83,33 +83,8 @@ async function route(request, env) {
   }
   if (path === '/api/sync' && method === 'POST') return reply(await sync(user, await readJson(request), env));
 
-  if (path === '/api/telegram/code' && method === 'POST') {
-    const code = randomToken(24);
-    await putState(env, { state: code, kind: 'tg', userId: user.id, ttlMs: TG_CODE_TTL });
-    return reply({ code });
-  }
-  if (path === '/api/telegram' && method === 'GET') {
-    const link = await getLink(env, user.id);
-    const me = await env.DB.prepare('SELECT tg_room_url FROM users WHERE id = ?').bind(user.id).first();
-    return reply({ linked: !!link, name: link?.chat_name ?? null, roomUrl: me?.tg_room_url ?? '' });
-  }
-  if (path === '/api/telegram/room' && method === 'PUT') {
-    const raw = await readJson(request);
-    const url = validate(() => sanitizeRoomUrl(raw?.url));
-    await env.DB.prepare('UPDATE users SET tg_room_url = ? WHERE id = ?').bind(url || null, user.id).run();
-    return reply({ roomUrl: url });
-  }
-  if (path === '/api/telegram' && method === 'DELETE') {
-    await unlinkCodes(env, [user.id]);
-    return reply({ linked: false });
-  }
-  if (path === '/api/reminders' && method === 'PUT') {
-    if (!(await getLink(env, user.id))) return reply({ linked: false }, 404);
-    const raw = await readJson(request);
-    const items = validate(() => sanitizeReminders(raw));
-    await replaceReminders(env, user.id, items);
-    return reply({ ok: true, count: items.length });
-  }
+  const tgReply = await telegramRoute(path, method, user, request, env);
+  if (tgReply) return reply(...tgReply);
   return reply({ error: '없는 주소예요' }, 404);
 }
 

@@ -1,13 +1,18 @@
 // 텔레그램 처리: 웹훅 명령어, 웹훅 등록, 1분마다 알림 발송
 
-import { codesForChat, markSent, pendingCount, takeState, unlinkCodes } from './db.js';
-import { CODE_PATTERN, MESSAGES, STALE_MS, cleanupBefore, inlineKeyboard, parseCommand } from './logic.js';
+import { ackReminder, codesForChat, markDelivered, pendingCount, takeState, unlinkCodes } from './db.js';
+import { CODE_PATTERN, MESSAGES, STALE_MS, cleanupBefore, parseCommand } from './logic.js';
+import { afterSend, nagKeyboard, nagText } from './nag.js';
 
 export async function webhook(request, env) {
   if (request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== (await webhookSecret(env))) {
     return new Response('forbidden', { status: 403 });
   }
   const update = await request.json();
+  if (update.callback_query) {
+    await onButton(env, update.callback_query);
+    return new Response('ok');
+  }
   const msg = update.message ?? update.channel_post;
   const cmd = parseCommand(msg?.text);
   if (!msg || !cmd) return new Response('ok');
@@ -45,6 +50,20 @@ export async function webhook(request, env) {
   return new Response('ok');
 }
 
+/** 메시지 아래 [✅ 확인]을 누르면 끈질긴 알림을 끄고 버튼을 '확인함'으로 바꾼다 */
+async function onButton(env, cq) {
+  const ackId = /^ack:(.+)$/.exec(cq.data ?? '')?.[1];
+  const ok = !!ackId && (await ackReminder(env, ackId, { chatId: cq.message?.chat?.id }));
+  const text = ok ? '확인했어요. 다시 알리지 않을게요' : cq.data === 'done' ? '이미 확인했어요' : '지난 알림이에요';
+  await tg(env, 'answerCallbackQuery', { callback_query_id: cq.id, text });
+  if (!ok || !cq.message) return;
+  const inline_keyboard = (cq.message.reply_markup?.inline_keyboard ?? []).map((row) =>
+    row.map((b) => (b.callback_data === cq.data ? { text: '✅ 확인함', callback_data: 'done' } : b)));
+  await tg(env, 'editMessageReplyMarkup', {
+    chat_id: cq.message.chat.id, message_id: cq.message.message_id, reply_markup: { inline_keyboard },
+  });
+}
+
 /** 봇 아이디·이름 (공개 정보). 앱 설정에 넣을 봇 아이디를 확인할 때 쓴다. */
 export async function botInfo(env) {
   const me = await tg(env, 'getMe', {});
@@ -55,7 +74,7 @@ export async function setup(url, env) {
   const hook = await tg(env, 'setWebhook', {
     url: `${url.origin}/telegram/webhook`,
     secret_token: await webhookSecret(env),
-    allowed_updates: ['message', 'channel_post'],
+    allowed_updates: ['message', 'channel_post', 'callback_query'],
   });
   await tg(env, 'setMyCommands', {
     commands: [
@@ -88,32 +107,42 @@ export async function tg(env, method, payload) {
 /** 무료 요금제의 요청당 외부 호출 제한(50)을 넘지 않도록 1분에 보내는 최대 건수 */
 const SEND_LIMIT = 30;
 
+/**
+ * 시각이 된 알림을 보낸다. 끈질긴 알림을 켠 계정은 확인하지 않은 알림을 5분마다 최대 3번 더 보낸다.
+ * (예전 앱 연결처럼 계정이 없는 연결은 끈질긴 알림을 쓰지 않는다)
+ */
 export async function sendDueReminders(env) {
   const now = Date.now();
   const { results } = await env.DB.prepare(
-    `SELECT r.code, r.key, r.text, r.buttons, l.chat_id FROM reminders r
-     JOIN links l ON l.code = r.code
-     WHERE r.sent = 0 AND r.fire_at <= ? AND r.due_at >= ?
-     ORDER BY r.fire_at LIMIT ${SEND_LIMIT}`,
-  ).bind(now, now - STALE_MS).all();
+    `SELECT r.code, r.key, r.text, r.buttons, r.ack_id, r.sent, r.repeats, l.chat_id,
+            COALESCE(u.nag_enabled, 0) AS nag
+     FROM reminders r JOIN links l ON l.code = r.code LEFT JOIN users u ON u.id = l.user_id
+     WHERE r.due_at >= ?1 AND (
+       (r.sent = 0 AND r.fire_at <= ?2) OR
+       (r.sent = 1 AND r.acked = 0 AND r.next_at <= ?2 AND COALESCE(u.nag_enabled, 0) = 1))
+     ORDER BY CASE WHEN r.sent = 0 THEN r.fire_at ELSE r.next_at END LIMIT ${SEND_LIMIT}`,
+  ).bind(now - STALE_MS, now).all();
 
   const done = [];
   const blocked = new Set();
   for (const row of results) {
     if (blocked.has(row.code)) continue;
-    const message = { chat_id: row.chat_id, text: row.text };
-    const keyboard = inlineKeyboard(row.buttons);
+    const nag = row.nag === 1 && !!row.ack_id;
+    const message = { chat_id: row.chat_id, text: nagText(row.text, row.sent ? row.repeats + 2 : 1) };
+    const keyboard = nagKeyboard(row.buttons, nag ? row.ack_id : null);
     let res = await tg(env, 'sendMessage', keyboard ? { ...message, reply_markup: keyboard } : message);
     // 버튼 주소를 텔레그램이 거부하면 버튼 없이 글만 다시 보낸다
     if (res.status === 400 && keyboard) res = await tg(env, 'sendMessage', message);
     if (res.status === 403) {
       blocked.add(row.code); // 사용자가 봇을 차단함
-    } else if (res.ok || res.status === 400) {
-      // 400(잘못된 요청)은 다시 보내도 실패하므로 보낸 것으로 처리한다
-      done.push(row);
+    } else if (res.ok) {
+      done.push(afterSend(row, nag, now));
+    } else if (res.status === 400) {
+      // 400(잘못된 요청)은 다시 보내도 실패하므로 보낸 것으로 처리하고 더 보내지 않는다
+      done.push(afterSend(row, false, now));
     }
   }
-  await markSent(env, done);
+  await markDelivered(env, done);
   await unlinkCodes(env, [...blocked]);
   await env.DB.prepare('DELETE FROM reminders WHERE due_at < ?').bind(cleanupBefore(now)).run();
 }

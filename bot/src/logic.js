@@ -51,17 +51,6 @@ export function sanitizeButtons(list) {
   return result;
 }
 
-/** 저장된 버튼(JSON)을 텔레그램 인라인 키보드로 바꾼다 (한 줄에 버튼 하나). 없으면 undefined. */
-export function inlineKeyboard(buttonsJson) {
-  let buttons;
-  try {
-    buttons = sanitizeButtons(JSON.parse(buttonsJson ?? '[]'));
-  } catch {
-    return undefined;
-  }
-  return buttons.length ? { inline_keyboard: buttons.map((b) => [b]) } : undefined;
-}
-
 /** 설정의 텔레그램 업무방 링크: http(s) 주소만, 비우면 ''. 잘못된 주소면 예외. */
 export function sanitizeRoomUrl(value) {
   const url = typeof value === 'string' ? value.trim() : '';

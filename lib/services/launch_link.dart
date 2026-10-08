@@ -7,9 +7,17 @@ import 'launch_url_cleanup.dart';
 typedef LaunchTarget = ({String kind, String id});
 
 const _param = 'open';
+const _ackParam = 'ack';
 const _kinds = {'task', 'room', 'routine'};
+final _ackPattern = RegExp(r'^[0-9a-f]{24}$');
 
 LaunchTarget? _pending;
+
+/// 끈질긴 알림 확인값 (`?ack=`): 앱에서 열면 그 알림을 더 보내지 않게 서버에 알린다
+String? _pendingAck;
+
+String? _validAck(String? value) =>
+    value != null && _ackPattern.hasMatch(value) ? value : null;
 
 /// [kind] 항목 [id]를 바로 여는 앱 주소
 String appLinkFor(String kind, String id) =>
@@ -38,9 +46,11 @@ LoginResult captureStartupParams() {
   final uri = Uri.base;
   _pending = parseLaunchTarget(uri);
   final params = uri.queryParameters;
+  _pendingAck = _pending == null ? null : _validAck(params[_ackParam]);
   final login = (code: params['login'], error: params['login_error']);
   final rest = Map.of(params)
     ..remove(_param)
+    ..remove(_ackParam)
     ..remove('login')
     ..remove('login_error');
   if (rest.length != params.length) {
@@ -51,14 +61,30 @@ LoginResult captureStartupParams() {
   return login;
 }
 
-/// 아직 열지 않은 항목 (`task:<id>` 형식, 없으면 null). 로그인하러 떠나기 전에 저장해 둔다.
+/// 아직 열지 않은 항목 (`open=task:<id>&ack=...` 형식, 없으면 null). 로그인하러 떠나기 전에 저장해 둔다.
 String? pendingLaunchValue() {
   final t = _pending;
-  return t == null ? null : '${t.kind}:${t.id}';
+  if (t == null) return null;
+  return Uri(queryParameters: {
+    _param: '${t.kind}:${t.id}',
+    _ackParam: ?_pendingAck,
+  }).query;
 }
 
 /// 로그인하고 돌아왔을 때 저장해 둔 항목을 되살린다
-void restoreLaunchTarget(String? value) => _pending ??= _parseValue(value);
+void restoreLaunchTarget(String? value) {
+  if (_pending != null || value == null) return;
+  final params = Uri(query: value).queryParameters;
+  _pending = _parseValue(params[_param]);
+  _pendingAck = _pending == null ? null : _validAck(params[_ackParam]);
+}
+
+/// 끈질긴 알림 확인값을 꺼낸다 (한 번만)
+String? takeLaunchAck() {
+  final ack = _pendingAck;
+  _pendingAck = null;
+  return ack;
+}
 
 /// 기억해 둔 항목을 꺼낸다 (한 번만)
 LaunchTarget? takeLaunchTarget() {
@@ -69,4 +95,7 @@ LaunchTarget? takeLaunchTarget() {
 
 /// 테스트에서 [앱에서 보기]로 들어온 상황을 흉내 낸다
 @visibleForTesting
-void debugSetLaunchTarget(LaunchTarget? target) => _pending = target;
+void debugSetLaunchTarget(LaunchTarget? target, {String? ack}) {
+  _pending = target;
+  _pendingAck = ack;
+}

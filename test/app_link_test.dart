@@ -10,6 +10,8 @@ import 'package:flutter_application_amatda/services/auth_service.dart';
 import 'package:flutter_application_amatda/services/launch_link.dart';
 import 'support/fake_server.dart';
 
+const _ack = 'abababababababababababab';
+
 Future<(LocalStore, AuthService)> _auth(FakeServer server) async {
   final store = await LocalStore.open();
   return (store, AuthService(store: store, client: server.client, apiUrl: 'https://api.test'));
@@ -23,12 +25,13 @@ void main() {
 
   test('[앱에서 보기]로 왔다가 로그인하러 떠나도, 돌아오면 그 항목을 연다', () async {
     final (store, auth) = await _auth(FakeServer());
-    debugSetLaunchTarget((kind: 'task', id: 't9'));
+    debugSetLaunchTarget((kind: 'task', id: 't9'), ack: _ack);
     await store.savePendingLaunch(pendingLaunchValue()!); // signIn()이 떠나기 전에 하는 일
     debugSetLaunchTarget(null); // 페이지를 떠나면 메모리는 사라진다
 
     await auth.init(loginCode: 'login-ok');
     expect(takeLaunchTarget(), (kind: 'task', id: 't9'));
+    expect(takeLaunchAck(), _ack, reason: '끈질긴 알림 확인값도 함께 기억한다');
     expect(store.takePendingLaunch(), isNull, reason: '한 번 쓰면 지운다');
   });
 
@@ -44,7 +47,7 @@ void main() {
     expect(store.takePendingLaunch(now: later), isNull);
   });
 
-  testWidgets('처음 로그인한 기기에서도 동기화를 기다렸다가 할 일을 펼쳐서 연다', (tester) async {
+  testWidgets('처음 로그인한 기기에서도 동기화를 기다렸다가 할 일을 펼쳐서 열고, 끈질긴 알림을 끈다', (tester) async {
     tester.view.physicalSize = const Size(390 * 2, 844 * 2);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
@@ -64,7 +67,7 @@ void main() {
       'deleted': false,
       'version': ++server.version,
     };
-    debugSetLaunchTarget((kind: 'task', id: 't9'));
+    debugSetLaunchTarget((kind: 'task', id: 't9'), ack: _ack);
     final (store, auth) = await tester.runAsync(() => _auth(server)).then((v) => v!);
     await tester.runAsync(() => auth.init(loginCode: 'login-ok'));
 
@@ -76,5 +79,6 @@ void main() {
     expect(find.text('서버에만 있는 할 일'), findsWidgets);
     expect(find.text('세부 체크리스트'), findsOneWidget, reason: '할 일이 펼쳐져 있다');
     expect(find.textContaining('진행 중인 할 일'), findsOneWidget); // 오늘 할일 화면
+    expect(server.acks, [_ack]);
   });
 }

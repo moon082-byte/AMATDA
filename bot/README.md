@@ -17,6 +17,8 @@ Cloudflare Workers(무료 플랜)에서 돌아갑니다.
    ```
    메시지 아래에는 [📱 앱에서 보기] 버튼이 붙어, 누르면 그 할 일 화면이 바로 열립니다
    (로그인 전이면 로그인 후 이어서 엽니다). 텔레그램이 버튼 주소를 거부하면 글만 보냅니다.
+5. **끈질긴 알림**(설정에서 켜기/끄기, 기본 켬): [✅ 확인]을 누르거나 [📱 앱에서 보기]로 앱을 열 때까지
+   5분마다 최대 3번 더 보냅니다(`🔁 다시 알림 (2/4)`). 앱에서 그 할 일·루틴을 완료해도 멈춥니다.
 
 서버에 저장되는 것: 구글 계정(번호·이메일·이름), 로그인 세션(토큰의 해시), 계정별 앱 데이터(업무방·할 일·세부 항목·메모·루틴),
 텔레그램 대화방 번호와 이름, 알림 일정(할 일 제목·마감 시각 문구).
@@ -105,6 +107,7 @@ npm run db:migrate           # migrations/0001_reminder_buttons.sql: 링크 버�
 npm run db:migrate:accounts  # migrations/0002_accounts.sql: 사용자·세션·동기화 표, 계정별 텔레그램 연결
 npm run db:migrate:pin       # migrations/0003_pin.sql: 2차 비밀번호(PIN) 칸
 npm run db:migrate:tgroom    # migrations/0004_tg_room_url.sql: 계정별 텔레그램 업무방 링크 칸
+npm run db:migrate:nag       # migrations/0005_nag.sql: 끈질긴 알림 (적용 후 /setup 을 한 번 다시 열어 웹훅 갱신)
 npm run deploy
 ```
 
@@ -123,8 +126,10 @@ npm run deploy
 | `POST /api/telegram/code` | 텔레그램 연결 코드 만들기 🔒 |
 | `GET` / `DELETE /api/telegram` | 텔레그램 연결 확인(업무방 링크 포함) / 끊기 🔒 |
 | `PUT /api/telegram/room` | 텔레그램 업무방 링크 저장 (지금 앱은 쓰지 않음, 예전 버전 호환용) 🔒 |
+| `PUT /api/telegram/nag` | 끈질긴 알림 켜기·끄기 (`{"enabled": true}`) 🔒 |
 | `PUT /api/reminders` | 알림 일정 전체 올리기 🔒 |
-| `POST /telegram/webhook` | 텔레그램이 보내는 메시지 (`/start <코드>`, `/stop`, `/status`) |
+| `POST /api/reminders/ack` | 끈질긴 알림 끄기 (`{"ack": "<확인값>"}`, 앱의 [앱에서 보기]로 연 경우) 🔒 |
+| `POST /telegram/webhook` | 텔레그램이 보내는 메시지 (`/start <코드>`, `/stop`, `/status`)와 [✅ 확인] 버튼 누름 |
 | `GET /setup` | 텔레그램 웹훅·명령어 등록 (여러 번 호출해도 안전) |
 | `GET /api/info` | 봇 아이디·이름 확인 |
 | `GET/DELETE /api/link/:code`, `PUT /api/reminders/:code` | 로그인 전 앱 호환용 (전환이 끝나면 삭제) |
