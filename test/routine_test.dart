@@ -110,10 +110,12 @@ void main() {
       expect(list.map((r) => r['key']).toSet(), hasLength(7));
       expect(list.first['text'] as String, startsWith('[루틴] '));
       expect(list.first['text'] as String, contains('(정시)'));
-      expect(list.first['buttons'], isEmpty, reason: '업무방 링크가 없으면 버튼도 없다');
+      final buttons = list.first['buttons'] as List;
+      expect(buttons.single['text'], '📱 앱에서 보기');
+      expect(buttons.single['url'], endsWith('?open=routine:r1'));
     });
 
-    test('할 일 알림: 정해진 형식에 업무방 링크·업무링크 줄, 버튼은 업무방 링크 하나', () {
+    test('할 일 알림: 정해진 형식에 업무링크 줄, 버튼은 [앱에서 보기] 하나', () {
       final room = TelegramRoom(
         id: 'room1',
         name: '팀방',
@@ -132,24 +134,23 @@ void main() {
         createdAt: _now,
       );
       final item = buildTelegramReminders(
-          tasks: [task], rooms: [room], roomUrl: 't.me/+team', now: _now).single;
+          tasks: [task], rooms: [room], now: _now).single;
       expect((item['text'] as String).split('\n'), [
         '[체크리스트 업무] 보고서',
         '[마감기한] 10월 6일 (화) 10:55 (10분 전)',
-        '[텔레그램 업무방] https://t.me/+team',
         '[업무링크] https://notion.so/team',
         '[업무링크] https://example.com/a',
       ]);
-      expect(item['buttons'], [
-        {'text': '💬 텔레그램 업무방', 'url': 'https://t.me/+team'},
-      ]);
+      final buttons = item['buttons'] as List;
+      expect(buttons.single['text'], '📱 앱에서 보기');
+      expect(buttons.single['url'], endsWith('?open=task:t1'));
 
       // 링크가 없으면 그 줄은 빠진다
       final plain = buildTelegramReminders(
           tasks: [task], rooms: const [], now: _now).single;
       expect((plain['text'] as String).split('\n'), hasLength(2));
-      expect(plain['text'] as String, isNot(contains('http')));
-      expect(plain['buttons'], isEmpty);
+      expect(plain['text'] as String, isNot(contains('http')), reason: '업무링크가 없으면 그 줄은 빠진다');
+      expect(plain['buttons'], hasLength(1));
     });
 
     test('너무 많으면 가까운 알림부터 300개만 올린다', () {

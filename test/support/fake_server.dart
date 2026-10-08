@@ -25,9 +25,6 @@ class FakeServer {
   int pinLockedUntil = 0;
   int pinLevel = 0;
   bool telegram = true;
-  bool telegramLinked = false;
-  String roomUrl = '';
-  final reminderUploads = <List<dynamic>>[];
   bool freshLogin = false;
   String? resetCode;
   int now() => DateTime.now().millisecondsSinceEpoch;
@@ -56,14 +53,7 @@ class FakeServer {
     if (pin != null && !pinVerified) {
       return reply(423, {'error': 'PIN 확인이 필요해요', 'pinRequired': true});
     }
-    if (path == '/api/telegram') {
-      return ok({'linked': telegramLinked, 'name': '민준', 'roomUrl': roomUrl});
-    }
-    if (path == '/api/telegram/room') return ok({'roomUrl': roomUrl = body['url']});
-    if (path == '/api/reminders') {
-      reminderUploads.add(body['reminders'] as List);
-      return ok({'ok': true});
-    }
+    if (path == '/api/telegram') return ok({'linked': false});
     if (path == '/api/telegram/code') return ok({'code': 'c'});
     if (path == '/api/sync') return ok(_sync(body as Map<String, dynamic>));
     return reply(404, {'error': '없는 주소'});

@@ -3,25 +3,39 @@ import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import '../services/launch_link.dart';
+import '../services/sync_service.dart';
+import '../utils/maybe_provider.dart';
 import 'archive_view.dart';
 import 'room_detail_view.dart';
 import 'today_tasks_view.dart';
 
 /// 텔레그램 알림의 [앱에서 보기]로 들어왔으면 해당 항목 화면을 연다.
-/// 항목이 없으면(삭제됐거나 다른 기기·브라우저의 데이터) 안내만 띄운다.
-void openLaunchTarget(BuildContext context) {
+/// 이 기기에 아직 없으면(처음 로그인한 기기 등) 첫 동기화를 잠시 기다렸다가 다시 찾고,
+/// 그래도 없으면(삭제된 항목) 안내만 띄운다.
+Future<void> openLaunchTarget(BuildContext context) async {
   final target = takeLaunchTarget();
   if (target == null) return;
-  final page = _pageFor(context, target);
+  var page = _pageFor(context, target);
+  final sync = maybeProvider<SyncService>(context, listen: false);
+  if (page == null && sync != null) {
+    try {
+      await sync.firstSync.timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // 서버에 닿지 않으면 이 기기 데이터로만 판단한다
+    }
+    if (!context.mounted) return;
+    page = _pageFor(context, target);
+  }
   if (page == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('알림의 항목을 찾을 수 없어요. 삭제됐거나 다른 브라우저에서 만든 항목이에요.'),
+        content: Text('알림의 항목을 찾을 수 없어요. 이미 삭제된 항목이에요.'),
       ),
     );
     return;
   }
-  Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  final found = page;
+  Navigator.push(context, MaterialPageRoute(builder: (_) => found));
 }
 
 Widget? _pageFor(BuildContext context, LaunchTarget target) {
@@ -35,7 +49,7 @@ Widget? _pageFor(BuildContext context, LaunchTarget target) {
       if (roomId != null && rooms.roomById(roomId) != null) {
         return RoomDetailView(roomId: roomId, focusTaskId: task.id);
       }
-      return const TodayTasksView();
+      return TodayTasksView(focusTaskId: task.id);
     case 'room':
       return rooms.roomById(target.id) == null
           ? null

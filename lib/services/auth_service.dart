@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/bot_config.dart';
 import '../data/local_store.dart';
 import 'api_client.dart';
+import 'launch_link.dart';
 
 /// 로그인한 사용자
 class AppUser {
@@ -68,6 +69,9 @@ class AuthService extends ChangeNotifier {
   /// 인터넷이 안 되면 저장된 로그인으로 그대로 쓴다.
   Future<void> init({String? loginCode, String? loginError}) async {
     if (loginError != null) _error = _errorMessage(loginError);
+    // 로그인에서 돌아왔으면 떠나기 전에 열려던 항목을 이어서 연다 (그 밖엔 버린다)
+    final launch = store.takePendingLaunch();
+    if (loginCode != null || loginError != null) restoreLaunchTarget(launch);
     final saved = store.loadSession();
     if (loginCode != null) {
       try {
@@ -92,6 +96,9 @@ class AuthService extends ChangeNotifier {
 
   /// 구글 로그인 화면으로 이동 (이 페이지를 떠났다가 돌아온다)
   Future<void> signIn() async {
+    // 텔레그램 [앱에서 보기]로 들어왔다면, 로그인하고 돌아와서 그 항목을 열 수 있게 기억해 둔다
+    final target = pendingLaunchValue();
+    if (target != null) await store.savePendingLaunch(target);
     final here = Uri.base;
     final back = '${here.origin}${here.path}';
     final url = Uri.parse('${api.baseUrl}/auth/google/start')
