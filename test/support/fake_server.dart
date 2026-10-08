@@ -25,6 +25,11 @@ class FakeServer {
   int pinLockedUntil = 0;
   int pinLevel = 0;
   bool telegram = true;
+
+  // ---- 텔레그램 (bot/src/tg_routes.js) ----
+  bool telegramLinked = false;
+  bool nag = true;
+  final acks = <String>[];
   bool freshLogin = false;
   String? resetCode;
   int now() => DateTime.now().millisecondsSinceEpoch;
@@ -53,7 +58,15 @@ class FakeServer {
     if (pin != null && !pinVerified) {
       return reply(423, {'error': 'PIN 확인이 필요해요', 'pinRequired': true});
     }
-    if (path == '/api/telegram') return ok({'linked': false});
+    if (path == '/api/telegram') {
+      return ok({'linked': telegramLinked, 'name': '민준', 'nag': nag});
+    }
+    if (path == '/api/telegram/nag') return ok({'nag': nag = body['enabled'] as bool});
+    if (path == '/api/reminders/ack') {
+      acks.add(body['ack'] as String);
+      return ok({'ok': true});
+    }
+    if (path == '/api/reminders') return ok({'ok': true});
     if (path == '/api/telegram/code') return ok({'code': 'c'});
     if (path == '/api/sync') return ok(_sync(body as Map<String, dynamic>));
     return reply(404, {'error': '없는 주소'});

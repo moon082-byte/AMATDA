@@ -4,15 +4,18 @@ import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import '../services/launch_link.dart';
 import '../services/sync_service.dart';
+import '../services/telegram_nag.dart';
 import '../utils/maybe_provider.dart';
 import 'archive_view.dart';
 import 'room_detail_view.dart';
 import 'today_tasks_view.dart';
 
-/// 텔레그램 알림의 [앱에서 보기]로 들어왔으면 해당 항목 화면을 연다.
+/// 텔레그램 알림의 [앱에서 보기]로 들어왔으면 해당 항목 화면을 열고, 그 알림의 끈질긴 알림을 끈다.
 /// 이 기기에 아직 없으면(처음 로그인한 기기 등) 첫 동기화를 잠시 기다렸다가 다시 찾고,
 /// 그래도 없으면(삭제된 항목) 안내만 띄운다.
 Future<void> openLaunchTarget(BuildContext context) async {
+  final ack = takeLaunchAck();
+  if (ack != null) maybeProvider<TelegramNag>(context, listen: false)?.acknowledge(ack);
   final target = takeLaunchTarget();
   if (target == null) return;
   var page = _pageFor(context, target);

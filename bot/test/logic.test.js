@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CODE_PATTERN, inlineKeyboard, parseCommand, sanitizeButtons, sanitizeReminders, sanitizeRoomUrl } from '../src/logic.js';
+import { CODE_PATTERN, parseCommand, sanitizeButtons, sanitizeReminders, sanitizeRoomUrl } from '../src/logic.js';
+import { nagKeyboard } from '../src/nag.js';
 
 test('명령어 해석', () => {
   assert.deepEqual(parseCommand('/start abcdefghijklmnop'), { command: 'start', arg: 'abcdefghijklmnop' });
@@ -55,11 +56,11 @@ test('알림에 버튼이 함께 저장되고 키보드로 바뀐다', () => {
     reminders: [{ key: 'a', fireAt: 1, dueAt: 2, text: 't', buttons: [{ text: '앱', url: 'https://a.com' }] }],
   });
   assert.deepEqual(item.buttons, [{ text: '앱', url: 'https://a.com' }]);
-  assert.deepEqual(inlineKeyboard(JSON.stringify(item.buttons)), {
+  assert.deepEqual(nagKeyboard(JSON.stringify(item.buttons), null), {
     inline_keyboard: [[{ text: '앱', url: 'https://a.com' }]],
   });
-  assert.equal(inlineKeyboard(null), undefined);
-  assert.equal(inlineKeyboard('깨진 값'), undefined);
+  assert.equal(nagKeyboard(null, null), undefined);
+  assert.equal(nagKeyboard('깨진 값', null), undefined);
 });
 
 test('텔레그램 업무방 링크 검사: http(s)만, 비우면 빈 값', () => {

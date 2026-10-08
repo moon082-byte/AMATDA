@@ -6,6 +6,7 @@ import '../providers/routine_provider.dart';
 import '../services/api_client.dart';
 import '../services/sync_service.dart';
 import '../services/telegram_link.dart';
+import '../services/telegram_nag.dart';
 import 'reminder_host.dart';
 import 'telegram_sync_host.dart';
 
@@ -29,6 +30,7 @@ class SessionScope extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => TelegramLink(api: api, store: store),
         ),
+        ChangeNotifierProvider(create: (_) => TelegramNag(api: api)),
         if (api != null && store != null)
           ChangeNotifierProvider(
             lazy: false,
