@@ -3,7 +3,7 @@
 import { randomToken } from './crypto.js';
 import { ackReminder, getLink, putState, replaceReminders, unlinkCodes } from './db.js';
 import { HttpError, readJson, validate } from './http.js';
-import { sanitizeReminders, sanitizeRoomUrl } from './logic.js';
+import { sanitizeReminders } from './logic.js';
 
 const TG_CODE_TTL = 30 * 60 * 1000;
 
@@ -16,8 +16,8 @@ export async function telegramRoute(path, method, user, request, env) {
   }
   if (path === '/api/telegram' && method === 'GET') {
     const link = await getLink(env, user.id);
-    const me = await env.DB.prepare('SELECT tg_room_url, nag_enabled FROM users WHERE id = ?').bind(user.id).first();
-    return [{ linked: !!link, name: link?.chat_name ?? null, nag: me?.nag_enabled !== 0, roomUrl: me?.tg_room_url ?? '' }];
+    const me = await env.DB.prepare('SELECT nag_enabled FROM users WHERE id = ?').bind(user.id).first();
+    return [{ linked: !!link, name: link?.chat_name ?? null, nag: me?.nag_enabled !== 0 }];
   }
   if (path === '/api/telegram' && method === 'DELETE') {
     await unlinkCodes(env, [user.id]);
@@ -28,13 +28,6 @@ export async function telegramRoute(path, method, user, request, env) {
     if (typeof raw?.enabled !== 'boolean') throw new HttpError(400, 'enabled(true/false)가 필요해요');
     await env.DB.prepare('UPDATE users SET nag_enabled = ? WHERE id = ?').bind(raw.enabled ? 1 : 0, user.id).run();
     return [{ nag: raw.enabled }];
-  }
-  if (path === '/api/telegram/room' && method === 'PUT') {
-    // 예전 버전 호환용 (지금 앱은 쓰지 않음)
-    const raw = await readJson(request);
-    const url = validate(() => sanitizeRoomUrl(raw?.url));
-    await env.DB.prepare('UPDATE users SET tg_room_url = ? WHERE id = ?').bind(url || null, user.id).run();
-    return [{ roomUrl: url }];
   }
   if (path === '/api/reminders' && method === 'PUT') {
     if (!(await getLink(env, user.id))) return [{ linked: false }, 404];

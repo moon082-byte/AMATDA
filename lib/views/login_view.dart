@@ -46,9 +46,18 @@ class LoginView extends StatelessWidget {
                 ),
               SizedBox(
                 width: double.infinity,
-                height: 54,
+                height: auth.inTelegram && !checking ? null : 54,
                 child: checking
                     ? const Center(child: CircularProgressIndicator())
+                    : auth.inTelegram
+                    ? Center(
+                        child: Text(
+                          '텔레그램 안에서는 구글 로그인을 할 수 없어요.\n'
+                          '브라우저에서 아맞다에 로그인한 뒤 설정에서 텔레그램을 연결해 주세요.',
+                          textAlign: TextAlign.center,
+                          style: text.caption,
+                        ),
+                      )
                     : FilledButton.icon(
                         onPressed: auth.signIn,
                         icon: const Icon(Icons.login_rounded),

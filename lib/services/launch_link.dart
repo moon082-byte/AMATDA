@@ -37,8 +37,10 @@ LaunchTarget? _parseValue(String? value) {
   return (kind: kind, id: id);
 }
 
-/// 구글 로그인에서 돌아왔을 때 주소에 붙는 값 (`?login=<일회용 코드>` 또는 `?login_error=<이유>`)
-typedef LoginResult = ({String? code, String? error});
+/// 앱을 열 때 주소에 붙어 오는 로그인 값:
+/// 구글 로그인에서 돌아왔을 때 `?login=<일회용 코드>` 또는 `?login_error=<이유>`,
+/// 텔레그램 미니앱으로 열렸을 때 `#tgWebAppData=<initData>`
+typedef LoginResult = ({String? code, String? error, String? telegram});
 
 /// 앱 시작 시 한 번 호출: 열 항목과 로그인 결과를 읽어 두고, 새로고침해도
 /// 다시 처리되지 않게 주소창에서 해당 부분(?open=, ?login=)을 지운다.
@@ -47,15 +49,18 @@ LoginResult captureStartupParams() {
   _pending = parseLaunchTarget(uri);
   final params = uri.queryParameters;
   _pendingAck = _pending == null ? null : _validAck(params[_ackParam]);
-  final login = (code: params['login'], error: params['login_error']);
+  final telegram = uri.hasFragment
+      ? Uri.splitQueryString(uri.fragment)['tgWebAppData']
+      : null;
+  final login = (code: params['login'], error: params['login_error'], telegram: telegram);
   final rest = Map.of(params)
     ..remove(_param)
     ..remove(_ackParam)
     ..remove('login')
     ..remove('login_error');
-  if (rest.length != params.length) {
+  if (rest.length != params.length || telegram != null) {
     final query = rest.isEmpty ? '' : '?${Uri(queryParameters: rest).query}';
-    final fragment = uri.hasFragment ? '#${uri.fragment}' : '';
+    final fragment = uri.hasFragment && telegram == null ? '#${uri.fragment}' : '';
     replaceBrowserUrl('${uri.path}$query$fragment');
   }
   return login;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CODE_PATTERN, parseCommand, sanitizeButtons, sanitizeReminders, sanitizeRoomUrl } from '../src/logic.js';
+import { parseCommand, sanitizeButtons, sanitizeReminders } from '../src/logic.js';
 import { nagKeyboard } from '../src/nag.js';
 
 test('명령어 해석', () => {
@@ -9,13 +9,6 @@ test('명령어 해석', () => {
   assert.deepEqual(parseCommand('/stop'), { command: 'stop', arg: '' });
   assert.equal(parseCommand('안녕'), null);
   assert.equal(parseCommand(undefined), null);
-});
-
-test('연결 코드 형식', () => {
-  assert.ok(CODE_PATTERN.test('a1B2_c3-D4e5F6g7h8'));
-  assert.ok(!CODE_PATTERN.test('짧음'));
-  assert.ok(!CODE_PATTERN.test('has space in code!!'));
-  assert.ok(!CODE_PATTERN.test('x'.repeat(65)));
 });
 
 test('알림 목록 검사: 잘못된 항목과 중복은 버린다', () => {
@@ -61,13 +54,4 @@ test('알림에 버튼이 함께 저장되고 키보드로 바뀐다', () => {
   });
   assert.equal(nagKeyboard(null, null), undefined);
   assert.equal(nagKeyboard('깨진 값', null), undefined);
-});
-
-test('텔레그램 업무방 링크 검사: http(s)만, 비우면 빈 값', () => {
-  assert.equal(sanitizeRoomUrl(' https://t.me/+abcDEF123 '), 'https://t.me/+abcDEF123');
-  assert.equal(sanitizeRoomUrl(''), '');
-  assert.equal(sanitizeRoomUrl(undefined), '');
-  assert.throws(() => sanitizeRoomUrl('javascript:alert(1)'));
-  assert.throws(() => sanitizeRoomUrl('https://t.me/a b'));
-  assert.throws(() => sanitizeRoomUrl(`https://t.me/${'a'.repeat(500)}`));
 });

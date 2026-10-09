@@ -4,6 +4,7 @@
 // - GET  /auth/google/start?return=<앱 주소>  구글 로그인 시작
 // - GET  /auth/google/callback                구글이 돌려보내는 주소
 // - POST /auth/exchange                       일회용 코드 → 로그인 토큰
+// - POST /auth/telegram                       텔레그램 미니앱 자동 로그인 (tg_login.js)
 // - GET  /auth/me, POST /auth/logout          (로그인 필요)
 // - /auth/pin...                              2차 비밀번호 (pin.js)
 // 데이터 (로그인 필요, Authorization: Bearer <토큰>)
@@ -16,18 +17,16 @@
 // 텔레그램
 // - POST /telegram/webhook, GET /setup, GET /api/info
 // - 1분마다(cron) 시각이 된 알림을 텔레그램으로 보낸다 (끈질긴 알림은 nag.js)
-// 예전 앱 호환 (로그인 전환이 끝나면 지운다): GET/DELETE /api/link/:code, PUT /api/reminders/:code
 //
 // 필요한 설정: 비밀값 BOT_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS, OWNER_EMAIL, PIN_PEPPER
 //            D1 바인딩 DB, 변수 ALLOWED_ORIGINS(쉼표로 구분)
 
 import { exchangeLogin, finishLogin, logout, publicUser, requireUser, startLogin } from './auth.js';
-import { getLink, replaceReminders, unlinkCodes } from './db.js';
-import { HttpError, cors, json, readJson, text, validate } from './http.js';
-import { CODE_PATTERN, sanitizeReminders } from './logic.js';
+import { HttpError, cors, json, readJson, text } from './http.js';
 import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
 import { sync } from './sync.js';
 import { botInfo, sendDueReminders, setup, webhook } from './telegram.js';
+import { telegramLogin } from './tg_login.js';
 import { telegramRoute } from './tg_routes.js';
 
 export default {
@@ -61,10 +60,8 @@ async function route(request, env) {
   if (path === '/auth/google/start' && method === 'GET') return startLogin(url, env);
   if (path === '/auth/google/callback' && method === 'GET') return finishLogin(url, env);
   if (path === '/auth/exchange' && method === 'POST') return reply(await exchangeLogin(await readJson(request), env));
+  if (path === '/auth/telegram' && method === 'POST') return reply(await telegramLogin(await readJson(request), env));
 
-  // 예전 앱 호환 주소 (/api/reminders/ack는 로그인 API라 제외)
-  const legacy = path === '/api/reminders/ack' ? null : /^\/api\/(link|reminders)\/([^/]+)$/.exec(path);
-  if (legacy) return legacyRoute(legacy[1], legacy[2], request, env, reply);
 
   // ---- 여기부터는 로그인 필요 ----
   const user = await requireUser(request, env);
@@ -98,24 +95,4 @@ async function pinRoute(path, method, user, request, env) {
   if (path === '/auth/pin/reset/send' && method === 'POST') return sendResetCode(user, env);
   if (path === '/auth/pin/reset' && method === 'POST') return resetPin(user, body, env);
   throw new HttpError(404, '없는 주소예요');
-}
-
-/** 예전 앱(로그인 전)용 연결 코드 API. 계정 연결(user_id 있음)은 건드리지 못한다. */
-async function legacyRoute(kind, code, request, env, reply) {
-  if (!CODE_PATTERN.test(code) || code.startsWith('u_')) return reply({ error: '잘못된 연결 코드예요' }, 400);
-  const link = await getLink(env, code);
-  const mine = link && link.user_id == null ? link : null;
-  if (kind === 'link' && request.method === 'GET') return reply({ linked: !!mine, name: mine?.chat_name ?? null });
-  if (kind === 'link' && request.method === 'DELETE') {
-    if (mine) await unlinkCodes(env, [code]);
-    return reply({ linked: false });
-  }
-  if (kind === 'reminders' && request.method === 'PUT') {
-    if (!mine) return reply({ linked: false }, 404);
-    const raw = await readJson(request);
-    const items = validate(() => sanitizeReminders(raw));
-    await replaceReminders(env, code, items);
-    return reply({ ok: true, count: items.length });
-  }
-  return reply({ error: '지원하지 않는 요청이에요' }, 405);
 }

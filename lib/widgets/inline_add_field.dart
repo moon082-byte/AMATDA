@@ -33,6 +33,21 @@ class _InlineAddFieldState extends State<InlineAddField> {
     if (value.isEmpty) return;
     widget.onAdd(value);
     _controller.clear();
+    _keepAboveKeyboard();
+  }
+
+  /// 항목이 추가되면 목록이 늘어 입력칸이 아래로(키보드 밑으로) 밀린다.
+  /// 그대로 두면 아이폰은 페이지 전체를 위로 밀어 올리므로, 입력칸을 키보드 바로 위로 다시 맞춘다.
+  void _keepAboveKeyboard() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final box = mounted ? context.findRenderObject() as RenderBox? : null;
+      if (box == null || !box.attached) return;
+      box.showOnScreen(
+        rect: Offset.zero & Size(box.size.width, box.size.height + 80),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override

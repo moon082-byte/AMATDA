@@ -23,13 +23,16 @@ export async function pkceChallenge(verifier) {
   return base64url(new Uint8Array(hash));
 }
 
+/** HMAC-SHA256 원시 바이트. 키는 문자열이나 바이트 */
+export async function hmacBytes(secret, text) {
+  const raw = typeof secret === 'string' ? new TextEncoder().encode(secret) : secret;
+  const key = await crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text)));
+}
+
 /** HMAC-SHA256 (16진수) */
 export async function hmacHex(secret, text) {
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
-  );
-  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text)));
-  return [...sig].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return [...(await hmacBytes(secret, text))].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /** 길이가 같은 문자열을 걸리는 시간이 내용과 무관하게 비교한다 */

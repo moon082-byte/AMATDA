@@ -1,7 +1,7 @@
 // 텔레그램 처리: 웹훅 명령어, 웹훅 등록, 1분마다 알림 발송
 
 import { ackReminder, codesForChat, markDelivered, pendingCount, takeState, unlinkCodes } from './db.js';
-import { CODE_PATTERN, MESSAGES, STALE_MS, cleanupBefore, parseCommand } from './logic.js';
+import { MESSAGES, STALE_MS, cleanupBefore, parseCommand } from './logic.js';
 import { afterSend, nagKeyboard, nagText } from './nag.js';
 
 export async function webhook(request, env) {
@@ -27,14 +27,8 @@ export async function webhook(request, env) {
         'INSERT OR REPLACE INTO links (code, chat_id, chat_name, created_at, user_id) VALUES (?, ?, ?, ?, ?)',
       ).bind(account.user_id, chatId, name, Date.now(), account.user_id).run();
       await tg(env, 'sendMessage', { chat_id: chatId, text: MESSAGES.welcome(name) });
-    } else if (!CODE_PATTERN.test(cmd.arg) || cmd.arg.startsWith('u_')) {
-      await tg(env, 'sendMessage', { chat_id: chatId, text: MESSAGES.needCode });
     } else {
-      // 예전 앱(로그인 전)의 연결 방식 - 전환이 끝나면 지운다
-      await env.DB.prepare(
-        'INSERT OR REPLACE INTO links (code, chat_id, chat_name, created_at) VALUES (?, ?, ?, ?)',
-      ).bind(cmd.arg, chatId, name, Date.now()).run();
-      await tg(env, 'sendMessage', { chat_id: chatId, text: MESSAGES.welcome(name) });
+      await tg(env, 'sendMessage', { chat_id: chatId, text: MESSAGES.needCode });
     }
   } else if (cmd.command === 'stop') {
     const codes = await codesForChat(env, chatId);
@@ -55,13 +49,15 @@ async function onButton(env, cq) {
   const ackId = /^ack:(.+)$/.exec(cq.data ?? '')?.[1];
   const ok = !!ackId && (await ackReminder(env, ackId, { chatId: cq.message?.chat?.id }));
   const text = ok ? '확인했어요. 다시 알리지 않을게요' : cq.data === 'done' ? '이미 확인했어요' : '지난 알림이에요';
-  await tg(env, 'answerCallbackQuery', { callback_query_id: cq.id, text });
+  const answered = await tg(env, 'answerCallbackQuery', { callback_query_id: cq.id, text });
+  if (!answered.ok) console.error('버튼 응답 실패', answered.status, answered.description);
   if (!ok || !cq.message) return;
   const inline_keyboard = (cq.message.reply_markup?.inline_keyboard ?? []).map((row) =>
     row.map((b) => (b.callback_data === cq.data ? { text: '✅ 확인함', callback_data: 'done' } : b)));
-  await tg(env, 'editMessageReplyMarkup', {
+  const edited = await tg(env, 'editMessageReplyMarkup', {
     chat_id: cq.message.chat.id, message_id: cq.message.message_id, reply_markup: { inline_keyboard },
   });
+  if (!edited.ok) console.error('버튼 바꾸기 실패', edited.status, edited.description);
 }
 
 /** 봇 아이디·이름 (공개 정보). 앱 설정에 넣을 봇 아이디를 확인할 때 쓴다. */
@@ -82,7 +78,13 @@ export async function setup(url, env) {
       { command: 'stop', description: '알림 연결 끊기' },
     ],
   });
-  return new Response(hook.ok ? '✅ 텔레그램 웹훅 등록 완료' : `❌ 등록 실패: ${hook.description}`, {
+  // 배포 직후에는 옛 버전이 응답할 수 있으므로, 실제로 등록된 내용을 다시 확인해 보여준다
+  const info = await tg(env, 'getWebhookInfo', {});
+  const buttons = (info.result?.allowed_updates ?? []).includes('callback_query');
+  const body = !hook.ok
+    ? `❌ 등록 실패: ${hook.description}`
+    : `✅ 텔레그램 웹훅 등록 완료\n버튼 누름 받기: ${buttons ? '켜짐' : '꺼짐 - 잠시 뒤 이 주소를 다시 열어 주세요'}`;
+  return new Response(body, {
     status: hook.ok ? 200 : 500,
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });
@@ -129,10 +131,18 @@ export async function sendDueReminders(env) {
     if (blocked.has(row.code)) continue;
     const nag = row.nag === 1 && !!row.ack_id;
     const message = { chat_id: row.chat_id, text: nagText(row.text, row.sent ? row.repeats + 2 : 1) };
-    const keyboard = nagKeyboard(row.buttons, nag ? row.ack_id : null);
-    let res = await tg(env, 'sendMessage', keyboard ? { ...message, reply_markup: keyboard } : message);
-    // 버튼 주소를 텔레그램이 거부하면 버튼 없이 글만 다시 보낸다
-    if (res.status === 400 && keyboard) res = await tg(env, 'sendMessage', message);
+    const ackId = nag ? row.ack_id : null;
+    // [앱에서 보기]는 미니앱 버튼(개인 대화방만 가능)으로. 텔레그램이 거부하면 링크 버튼, 그래도 안 되면 글만 보낸다.
+    const tries = [
+      ...(row.chat_id > 0 ? [nagKeyboard(row.buttons, ackId, { webApp: true })] : []),
+      nagKeyboard(row.buttons, ackId),
+      undefined,
+    ];
+    let res;
+    for (const keyboard of tries) {
+      res = await tg(env, 'sendMessage', keyboard ? { ...message, reply_markup: keyboard } : message);
+      if (res.status !== 400) break;
+    }
     if (res.status === 403) {
       blocked.add(row.code); // 사용자가 봇을 차단함
     } else if (res.ok) {

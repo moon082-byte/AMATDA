@@ -23,6 +23,21 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>아맞다</title>
+
+  <!-- 텔레그램 알림의 [앱에서 보기](미니앱)로 열렸을 때만 텔레그램 스크립트를 불러와 화면을 꽉 채운다.
+       로그인은 주소의 #tgWebAppData(텔레그램이 서명한 사용자 정보)로 앱이 직접 처리한다. -->
+  <script>
+    // 앱이 주소를 정리하기 전에 텔레그램 스크립트가 #tgWebAppData를 읽도록 바로(동기) 불러온다
+    if (location.hash.indexOf('tgWebAppData=') !== -1) {
+      document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');
+    }
+  </script>
+  <script>
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    }
+  </script>
   <link rel="manifest" href="manifest.json">
 
   <style>
@@ -58,6 +73,15 @@
       var viewport = document.querySelector('meta[name=viewport]');
       if (viewport && viewport.content.indexOf('interactive-widget') === -1) {
         viewport.content += ', interactive-widget=resizes-content';
+      }
+      // 아이폰 Safari: 입력칸이 키보드에 가려지면 Safari가 페이지 전체를 위로 밀어 올린다.
+      // 입력칸은 앱이 직접 키보드 위로 맞추므로, 밀린 페이지는 원래 위치로 되돌린다.
+      if (window.visualViewport && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        var resetPan = function () {
+          if (window.scrollY !== 0 || window.visualViewport.offsetTop !== 0) window.scrollTo(0, 0);
+        };
+        window.visualViewport.addEventListener('scroll', resetPan);
+        window.visualViewport.addEventListener('resize', resetPan);
       }
       var splash = document.getElementById('splash');
       if (!splash) return;

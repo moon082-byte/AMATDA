@@ -21,7 +21,11 @@ Future<void> main() async {
   });
   final store = await LocalStore.open();
   final auth = AuthService(store: store)
-    ..init(loginCode: login.code, loginError: login.error);
+    ..init(
+        loginCode: login.code,
+        loginError: login.error,
+        telegramInitData: login.telegram,
+      );
   runApp(MyApp(store: store, auth: auth));
 }
 
