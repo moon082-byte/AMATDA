@@ -20,8 +20,9 @@ export function nagText(text, nth) {
 /**
  * 메시지 아래 버튼 (한 줄). 끈질긴 알림이면 [✅ 확인]을 앞에 두고,
  * [앱에서 보기] 주소에 확인값을 붙여 앱에서 열면 반복이 멈추게 한다. 버튼이 없으면 undefined.
+ * [webApp]이면 [앱에서 보기]를 텔레그램 안에서 여는 미니앱 버튼으로 만든다 (자동 로그인, tg_login.js).
  */
-export function nagKeyboard(buttonsJson, ackId) {
+export function nagKeyboard(buttonsJson, ackId, { webApp = false } = {}) {
   let buttons;
   try {
     buttons = sanitizeButtons(JSON.parse(buttonsJson ?? '[]'));
@@ -30,6 +31,10 @@ export function nagKeyboard(buttonsJson, ackId) {
   }
   if (ackId) {
     buttons = buttons.map((b) => (b.url.includes('?open=') ? { ...b, url: `${b.url}&ack=${ackId}` } : b));
+  }
+  if (webApp) {
+    buttons = buttons.map((b) => (b.url.startsWith('https://') && b.url.includes('?open=')
+      ? { text: b.text, web_app: { url: b.url } } : b));
   }
   const row = [...(ackId ? [{ text: '✅ 확인', callback_data: `ack:${ackId}` }] : []), ...buttons];
   return row.length ? { inline_keyboard: [row] } : undefined;

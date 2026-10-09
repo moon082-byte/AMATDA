@@ -1,8 +1,5 @@
 // 봇 서버의 순수 로직 (Cloudflare 없이 테스트할 수 있도록 분리)
 
-/** 앱이 만드는 연결 코드 형식: 영문·숫자·_- 16~64자 (텔레그램 start 파라미터 규칙) */
-export const CODE_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
-
 export const MAX_REMINDERS = 300;
 export const MAX_TEXT = 1000;
 export const MAX_BUTTONS = 6;
@@ -49,14 +46,6 @@ export function sanitizeButtons(list) {
     if (result.length >= MAX_BUTTONS) break;
   }
   return result;
-}
-
-/** 설정의 텔레그램 업무방 링크: http(s) 주소만, 비우면 ''. 잘못된 주소면 예외. */
-export function sanitizeRoomUrl(value) {
-  const url = typeof value === 'string' ? value.trim() : '';
-  if (!url) return '';
-  if (url.length > 500 || !/^https?:\/\/[^\s]+$/i.test(url)) throw new Error('http(s)로 시작하는 주소를 넣어 주세요');
-  return url;
 }
 
 /** 오래돼서 지워도 되는 알림 기준 시각 */

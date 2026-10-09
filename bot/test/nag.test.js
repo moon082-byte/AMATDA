@@ -44,7 +44,8 @@ test('확인을 누를 때까지 5분마다 최대 3번 더 보낸다', async ()
   const [row] = sent()[0].body.reply_markup.inline_keyboard;
   const ack = reminder().ack_id;
   assert.deepEqual(row[0], { text: '✅ 확인', callback_data: `ack:${ack}` });
-  assert.equal(row[1].url, `https://app.test/?open=task:t1&ack=${ack}`);
+  assert.deepEqual(row[1], { text: '📱 앱에서 보기', web_app: { url: `https://app.test/?open=task:t1&ack=${ack}` } },
+    '개인 대화방에서는 텔레그램 안에서 여는 미니앱 버튼');
   assert.ok(reminder().next_at > now() + 4 * 60 * 1000, '5분 뒤에 다시 보낸다');
 
   await sendDueReminders(env);
@@ -140,8 +141,29 @@ test('끈질긴 알림을 끄면 한 번만 보내고 [확인] 버튼·확인값
 
   await sendDueReminders(env);
   const row = sent()[0].body.reply_markup.inline_keyboard[0];
-  assert.deepEqual(row, [{ text: '📱 앱에서 보기', url: 'https://app.test/?open=task:t1' }]);
+  assert.deepEqual(row, [{ text: '📱 앱에서 보기', web_app: { url: 'https://app.test/?open=task:t1' } }]);
   assert.equal(reminder().next_at, null);
+});
+
+test('텔레그램이 미니앱 버튼을 거부하면 링크 버튼, 그래도 안 되면 글만 보낸다', async () => {
+  let rejects = 2;
+  globalThis.fetch = async (url, init) => {
+    calls.push({ method: String(url).split('/').pop(), body: JSON.parse(init.body) });
+    const fail = rejects-- > 0;
+    return new Response(JSON.stringify({ ok: !fail, description: 'Bad Request' }), { status: fail ? 400 : 200 });
+  };
+  await sendDueReminders(env);
+  const [first, second, third] = sent().map((c) => c.body.reply_markup?.inline_keyboard[0][1]);
+  assert.ok(first.web_app);
+  assert.ok(second.url);
+  assert.equal(third, undefined);
+  assert.equal(sent().length, 3);
+  assert.equal(reminder().sent, 1);
+});
+
+test('예전 앱 호환 주소는 없어졌다 (로그인 필요)', async () => {
+  const res = await worker.fetch(new Request('https://bot.test/api/link/abcdefghijklmnopqrst'), env);
+  assert.equal(res.status, 401);
 });
 
 test('순수 함수: 문구·버튼·다음 상태', () => {

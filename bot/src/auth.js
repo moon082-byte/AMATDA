@@ -77,7 +77,6 @@ export async function finishLogin(url, env) {
   const email = String(claims.email).toLowerCase();
   if (!parseEmails(env.ALLOWED_EMAILS).has(email)) return back({ login_error: 'not_allowed' });
   const userId = await upsertUser(env, claims, email);
-  if (parseEmails(env.OWNER_EMAIL).has(email)) await claimLegacyTelegram(env, userId);
 
   const loginCode = randomToken(24);
   await putState(env, { state: loginCode, kind: 'login', userId, ttlMs: LOGIN_CODE_TTL });
@@ -88,14 +87,20 @@ export async function finishLogin(url, env) {
 export async function exchangeLogin(body, env) {
   const row = await takeState(env, typeof body?.code === 'string' ? body.code : '', 'login');
   if (!row) throw new HttpError(401, '로그인 코드가 만료됐어요. 다시 로그인해 주세요.');
+  const token = await createSession(env, row.user_id);
+  const user = await env.DB.prepare('SELECT id, email, name, picture FROM users WHERE id = ?')
+    .bind(row.user_id).first();
+  return { token, user: publicUser(env, user) };
+}
+
+/** 새 로그인 세션을 만들고 토큰을 돌려준다 (DB에는 토큰의 해시만 저장) */
+export async function createSession(env, userId) {
   const token = randomToken(32);
   const now = Date.now();
   await env.DB.prepare(
     'INSERT INTO sessions (token_hash, user_id, created_at, last_used_at) VALUES (?, ?, ?, ?)',
-  ).bind(await sha256Hex(token), row.user_id, now, now).run();
-  const user = await env.DB.prepare('SELECT id, email, name, picture FROM users WHERE id = ?')
-    .bind(row.user_id).first();
-  return { token, user: publicUser(env, user) };
+  ).bind(await sha256Hex(token), userId, now, now).run();
+  return token;
 }
 
 /** Authorization 헤더의 토큰으로 사용자를 찾는다. 없거나 만료·허용 목록 밖이면 401/403 */
@@ -146,25 +151,4 @@ async function upsertUser(env, claims, email) {
     'INSERT INTO users (id, google_sub, email, name, picture, version, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
   ).bind(id, claims.sub, email, claims.name ?? null, claims.picture ?? null, Date.now()).run();
   return id;
-}
-
-/**
- * 로그인 전(예전 앱)에 만든 텔레그램 연결을 주인 계정으로 옮긴다 (계정에 연결이 없을 때 한 번).
- * 예전 연결과 그 알림 일정은 지운다 (앱이 로그인 후 계정으로 다시 올린다).
- */
-async function claimLegacyTelegram(env, userId) {
-  if (await env.DB.prepare('SELECT 1 FROM links WHERE user_id = ?').bind(userId).first()) return;
-  const old = await env.DB.prepare(
-    'SELECT chat_id, chat_name FROM links WHERE user_id IS NULL ORDER BY created_at DESC LIMIT 1',
-  ).first();
-  if (!old) return;
-  await env.DB.batch([
-    env.DB.prepare(
-      'DELETE FROM reminders WHERE code IN (SELECT code FROM links WHERE user_id IS NULL AND chat_id = ?)',
-    ).bind(old.chat_id),
-    env.DB.prepare('DELETE FROM links WHERE user_id IS NULL AND chat_id = ?').bind(old.chat_id),
-    env.DB.prepare(
-      'INSERT OR REPLACE INTO links (code, chat_id, chat_name, created_at, user_id) VALUES (?, ?, ?, ?, ?)',
-    ).bind(userId, old.chat_id, old.chat_name, Date.now(), userId),
-  ]);
 }

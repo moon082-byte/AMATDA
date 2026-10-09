@@ -15,8 +15,8 @@ Cloudflare Workers(무료 플랜)에서 돌아갑니다.
    [마감기한] 10월 7일 (화) 18:00 (1시간 전)
    [업무링크] https://notion.so/...     ← 할 일이 속한 업무방에 등록한 링크
    ```
-   메시지 아래에는 [📱 앱에서 보기] 버튼이 붙어, 누르면 그 할 일 화면이 바로 열립니다
-   (로그인 전이면 로그인 후 이어서 엽니다). 텔레그램이 버튼 주소를 거부하면 글만 보냅니다.
+   메시지 아래에는 [📱 앱에서 보기] 버튼이 붙어, 누르면 텔레그램 안(미니앱)에서 그 할 일 화면이 바로 열립니다.
+   구글은 텔레그램 안 브라우저 로그인을 막으므로, 텔레그램이 서명한 사용자 정보로 연결된 계정에 자동 로그인합니다. 텔레그램이 버튼 주소를 거부하면 글만 보냅니다.
 5. **끈질긴 알림**(설정에서 켜기/끄기, 기본 켬): [✅ 확인]을 누르거나 [📱 앱에서 보기]로 앱을 열 때까지
    5분마다 최대 3번 더 보냅니다(`🔁 다시 알림 (2/4)`). 앱에서 그 할 일·루틴을 완료해도 멈춥니다.
 
@@ -61,7 +61,7 @@ npm run deploy
 배포가 끝나면 `https://amatda-bot.<하위 도메인>.workers.dev` 주소가 나옵니다.
 
 ### 6. 텔레그램 웹훅 등록
-브라우저로 `https://amatda-bot.<하위 도메인>.workers.dev/setup`을 엽니다. "✅ 텔레그램 웹훅 등록 완료"가 나오면 끝입니다.
+브라우저로 `https://amatda-bot.<하위 도메인>.workers.dev/setup`을 엽니다. "✅ 텔레그램 웹훅 등록 완료"와 "버튼 누름 받기: 켜짐"이 나오면 끝입니다. "꺼짐"이면 배포가 퍼지는 중이니 잠시 뒤 다시 엽니다.
 `/api/info`를 열면 봇 아이디를 확인할 수 있습니다.
 
 ### 7. 구글 로그인 설정
@@ -106,7 +106,7 @@ npm run logs                 # 배포된 봇 서버 로그 보기
 npm run db:migrate           # migrations/0001_reminder_buttons.sql: 링크 버튼 칸 추가
 npm run db:migrate:accounts  # migrations/0002_accounts.sql: 사용자·세션·동기화 표, 계정별 텔레그램 연결
 npm run db:migrate:pin       # migrations/0003_pin.sql: 2차 비밀번호(PIN) 칸
-npm run db:migrate:tgroom    # migrations/0004_tg_room_url.sql: 계정별 텔레그램 업무방 링크 칸
+npm run db:migrate:tgroom    # migrations/0004_tg_room_url.sql: (지금은 쓰지 않는 칸)
 npm run db:migrate:nag       # migrations/0005_nag.sql: 끈질긴 알림 (적용 후 /setup 을 한 번 다시 열어 웹훅 갱신)
 npm run deploy
 ```
@@ -118,21 +118,20 @@ npm run deploy
 | `GET /auth/google/start?return=<앱 주소>` | 구글 로그인 시작 |
 | `GET /auth/google/callback` | 구글이 돌려보내는 주소 → `<앱 주소>?login=<일회용 코드>` |
 | `POST /auth/exchange` | 일회용 코드 → 로그인 토큰 |
+| `POST /auth/telegram` | 텔레그램 미니앱 자동 로그인 (`{"initData": ...}`, 텔레그램 서명 확인 → 연결된 계정) |
 | `GET /auth/me`, `POST /auth/logout` | 내 정보, 로그아웃 🔒 |
 | `GET` / `PUT` / `DELETE /auth/pin` | PIN 상태 / 켜기·바꾸기 / 끄기 🔒 |
 | `POST /auth/pin/verify` | PIN 확인 (5번 틀리면 1분, 다시 5번 틀리면 30분 잠금) 🔒 |
 | `POST /auth/pin/reset/send`, `POST /auth/pin/reset` | 텔레그램 재설정 코드 보내기, 코드로 새 PIN 정하기 🔒 |
 | `POST /api/sync` | 바뀐 데이터 올리기·받기 (업무방·할 일·세부 항목·메모·루틴) 🔒 |
 | `POST /api/telegram/code` | 텔레그램 연결 코드 만들기 🔒 |
-| `GET` / `DELETE /api/telegram` | 텔레그램 연결 확인(업무방 링크 포함) / 끊기 🔒 |
-| `PUT /api/telegram/room` | 텔레그램 업무방 링크 저장 (지금 앱은 쓰지 않음, 예전 버전 호환용) 🔒 |
+| `GET` / `DELETE /api/telegram` | 텔레그램 연결·끈질긴 알림 설정 확인 / 끊기 🔒 |
 | `PUT /api/telegram/nag` | 끈질긴 알림 켜기·끄기 (`{"enabled": true}`) 🔒 |
 | `PUT /api/reminders` | 알림 일정 전체 올리기 🔒 |
 | `POST /api/reminders/ack` | 끈질긴 알림 끄기 (`{"ack": "<확인값>"}`, 앱의 [앱에서 보기]로 연 경우) 🔒 |
 | `POST /telegram/webhook` | 텔레그램이 보내는 메시지 (`/start <코드>`, `/stop`, `/status`)와 [✅ 확인] 버튼 누름 |
 | `GET /setup` | 텔레그램 웹훅·명령어 등록 (여러 번 호출해도 안전) |
 | `GET /api/info` | 봇 아이디·이름 확인 |
-| `GET/DELETE /api/link/:code`, `PUT /api/reminders/:code` | 로그인 전 앱 호환용 (전환이 끝나면 삭제) |
 
 🔒 `Authorization: Bearer <로그인 토큰>`이 필요합니다. PIN을 켠 계정은 그 로그인에서 PIN을 확인하기 전까지
 `/api/...` 요청이 `423`(`pinRequired: true`)으로 거부됩니다.
