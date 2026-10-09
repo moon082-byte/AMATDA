@@ -30,6 +30,9 @@ class FakeServer {
   bool telegramLinked = false;
   bool nag = true;
   final acks = <String>[];
+
+  // ---- 허용 이메일 (bot/src/admin.js) ----
+  final allowed = <String>[];
   bool freshLogin = false;
   String? resetCode;
   int now() => DateTime.now().millisecondsSinceEpoch;
@@ -69,6 +72,17 @@ class FakeServer {
     if (path == '/api/reminders') return ok({'ok': true});
     if (path == '/api/telegram/code') return ok({'code': 'c'});
     if (path == '/api/sync') return ok(_sync(body as Map<String, dynamic>));
+    if (path == '/admin/allowed-emails') {
+      if (user['owner'] != true) return reply(403, {'error': '관리자만 쓸 수 있어요'});
+      if (req.method == 'POST') allowed.add((body['email'] as String).toLowerCase());
+      if (req.method == 'DELETE') allowed.remove(req.url.queryParameters['email']);
+      return ok({
+        'emails': [
+          {'email': user['email'], 'fixed': true},
+          for (final e in allowed) {'email': e, 'fixed': false},
+        ],
+      });
+    }
     return reply(404, {'error': '없는 주소'});
   });
 

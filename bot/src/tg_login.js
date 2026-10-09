@@ -3,10 +3,10 @@
 // 로그인을 막으므로, 텔레그램이 서명해 넘겨주는 사용자 정보(initData)를 확인해
 // 그 텔레그램 대화방에 연결된 계정으로 로그인한다. (https://core.telegram.org/bots/webapps)
 
+import { isAllowedEmail } from './admin.js';
 import { createSession, publicUser } from './auth.js';
 import { hmacBytes, safeEqual } from './crypto.js';
 import { HttpError } from './http.js';
-import { parseEmails } from './logic.js';
 
 export const INIT_DATA_MAX_AGE_MS = 60 * 60 * 1000; // 1시간이 지난 initData는 받지 않는다
 
@@ -45,7 +45,7 @@ export async function telegramLogin(body, env) {
   if (!user) {
     throw new HttpError(404, '이 텔레그램과 연결된 계정이 없어요. 브라우저에서 로그인한 뒤 설정에서 텔레그램을 연결해 주세요.');
   }
-  if (!parseEmails(env.ALLOWED_EMAILS).has(user.email.toLowerCase())) {
+  if (!(await isAllowedEmail(env, user.email))) {
     throw new HttpError(403, '허용되지 않은 계정이에요');
   }
   return { token: await createSession(env, user.id), user: publicUser(env, user) };

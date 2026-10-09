@@ -13,6 +13,7 @@
 // - GET/DELETE /api/telegram                  텔레그램 연결 확인·끊기 (tg_routes.js)
 // - PUT  /api/telegram/nag                    끈질긴 알림 켜기·끄기
 // - PUT  /api/reminders                       알림 일정 전체 올리기
+// - GET/POST/DELETE /admin/allowed-emails     허용 이메일 관리 (관리자만, admin.js)
 // - POST /api/reminders/ack                   끈질긴 알림 끄기 (앱의 [앱에서 보기]로 연 경우)
 // 텔레그램
 // - POST /telegram/webhook, GET /setup, GET /api/info
@@ -21,6 +22,7 @@
 // 필요한 설정: 비밀값 BOT_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAILS, OWNER_EMAIL, PIN_PEPPER
 //            D1 바인딩 DB, 변수 ALLOWED_ORIGINS(쉼표로 구분)
 
+import { adminRoute } from './admin.js';
 import { exchangeLogin, finishLogin, logout, publicUser, requireUser, startLogin } from './auth.js';
 import { HttpError, cors, json, readJson, text } from './http.js';
 import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
@@ -78,6 +80,8 @@ async function route(request, env) {
     e.extra = { pinRequired: true };
     throw e;
   }
+  const adminReply = await adminRoute(path, method, user, request, env, url);
+  if (adminReply) return reply(adminReply);
   if (path === '/api/sync' && method === 'POST') return reply(await sync(user, await readJson(request), env));
 
   const tgReply = await telegramRoute(path, method, user, request, env);

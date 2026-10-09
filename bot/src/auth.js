@@ -9,10 +9,11 @@
 // 쿠키 대신 토큰을 쓰는 이유: 앱(github.io)과 서버(workers.dev) 주소가 달라
 // 브라우저의 제3자 쿠키 차단에 걸리기 때문이다.
 
+import { isAllowedEmail, isOwner } from './admin.js';
 import { pkceChallenge, randomToken, sha256Hex } from './crypto.js';
 import { putState, takeState } from './db.js';
 import { HttpError, redirect, text } from './http.js';
-import { SESSION_IDLE_MS, checkIdClaims, decodeJwtPayload, parseEmails, safeReturnTo } from './logic.js';
+import { SESSION_IDLE_MS, checkIdClaims, decodeJwtPayload, safeReturnTo } from './logic.js';
 
 const GOOGLE_AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/token';
@@ -75,7 +76,7 @@ export async function finishLogin(url, env) {
   }
 
   const email = String(claims.email).toLowerCase();
-  if (!parseEmails(env.ALLOWED_EMAILS).has(email)) return back({ login_error: 'not_allowed' });
+  if (!(await isAllowedEmail(env, email))) return back({ login_error: 'not_allowed' });
   const userId = await upsertUser(env, claims, email);
 
   const loginCode = randomToken(24);
@@ -110,12 +111,13 @@ export async function requireUser(request, env) {
   const hash = await sha256Hex(m[1]);
   const row = await env.DB.prepare(
     `SELECT s.last_used_at, s.created_at AS session_created_at, s.pin_ok_at,
-            u.id, u.email, u.name, u.picture, u.pin_hash
+            u.id, u.email, u.name, u.picture, u.pin_hash,
+            EXISTS (SELECT 1 FROM allowed_emails a WHERE a.email = lower(u.email)) AS allowed
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
   ).bind(hash).first();
   const now = Date.now();
   if (!row || row.last_used_at < now - SESSION_IDLE_MS) throw new HttpError(401, '로그인이 만료됐어요');
-  if (!parseEmails(env.ALLOWED_EMAILS).has(row.email.toLowerCase())) {
+  if (!(await isAllowedEmail(env, row.email, row.allowed))) {
     throw new HttpError(403, '허용되지 않은 계정이에요');
   }
   if (now - row.last_used_at > 60 * 60 * 1000) {
@@ -135,7 +137,7 @@ export function publicUser(env, u) {
     email: u.email,
     name: u.name ?? '',
     picture: u.picture ?? '',
-    owner: parseEmails(env.OWNER_EMAIL).has(u.email.toLowerCase()),
+    owner: isOwner(env, u.email),
   };
 }
 

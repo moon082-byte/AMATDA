@@ -59,6 +59,8 @@ void main() {
     final nagSwitch = find.descendant(
         of: find.ancestor(of: find.text('끈질긴 알림'), matching: find.byType(Row)).first,
         matching: find.byType(Switch));
+    await tester.ensureVisible(nagSwitch); // 관리자 메뉴 아래로 밀려 있을 수 있다
+    await tester.pumpAndSettle();
     await tester.tap(nagSwitch);
     await _settle(tester);
     expect(server.nag, isFalse);
