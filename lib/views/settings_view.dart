@@ -8,6 +8,7 @@ import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import '../utils/confirm_dialog.dart';
 import '../widgets/account_tile.dart';
+import '../widgets/admin_settings_group.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/browser_notification_tile.dart';
 import '../widgets/pin_settings_tile.dart';
@@ -44,6 +45,7 @@ class SettingsView extends StatelessWidget {
         paddedSliver(top: 12, [
           const AccountGroup(),
           const PinSettingsGroup(),
+          const AdminSettingsGroup(),
           SettingsGroup(
             title: '알림',
             children: [
