@@ -6,6 +6,7 @@ import '../providers/room_provider.dart';
 import '../theme/app_typography.dart';
 import '../utils/ids.dart';
 import '../utils/task_actions.dart';
+import 'reminder_popup.dart';
 import 'inline_add_field.dart';
 import 'reorder_handle.dart';
 import 'sub_task_row.dart';
@@ -33,6 +34,25 @@ class SubTaskSection extends StatelessWidget {
       '"${sub.title}" 항목을 삭제했어요',
       () => provider.insertSubTask(task.id, sub, index),
     );
+  }
+
+  /// 상위 할 일의 마감 기준으로 이 세부 항목의 리마인더를 고른다
+  Future<void> _editReminders(BuildContext context, SubTask sub) async {
+    final due = task.dueDate;
+    if (due == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('할 일에 마감 기한을 정하면 세부 항목 리마인더를 설정할 수 있어요'),
+      ));
+      return;
+    }
+    final picked = await showReminderPopup(
+      context,
+      initial: sub.reminders,
+      dueDate: due,
+      title: '리마인더 · ${sub.title}',
+    );
+    if (picked == null || !context.mounted) return;
+    context.read<RoomProvider>().setSubTaskReminders(task.id, sub.id, picked);
   }
 
   @override
@@ -63,6 +83,8 @@ class SubTaskSection extends StatelessWidget {
                 onToggle: () => provider.toggleSubTask(task.id, sub.id),
                 onRename: (title) => provider.renameSubTask(task.id, sub.id, title),
                 onDelete: () => _deleteSubTask(context, sub),
+                onReminder: () => _editReminders(context, sub),
+                reminderReady: task.dueDate != null,
               ),
             );
           },

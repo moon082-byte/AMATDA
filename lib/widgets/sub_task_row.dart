@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import '../models/sub_task.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
+import 'reminder_bell_button.dart';
 import 'round_check.dart';
 
 /// 세부 체크리스트 한 줄.
-/// 원형을 누르면 체크/해제, 글자를 누르면 그 자리에서 수정, 오른쪽 X를 누르면 삭제.
+/// 원형을 누르면 체크/해제, 글자를 누르면 그 자리에서 수정,
+/// 오른쪽 🔔을 누르면 리마인더 설정, X를 누르면 삭제.
 class SubTaskRow extends StatefulWidget {
   final SubTask subTask;
   final VoidCallback onToggle;
   final ValueChanged<String> onRename;
   final VoidCallback onDelete;
+  final VoidCallback onReminder;
+
+  /// 상위 할 일에 마감이 있어 리마인더를 걸 수 있는지
+  final bool reminderReady;
 
   const SubTaskRow({
     super.key,
@@ -18,6 +24,8 @@ class SubTaskRow extends StatefulWidget {
     required this.onToggle,
     required this.onRename,
     required this.onDelete,
+    required this.onReminder,
+    this.reminderReady = true,
   });
 
   @override
@@ -114,6 +122,12 @@ class _SubTaskRowState extends State<SubTaskRow> {
                     child: Text(sub.title, style: style),
                   ),
                 ),
+        ),
+        ReminderBellButton(
+          count: sub.reminders.length,
+          ready: widget.reminderReady,
+          compact: true,
+          onTap: widget.onReminder,
         ),
         IconButton(
           onPressed: widget.onDelete,

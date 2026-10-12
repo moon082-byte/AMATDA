@@ -84,7 +84,7 @@ RecordSet toRecords(
       ..remove('notes');
     put('tasks', t.id, i, data, t.roomId);
     for (final (j, s) in t.subTasks.indexed) {
-      put('sub_tasks', s.id, j, {'title': s.title, 'isDone': s.isDone}, t.id);
+      put('sub_tasks', s.id, j, subTaskToJson(s), t.id);
     }
     for (final (j, n) in t.notes.indexed) {
       put('notes', n.id, j,

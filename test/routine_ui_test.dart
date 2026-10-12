@@ -61,10 +61,16 @@ void main() {
     await tester.tap(find.text('루틴 추가'));
     await tester.pumpAndSettle();
 
+    // 한 줄 입력 블록: [이름][📅 반복 요일·시각][🔔]
     await tester.enterText(find.byType(TextField).first, '스트레칭');
+    await tester.tap(find.byTooltip('반복 요일·시각 선택'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('평일'));
     await tester.pump();
-    await tester.tap(find.text('저장').first);
+    await tester.tap(find.text('확인'));
+    await tester.pumpAndSettle();
+    expect(find.text('평일\n09:00'), findsOneWidget); // 📅 옆에 표시
+    await tester.tap(find.text('추가하기'));
     await tester.pumpAndSettle();
 
     final added = _read<RoutineProvider>(tester)

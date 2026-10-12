@@ -21,6 +21,16 @@ extension RoomTaskDetails on RoomProvider {
         ]),
       );
 
+  void setSubTaskReminders(
+          String taskId, String subTaskId, List<TaskReminder> reminders) =>
+      _edit(
+        taskId,
+        (t) => t.copyWith(subTasks: [
+          for (final s in t.subTasks)
+            s.id == subTaskId ? s.copyWith(reminders: reminders) : s,
+        ]),
+      );
+
   /// 세부 항목을 지우고, 되돌릴 때 쓸 원래 위치를 돌려준다 (없으면 -1)
   int deleteSubTask(String taskId, String subTaskId) {
     final index = taskById(taskId)?.subTasks.indexWhere((s) => s.id == subTaskId) ?? -1;

@@ -15,6 +15,14 @@ extension ReminderUnitLabel on ReminderUnit {
         ReminderUnit.day => Duration(days: amount),
         ReminderUnit.week => Duration(days: amount * 7),
       };
+
+  /// 리마인더 팝업의 숫자 드롭다운 선택지 (0은 분 단위에서만: 정시)
+  List<int> get amountOptions => switch (this) {
+        ReminderUnit.minute => [0, 1, 2, 3, 4, 5, for (var m = 10; m < 60; m += 5) m],
+        ReminderUnit.hour => [for (var h = 1; h <= 23; h++) h],
+        ReminderUnit.day => [for (var d = 1; d <= 30; d++) d],
+        ReminderUnit.week => [1, 2, 3, 4],
+      };
 }
 
 /// 마감 [amount][unit] 전에 알려 주는 리마인드 (예: 30분 전, 2일 전).
