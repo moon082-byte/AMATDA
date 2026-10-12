@@ -74,6 +74,13 @@
       if (viewport && viewport.content.indexOf('interactive-widget') === -1) {
         viewport.content += ', interactive-widget=resizes-content';
       }
+      // 아이폰 Safari: 글자 크기가 16px보다 작은 입력칸을 누르면 화면을 자동으로 확대해 버튼이 밀려난다.
+      // 아이폰에서만 최대 배율을 1로 둬 자동 확대를 막는다 (아이폰은 이 값과 상관없이 손가락 확대는 허용한다).
+      if (viewport && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        viewport.content = /maximum-scale=[\d.]+/.test(viewport.content)
+          ? viewport.content.replace(/maximum-scale=[\d.]+/, 'maximum-scale=1.0')
+          : viewport.content + ', maximum-scale=1.0';
+      }
       // 아이폰 Safari: 입력칸이 키보드에 가려지면 Safari가 페이지 전체를 위로 밀어 올린다.
       // 입력칸은 앱이 직접 키보드 위로 맞추므로, 밀린 페이지는 원래 위치로 되돌린다.
       if (window.visualViewport && /iPhone|iPad|iPod/.test(navigator.userAgent)) {

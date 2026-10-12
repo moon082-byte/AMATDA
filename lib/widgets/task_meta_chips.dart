@@ -4,7 +4,7 @@ import '../models/task_reminder.dart';
 import 'common/due_badge.dart';
 import 'common/tag_chip.dart';
 
-/// 할 일 제목 아래 붙는 정보 칩: 마감, 리마인드, 방 이름, 세부 항목·메모 수
+/// 할 일 제목 아래 붙는 정보 칩: 마감, 리마인드, 방 이름, 메모 수 (세부 항목은 진행률 막대로 보여준다)
 class TaskMetaChips extends StatelessWidget {
   final TaskItem task;
   final String? roomName;
@@ -19,8 +19,6 @@ class TaskMetaChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final doneSubTasks = task.subTasks.where((s) => s.isDone).length;
-
     return Wrap(
       spacing: 6,
       runSpacing: 6,
@@ -34,12 +32,6 @@ class TaskMetaChips extends StatelessWidget {
           ),
         if (roomName != null)
           TagChip.neutral(context, roomName!, icon: Icons.tag_rounded),
-        if (showCounts && task.subTasks.isNotEmpty)
-          TagChip.neutral(
-            context,
-            '$doneSubTasks/${task.subTasks.length}',
-            icon: Icons.checklist_rounded,
-          ),
         if (showCounts && task.notes.isNotEmpty)
           TagChip.neutral(
             context,

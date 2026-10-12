@@ -49,7 +49,6 @@ class RoomDetailView extends StatelessWidget {
       );
     }
 
-    final allTasks = provider.tasksForRoom(roomId);
     final activeTasks = provider.activeTasksForRoom(roomId);
 
     return AppPage(
@@ -75,8 +74,6 @@ class RoomDetailView extends StatelessWidget {
           RoomDetailHeader(
             room: room,
             nearestTask: nearestDueTask(activeTasks),
-            totalCount: allTasks.length,
-            doneCount: allTasks.length - activeTasks.length,
           ),
           const SizedBox(height: 32),
           SectionHeader(title: '체크리스트', count: activeTasks.length),

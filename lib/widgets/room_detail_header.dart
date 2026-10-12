@@ -7,34 +7,28 @@ import '../theme/app_typography.dart';
 import '../utils/links.dart';
 import 'common/app_card.dart';
 import 'common/due_badge.dart';
-import 'common/progress_bar.dart';
 import 'common/room_avatar.dart';
 import 'common/tag_chip.dart';
 import 'link_picker_sheet.dart';
 
-/// 업무방 상세 화면 상단 요약 카드: 방 정보, 가장 가까운 할 일 마감(D-Day·알림), 진행률,
+/// 업무방 상세 화면 상단 요약 카드: 방 정보, 가장 가까운 할 일 마감(D-Day·알림),
 /// 텔레그램 열기 버튼, 외부 링크 열기 버튼(업무 링크가 있을 때만)
 class RoomDetailHeader extends StatelessWidget {
   final TelegramRoom room;
 
   /// 방에서 마감이 가장 가까운 미완료 할 일 (없으면 '마감 없음')
   final TaskItem? nearestTask;
-  final int totalCount;
-  final int doneCount;
 
   const RoomDetailHeader({
     super.key,
     required this.room,
     this.nearestTask,
-    required this.totalCount,
-    required this.doneCount,
   });
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final text = context.text;
-    final progress = totalCount == 0 ? 0.0 : doneCount / totalCount;
     final nearest = nearestTask;
 
     return AppCard(
@@ -81,27 +75,6 @@ class RoomDetailHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Text('진행률', style: text.label),
-              const Spacer(),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '$doneCount',
-                      style: TextStyle(color: palette.accent),
-                    ),
-                    TextSpan(text: ' / $totalCount'),
-                  ],
-                ),
-                style: text.label.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ProgressBar(value: progress),
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: () => room.inviteLink.trim().isEmpty

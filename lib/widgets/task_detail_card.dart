@@ -13,10 +13,10 @@ import 'round_check.dart';
 import 'slidable_actions.dart';
 import 'sub_task_section.dart';
 import 'task_meta_chips.dart';
+import 'task_progress_bar.dart';
 
-/// 할 일 카드 ('오늘 할일' 목록, 업무방 상세). 탭하면 아코디언처럼 펼쳐져 하위 체크리스트와
-/// 메모를 보여주고, 완료 체크는 왼쪽 동그라미를 눌렀을 때만 된다.
-/// 왼쪽으로 밀면 수정/삭제, 윗부분을 꾹 누르면 순서를 바꿀 수 있다.
+/// 할 일 카드 ('오늘 할일' 목록, 업무방 상세). 탭하면 펼쳐져 세부 체크리스트·메모를 보여주고, 체크는 왼쪽
+/// 동그라미로만 된다. 진행률 막대를 보여주며, 왼쪽으로 밀면 수정/삭제, 윗부분을 꾹 누르면 순서를 바꾼다.
 class TaskDetailCard extends StatefulWidget {
   final TaskItem task;
 
@@ -87,8 +87,9 @@ class _TaskDetailCardState extends State<TaskDetailCard> {
                 children: [
                   Text(task.title, style: text.title),
                   const SizedBox(height: 8),
-                  TaskMetaChips(
-                      task: task, roomName: widget.roomName, showCounts: true),
+                  TaskMetaChips(task: task, roomName: widget.roomName, showCounts: true),
+                  const SizedBox(height: 10),
+                  TaskProgressBar(task: task),
                 ],
               ),
             ),

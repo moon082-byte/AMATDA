@@ -7,9 +7,10 @@ import '../theme/app_typography.dart';
 import '../utils/ids.dart';
 import '../utils/task_actions.dart';
 import 'inline_add_field.dart';
+import 'reorder_handle.dart';
 import 'sub_task_row.dart';
 
-/// 할 일 상세에서 하위 세부 체크리스트를 보여주고 추가·수정·삭제하는 섹션
+/// 할 일 상세에서 하위 세부 체크리스트를 보여주고 추가·수정·삭제·순서 변경(꾹 눌러 끌기)하는 섹션
 class SubTaskSection extends StatelessWidget {
   final TaskItem task;
 
@@ -44,14 +45,28 @@ class SubTaskSection extends StatelessWidget {
       children: [
         Text('세부 체크리스트', style: text.label.copyWith(fontSize: 13)),
         const SizedBox(height: 2),
-        for (final sub in task.subTasks)
-          SubTaskRow(
-            key: ValueKey(sub.id),
-            subTask: sub,
-            onToggle: () => provider.toggleSubTask(task.id, sub.id),
-            onRename: (title) => provider.renameSubTask(task.id, sub.id, title),
-            onDelete: () => _deleteSubTask(context, sub),
-          ),
+        // 꾹 눌러 끌면 순서를 바꾼다
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          proxyDecorator: liftedProxy,
+          itemCount: task.subTasks.length,
+          onReorderItem: (from, to) => provider.reorderSubTasks(task.id, from, to),
+          itemBuilder: (context, i) {
+            final sub = task.subTasks[i];
+            return ReorderHandle(
+              key: ValueKey(sub.id),
+              index: i,
+              child: SubTaskRow(
+                subTask: sub,
+                onToggle: () => provider.toggleSubTask(task.id, sub.id),
+                onRename: (title) => provider.renameSubTask(task.id, sub.id, title),
+                onDelete: () => _deleteSubTask(context, sub),
+              ),
+            );
+          },
+        ),
         const SizedBox(height: 6),
         InlineAddField(
           hint: '세부 항목 추가',

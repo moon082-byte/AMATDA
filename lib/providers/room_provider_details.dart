@@ -39,6 +39,13 @@ extension RoomTaskDetails on RoomProvider {
               ),
       );
 
+  /// 세부 항목을 [from]에서 [to]로 옮긴다 ([to]는 옮긴 항목을 뺀 목록 기준)
+  void reorderSubTasks(String taskId, int from, int to) => _edit(taskId, (t) {
+        final subs = [...t.subTasks];
+        subs.insert(to.clamp(0, subs.length - 1), subs.removeAt(from));
+        return t.copyWith(subTasks: subs);
+      });
+
   void addNote(String taskId, Note note) =>
       _edit(taskId, (t) => t.copyWith(notes: [...t.notes, note]));
 
