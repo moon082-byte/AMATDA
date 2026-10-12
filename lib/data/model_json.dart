@@ -64,8 +64,7 @@ Map<String, Object?> taskToJson(TaskItem t) => {
       'roomId': t.roomId,
       'createdAt': _date(t.createdAt),
       'subTasks': [
-        for (final s in t.subTasks)
-          {'id': s.id, 'title': s.title, 'isDone': s.isDone},
+        for (final s in t.subTasks) {'id': s.id, ...subTaskToJson(s)},
       ],
       'notes': [
         for (final n in t.notes)
@@ -91,6 +90,7 @@ TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
             id: s['id'] as String,
             title: s['title'] as String,
             isDone: (s['isDone'] as bool?) ?? false,
+            reminders: _remindersFromJson(s['reminders']) ?? const [],
           ),
       ],
       notes: [
@@ -104,6 +104,13 @@ TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
       reminders: _remindersFromJson(j['reminders']) ??
           [?_reminderFromJson(j['reminder'])],
     );
+
+/// 세부 항목 내용 (id 제외, 서버 동기화에도 같은 모양을 쓴다)
+Map<String, Object?> subTaskToJson(SubTask s) => {
+      'title': s.title,
+      'isDone': s.isDone,
+      if (s.reminders.isNotEmpty) 'reminders': _remindersToJson(s.reminders),
+    };
 
 TaskReminder? _reminderFromJson(Object? v) {
   if (v is! Map || v['amount'] is! int) return null;

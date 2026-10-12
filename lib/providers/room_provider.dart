@@ -4,6 +4,7 @@ import '../data/sample_data.dart';
 import '../models/note.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
+import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 
 part 'room_provider_details.dart';
@@ -84,8 +85,7 @@ class RoomProvider extends ChangeNotifier {
   List<TaskItem> activeTasksForRoom(String roomId) =>
       _tasks.where((t) => t.roomId == roomId && !t.isDone).toList();
 
-  int pendingCountForRoom(String roomId) =>
-      activeTasksForRoom(roomId).length;
+  int pendingCountForRoom(String roomId) => activeTasksForRoom(roomId).length;
 
   void addRoom(TelegramRoom room) {
     _rooms.add(room);

@@ -76,7 +76,15 @@ List<DueReminder> collectDueReminders({
   }
 
   for (final t in tasks) {
-    if (!t.isDone) check('task', t.id, t.title, t.reminderTimes, t.dueDate);
+    if (t.isDone) continue;
+    check('task', t.id, t.title, t.reminderTimes, t.dueDate);
+    final due = t.dueDate;
+    if (due == null) continue;
+    // 세부 항목 리마인더는 상위 할 일의 마감 기준으로 울린다
+    for (final s in t.subTasks.where((s) => !s.isDone)) {
+      check('sub', '${t.id}:${s.id}', '${t.title} · ${s.title}',
+          [for (final r in s.reminders) r.fireAt(due)], due);
+    }
   }
   final yesterday = DateTime(now.year, now.month, now.day - 1);
   for (final r in routines) {

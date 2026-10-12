@@ -17,6 +17,7 @@ const kRoutineDaysAhead = 7;
 /// - 이미 지난 알림은 항목마다 가장 최근 것 하나만 포함(마감이 12시간 넘게 지났으면 제외)
 /// - 메시지 문구는 이 기기 시간대 기준으로 미리 만들어 보낸다
 /// - 할 일 알림에는 [업무링크](업무방에 등록한 링크) 줄을 넣는다 (없으면 뺀다)
+/// - 세부 항목 알림은 상위 할 일 마감 기준이며 할 일명과 [세부항목]을 함께 보낸다
 /// - 메시지 아래 [앱에서 보기] 버튼: 누르면 해당 항목 화면이 바로 열린다
 List<Map<String, Object>> buildTelegramReminders({
   required List<TaskItem> tasks,
@@ -56,6 +57,11 @@ List<Map<String, Object>> buildTelegramReminders({
         rooms.where((r) => r.id == t.roomId).firstOrNull?.workLinks ?? const [];
     add('task', t.id, t.dueDate, t.reminders,
         (r) => _message(t.title, t.dueDate!, r, workLinks), 'task', t.id);
+    for (final s in t.subTasks.where((s) => !s.isDone)) {
+      add('sub', '${t.id}:${s.id}', t.dueDate, s.reminders,
+          (r) => _message(t.title, t.dueDate!, r, workLinks, s.title),
+          'task', t.id);
+    }
   }
   final yesterday = DateTime(now.year, now.month, now.day - 1);
   final until = now.add(const Duration(days: kRoutineDaysAhead));
@@ -73,9 +79,11 @@ List<Map<String, Object>> buildTelegramReminders({
   return result.take(kMaxTelegramReminders).toList();
 }
 
-String _message(String title, DateTime due, TaskReminder r, List<String> workLinks) {
+String _message(String title, DateTime due, TaskReminder r, List<String> workLinks,
+    [String? subTitle]) {
   return [
     '[체크리스트 업무] $title',
+    if (subTitle != null) '[세부항목] $subTitle',
     '[마감기한] ${formatDateWithWeekday(due)} ${formatTime(due)} (${r.label})',
     for (final link in workLinks.map(normalizeUrl))
       if (link.startsWith('http')) '[업무링크] $link',
