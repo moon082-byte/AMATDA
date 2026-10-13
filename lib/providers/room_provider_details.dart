@@ -21,13 +21,13 @@ extension RoomTaskDetails on RoomProvider {
         ]),
       );
 
-  void setSubTaskReminders(
-          String taskId, String subTaskId, List<TaskReminder> reminders) =>
+  void setSubTaskRemindAt(
+          String taskId, String subTaskId, List<DateTime> remindAt) =>
       _edit(
         taskId,
         (t) => t.copyWith(subTasks: [
           for (final s in t.subTasks)
-            s.id == subTaskId ? s.copyWith(reminders: reminders) : s,
+            s.id == subTaskId ? s.copyWith(remindAt: remindAt) : s,
         ]),
       );
 

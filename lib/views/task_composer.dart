@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
-import '../models/task_reminder.dart';
 import '../providers/room_provider.dart';
 import '../utils/date_format.dart';
 import '../utils/ids.dart';
 import '../utils/pick_date_time.dart';
 import '../widgets/composer_frame.dart';
 import '../widgets/reminder_bell_button.dart';
-import '../widgets/reminder_popup.dart';
+import '../widgets/remind_at_popup.dart';
 import '../widgets/room_picker.dart';
 import '../widgets/schedule_button.dart';
 
@@ -27,11 +26,8 @@ class TaskComposer extends StatefulWidget {
 class _TaskComposerState extends State<TaskComposer> {
   late final _title = TextEditingController(text: widget.task?.title ?? '');
   late DateTime? _due = widget.task?.dueDate;
-  late List<TaskReminder> _reminders = widget.task?.reminders ?? const [];
+  late List<DateTime> _remindAt = widget.task?.remindAt ?? const [];
   late String? _roomId = widget.roomId;
-
-  /// 마감 없이 🔔을 눌렀을 때 안내를 보여준다
-  bool _askDue = false;
 
   /// 업무방 밖(오늘 할일 화면)에서 새로 추가할 때만 업무방을 고른다
   bool get _pickRoom => widget.task == null && widget.roomId == null;
@@ -56,23 +52,17 @@ class _TaskComposerState extends State<TaskComposer> {
   }
 
   Future<void> _editReminders() async {
-    final due = _due;
-    if (due == null) {
-      setState(() => _askDue = true);
-      return;
-    }
-    final picked = await showReminderPopup(
+    final picked = await showRemindAtPopup(
       context,
-      initial: _reminders,
-      dueDate: due,
+      initial: _remindAt,
+      dueDate: _due,
     );
-    if (picked != null && mounted) setState(() => _reminders = picked);
+    if (picked != null && mounted) setState(() => _remindAt = picked);
   }
 
   void _submit() {
     if (!_canSubmit) return;
     final title = _title.text.trim();
-    final reminders = _due == null ? <TaskReminder>[] : _reminders;
     final provider = context.read<RoomProvider>();
 
     final task = widget.task;
@@ -80,14 +70,14 @@ class _TaskComposerState extends State<TaskComposer> {
       provider.updateTask(task.copyWithEdits(
         title: title,
         dueDate: _due,
-        reminders: reminders,
+        remindAt: _remindAt,
       ));
     } else {
       provider.addTask(TaskItem(
         id: newId('task'),
         title: title,
         dueDate: _due,
-        reminders: reminders,
+        remindAt: _remindAt,
         roomId: _roomId,
         createdAt: DateTime.now(),
       ));
@@ -110,13 +100,9 @@ class _TaskComposerState extends State<TaskComposer> {
         onClear: () => setState(() => _due = null),
       ),
       bell: ReminderBellButton(
-        count: due == null ? 0 : _reminders.length,
-        ready: due != null,
+        count: _remindAt.length,
         onTap: _editReminders,
       ),
-      notice: _askDue && due == null
-          ? '📅 마감 일시를 먼저 정하면 리마인더를 설정할 수 있어요'
-          : null,
       extra: [
         if (_pickRoom)
           RoomPicker(

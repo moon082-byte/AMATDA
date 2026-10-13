@@ -53,10 +53,10 @@ class RoomDetailHeader extends StatelessWidget {
                       runSpacing: 6,
                       children: [
                         DueBadge(dueDate: nearest?.dueDate, dDay: true),
-                        if (nearest != null && nearest.reminders.isNotEmpty)
+                        if (nearest != null && nearest.remindAt.isNotEmpty)
                           TagChip.neutral(
                             context,
-                            remindersSummary(nearest.reminders),
+                            remindAtSummary(nearest.remindAt),
                             icon: Icons.notifications_rounded,
                           ),
                       ],

@@ -2,7 +2,6 @@ import '../models/note.dart';
 import '../models/routine.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
-import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 
 /// 오늘 기준 [days]일 뒤의 [hour]:[minute] 시각
@@ -53,10 +52,7 @@ List<TaskItem> buildMockTaskItems() => [
         title: '주간 보고서 작성',
         description: '팀장님께 전달할 주간 업무 보고서 작성',
         dueDate: _at(2, 18),
-        reminders: const [
-          TaskReminder(amount: 1, unit: ReminderUnit.day),
-          TaskReminder(amount: 1, unit: ReminderUnit.hour),
-        ],
+        remindAt: [_at(1, 18), _at(2, 17)],
         priority: TaskPriority.high,
         roomId: 'room_001',
         createdAt: _at(-2, 10),

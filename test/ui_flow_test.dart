@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_application_amatda/main.dart';
 import 'package:flutter_application_amatda/models/task_item.dart';
-import 'package:flutter_application_amatda/models/task_reminder.dart';
 import 'package:flutter_application_amatda/models/telegram_room.dart';
 import 'package:flutter_application_amatda/providers/room_provider.dart';
 import 'package:flutter_application_amatda/views/room_form_page.dart';
@@ -110,7 +109,7 @@ void main() {
       id: 'soon',
       title: '거래처 미팅 자료 보내기',
       dueDate: DateTime.now().add(const Duration(minutes: 20)),
-      reminders: const [TaskReminder(amount: 30, unit: ReminderUnit.minute)],
+      remindAt: [DateTime.now().subtract(const Duration(minutes: 10))],
       createdAt: DateTime.now(),
     ));
     await tester.pump(const Duration(seconds: 21)); // 20초마다 확인

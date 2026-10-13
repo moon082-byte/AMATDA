@@ -1,6 +1,5 @@
 import 'note.dart';
 import 'sub_task.dart';
-import 'task_reminder.dart';
 
 /// 할 일의 우선순위
 enum TaskPriority { low, medium, high }
@@ -19,7 +18,9 @@ class TaskItem {
   final DateTime createdAt;
   final List<SubTask> subTasks;
   final List<Note> notes;
-  final List<TaskReminder> reminders;
+
+  /// 리마인더 알림 시각들 (직접 고른 날짜·시간, 마감과 무관하게 울린다)
+  final List<DateTime> remindAt;
 
   const TaskItem({
     required this.id,
@@ -33,14 +34,8 @@ class TaskItem {
     required this.createdAt,
     this.subTasks = const [],
     this.notes = const [],
-    this.reminders = const [],
+    this.remindAt = const [],
   });
-
-  /// 리마인드가 울릴 시각들 (마감이 없으면 빈 목록)
-  List<DateTime> get reminderTimes {
-    final due = dueDate;
-    return due == null ? const [] : [for (final r in reminders) r.fireAt(due)];
-  }
 
   TaskItem _copy({
     String? title,
@@ -49,7 +44,7 @@ class TaskItem {
     DateTime? Function()? completedAt,
     List<SubTask>? subTasks,
     List<Note>? notes,
-    List<TaskReminder>? reminders,
+    List<DateTime>? remindAt,
   }) {
     return TaskItem(
       id: id,
@@ -63,7 +58,7 @@ class TaskItem {
       createdAt: createdAt,
       subTasks: subTasks ?? this.subTasks,
       notes: notes ?? this.notes,
-      reminders: reminders ?? this.reminders,
+      remindAt: remindAt ?? this.remindAt,
     );
   }
 
@@ -81,7 +76,7 @@ class TaskItem {
   TaskItem copyWithEdits({
     required String title,
     DateTime? dueDate,
-    List<TaskReminder> reminders = const [],
+    List<DateTime> remindAt = const [],
   }) =>
-      _copy(title: title, dueDate: () => dueDate, reminders: reminders);
+      _copy(title: title, dueDate: () => dueDate, remindAt: remindAt);
 }

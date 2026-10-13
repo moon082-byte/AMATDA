@@ -130,14 +130,15 @@ void main() {
         title: '보고서',
         roomId: 'room1',
         dueDate: _now.add(const Duration(hours: 2)),
-        reminders: const [_tenMin],
+        remindAt: [_now.add(const Duration(hours: 1, minutes: 50))],
         createdAt: _now,
       );
       final item = buildTelegramReminders(
           tasks: [task], rooms: [room], now: _now).single;
       expect((item['text'] as String).split('\n'), [
         '[체크리스트 업무] 보고서',
-        '[마감기한] 10월 6일 (화) 10:55 (10분 전)',
+        '[알림시각] 10월 6일 (화) 10:45',
+        '[마감기한] 10월 6일 (화) 10:55',
         '[업무링크] https://notion.so/team',
         '[업무링크] https://example.com/a',
       ]);
@@ -148,7 +149,7 @@ void main() {
       // 링크가 없으면 그 줄은 빠진다
       final plain = buildTelegramReminders(
           tasks: [task], rooms: const [], now: _now).single;
-      expect((plain['text'] as String).split('\n'), hasLength(2));
+      expect((plain['text'] as String).split('\n'), hasLength(3));
       expect(plain['text'] as String, isNot(contains('http')), reason: '업무링크가 없으면 그 줄은 빠진다');
       expect(plain['buttons'], hasLength(1));
     });

@@ -4,7 +4,6 @@ import '../data/sample_data.dart';
 import '../models/note.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
-import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 
 part 'room_provider_details.dart';
