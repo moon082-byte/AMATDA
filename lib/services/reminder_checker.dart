@@ -1,5 +1,6 @@
 import '../models/routine.dart';
 import '../models/task_item.dart';
+import '../models/task_reminder.dart';
 
 /// 지금 울려야 하는 리마인드 한 건
 class DueReminder {
@@ -27,14 +28,16 @@ String formatRemaining(Duration d) {
   return '${d.inDays}일';
 }
 
-String _body(DateTime due, DateTime now) {
+String _body(DateTime? due, DateTime now) {
+  if (due == null) return '리마인더 시각이에요';
   final left = due.difference(now);
   return left.isNegative
       ? '마감 시간이 지났어요'
       : '마감까지 ${formatRemaining(left)} 남았어요';
 }
 
-String _routineBody(DateTime at, DateTime now) {
+String _routineBody(DateTime? at, DateTime now) {
+  if (at == null) return '루틴 시간이에요';
   final left = at.difference(now);
   return left.inMinutes < 1
       ? '루틴 시간이에요'
@@ -49,7 +52,7 @@ int routineWindowDays(Routine r) {
 }
 
 /// 알림 시각이 지났지만 아직 울리지 않은 리마인드를 모은다.
-/// 마감이 12시간 넘게 지난 것은 이미 늦었으므로 건너뛴다.
+/// 마감(마감이 없으면 알림 시각)이 12시간 넘게 지난 것은 이미 늦었으므로 건너뛴다.
 List<DueReminder> collectDueReminders({
   required List<TaskItem> tasks,
   List<Routine> routines = const [],
@@ -60,10 +63,10 @@ List<DueReminder> collectDueReminders({
   final staleBefore = now.subtract(const Duration(hours: 12));
 
   void check(String kind, String id, String title, List<DateTime> times,
-      DateTime? due, [String Function(DateTime, DateTime) body = _body]) {
-    if (due == null || due.isBefore(staleBefore)) return;
+      DateTime? due, [String Function(DateTime?, DateTime) body = _body]) {
     // 여러 알림 시각이 한꺼번에 지났으면(앱을 오래 닫아 둔 경우) 한 번만 알린다
-    final passed = times.where((at) => !at.isAfter(now)).toList();
+    final passed = normalizeRemindAt(times).where((at) => !at.isAfter(now)).toList();
+    if (passed.isEmpty || (due ?? passed.last).isBefore(staleBefore)) return;
     final keys = [for (final at in passed) '$kind:$id:${at.toIso8601String()}'];
     final fresh = keys.where((k) => !fired.contains(k)).toList();
     if (fresh.isEmpty) return;
@@ -77,13 +80,10 @@ List<DueReminder> collectDueReminders({
 
   for (final t in tasks) {
     if (t.isDone) continue;
-    check('task', t.id, t.title, t.reminderTimes, t.dueDate);
-    final due = t.dueDate;
-    if (due == null) continue;
-    // 세부 항목 리마인더는 상위 할 일의 마감 기준으로 울린다
+    check('task', t.id, t.title, t.remindAt, t.dueDate);
     for (final s in t.subTasks.where((s) => !s.isDone)) {
-      check('sub', '${t.id}:${s.id}', '${t.title} · ${s.title}',
-          [for (final r in s.reminders) r.fireAt(due)], due);
+      check('sub', '${t.id}:${s.id}', '${t.title} · ${s.title}', s.remindAt,
+          t.dueDate);
     }
   }
   final yesterday = DateTime(now.year, now.month, now.day - 1);

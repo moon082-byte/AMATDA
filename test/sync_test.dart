@@ -112,7 +112,7 @@ void main() {
 
     final original = pc.rooms.taskById('task_001')!;
     pc.rooms.updateTask(original.copyWithEdits(
-        title: 'PC가 고친 제목', dueDate: original.dueDate, reminders: original.reminders));
+        title: 'PC가 고친 제목', dueDate: original.dueDate, remindAt: original.remindAt));
     pc.rooms.addSubTask('task_001', const SubTask(id: 's_pc', title: 'PC'));
     phone.rooms.toggleTask('task_001'); // 같은 할 일 행을 휴대폰도 고침
     await pc.sync.syncNow();

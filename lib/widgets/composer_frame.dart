@@ -13,9 +13,6 @@ class ComposerFrame extends StatelessWidget {
   final Widget schedule;
   final Widget bell;
 
-  /// 입력 줄 아래 안내 문구 (예: 마감을 먼저 정해 달라는 안내)
-  final String? notice;
-
   /// 입력 줄 아래에 덧붙일 칸 (예: 업무방 선택)
   final List<Widget> extra;
   final String submitLabel;
@@ -31,7 +28,6 @@ class ComposerFrame extends StatelessWidget {
     required this.submitLabel,
     required this.onSubmit,
     this.autofocus = false,
-    this.notice,
     this.extra = const [],
   });
 
@@ -77,14 +73,6 @@ class ComposerFrame extends StatelessWidget {
                 bell,
               ],
             ),
-            if (notice != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8, left: 2),
-                child: Text(
-                  notice!,
-                  style: text.caption.copyWith(color: palette.accent),
-                ),
-              ),
             for (final w in extra) ...[const SizedBox(height: 20), w],
             const SizedBox(height: 20),
             FilledButton(onPressed: onSubmit, child: Text(submitLabel)),

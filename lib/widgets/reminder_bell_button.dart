@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_palette.dart';
 
 /// 🔔 리마인더 버튼. 알림이 있으면 강조색 + 개수 배지로 표시한다.
-/// [ready]가 false면(기준 시각 없음) 흐리게 보이지만 눌러서 안내를 띄울 수 있다.
 class ReminderBellButton extends StatelessWidget {
   final int count;
-  final bool ready;
   final VoidCallback onTap;
 
   /// 세부 항목 줄처럼 좁은 곳에서 쓰는 작은 모양
@@ -15,7 +13,6 @@ class ReminderBellButton extends StatelessWidget {
     super.key,
     required this.count,
     required this.onTap,
-    this.ready = true,
     this.compact = false,
   });
 
@@ -23,11 +20,7 @@ class ReminderBellButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final active = count > 0;
-    final color = active
-        ? palette.accent
-        : ready
-            ? palette.subText
-            : palette.checkboxIdle;
+    final color = active ? palette.accent : palette.subText;
     final icon = Icon(
       active ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
       size: compact ? 18 : 22,

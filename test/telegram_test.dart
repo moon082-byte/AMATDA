@@ -47,34 +47,46 @@ void main() {
 
   group('봇에 올릴 알림 일정', () {
     final now = DateTime(2026, 10, 6, 12);
-    TaskItem task(String id, DateTime due, List<TaskReminder> r, {bool done = false}) =>
-        TaskItem(id: id, title: id, dueDate: due, reminders: r,
+    TaskItem task(String id, DateTime? due, List<DateTime> r, {bool done = false}) =>
+        TaskItem(id: id, title: id, dueDate: due, remindAt: r,
                 createdAt: DateTime(2026, 10, 1))
             .markDone(done);
 
     test('앞으로 울릴 알림은 모두, 지난 알림은 가장 최근 하나만', () {
       final items = buildTelegramReminders(now: now, rooms: const [], tasks: [
-        task('a', DateTime(2026, 10, 6, 13), const [
-          TaskReminder(amount: 1, unit: ReminderUnit.day), // 지남
-          TaskReminder(amount: 2, unit: ReminderUnit.hour), // 지남(더 최근)
-          TaskReminder(amount: 30, unit: ReminderUnit.minute), // 앞으로
+        task('a', DateTime(2026, 10, 6, 13), [
+          DateTime(2026, 10, 5, 13), // 지남
+          DateTime(2026, 10, 6, 11), // 지남(더 최근)
+          DateTime(2026, 10, 6, 12, 30), // 앞으로
         ]),
       ]);
       expect(items, hasLength(2));
-      expect(items.first['text'], contains('(2시간 전)'));
-      expect(items.last['text'], contains('(30분 전)'));
-      expect(items.last['text'], contains('10월 6일 (화) 13:00'));
+      expect(items.first['text'], contains('[알림시각] 10월 6일 (화) 11:00'));
+      expect(items.last['text'], contains('[알림시각] 10월 6일 (화) 12:30'));
+      expect(items.last['text'], contains('[마감기한] 10월 6일 (화) 13:00'));
+    });
+
+    test('마감이 없어도 직접 고른 시각에 보낸다 (마감 줄은 뺀다)', () {
+      final items = buildTelegramReminders(now: now, rooms: const [], tasks: [
+        task('free', null, [DateTime(2026, 10, 7, 9)]),
+        task('old', null, [DateTime(2026, 10, 5, 9)]), // 12시간 넘게 지남
+      ]);
+      expect(items.single['key'], startsWith('task:free:'));
+      expect(items.single['dueAt'], DateTime(2026, 10, 7, 9).millisecondsSinceEpoch);
+      expect(items.single['text'], isNot(contains('[마감기한]')));
+      expect(items.single['text'], contains('[알림시각] 10월 7일 (수) 09:00'));
     });
 
     test('완료한 할 일, 마감이 한참 지난 것, 알림 없는 것, 업무방 자체 마감은 뺀다', () {
-      const r = [TaskReminder(amount: 1, unit: ReminderUnit.hour)];
+      final r = [DateTime(2026, 10, 6, 23)];
       final room = TelegramRoom(
         id: 'r', name: '기획', type: TelegramRoomType.group, inviteLink: '',
-        lastActivityAt: now, dueDate: DateTime(2026, 10, 7), reminders: r,
+        lastActivityAt: now, dueDate: DateTime(2026, 10, 7),
+        reminders: const [TaskReminder(amount: 1, unit: ReminderUnit.hour)],
       );
       final items = buildTelegramReminders(now: now, rooms: [room], tasks: [
         task('done', DateTime(2026, 10, 7), r, done: true),
-        task('stale', DateTime(2026, 10, 5), r),
+        task('stale', DateTime(2026, 10, 5), [DateTime(2026, 10, 4, 23)]),
         task('none', DateTime(2026, 10, 7), const []),
       ]);
       expect(items, isEmpty);

@@ -24,10 +24,10 @@ class TaskMetaChips extends StatelessWidget {
       runSpacing: 6,
       children: [
         DueBadge(dueDate: task.dueDate, isDone: task.isDone),
-        if (task.reminders.isNotEmpty && task.dueDate != null)
+        if (task.remindAt.isNotEmpty)
           TagChip.accent(
             context,
-            remindersSummary(task.reminders),
+            remindAtSummary(task.remindAt),
             icon: Icons.notifications_rounded,
           ),
         if (roomName != null)

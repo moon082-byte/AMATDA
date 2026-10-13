@@ -6,6 +6,7 @@ import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 
 part 'routine_json.dart';
+part 'task_json.dart';
 
 /// 브라우저/기기 저장소에 넣기 위한 모델 ↔ JSON 변환
 
@@ -52,65 +53,6 @@ TelegramRoom roomFromJson(Map<String, dynamic> j) => TelegramRoom(
         for (final link in (j['workLinks'] as List? ?? const [])) '$link',
       ],
     );
-
-Map<String, Object?> taskToJson(TaskItem t) => {
-      'id': t.id,
-      'title': t.title,
-      'description': t.description,
-      'isDone': t.isDone,
-      'dueDate': _date(t.dueDate),
-      'completedAt': _date(t.completedAt),
-      'priority': t.priority.name,
-      'roomId': t.roomId,
-      'createdAt': _date(t.createdAt),
-      'subTasks': [
-        for (final s in t.subTasks) {'id': s.id, ...subTaskToJson(s)},
-      ],
-      'notes': [
-        for (final n in t.notes)
-          {'id': n.id, 'content': n.content, 'createdAt': _date(n.createdAt)},
-      ],
-      'reminders': _remindersToJson(t.reminders),
-    };
-
-TaskItem taskFromJson(Map<String, dynamic> j) => TaskItem(
-      id: j['id'] as String,
-      title: j['title'] as String,
-      description: j['description'] as String?,
-      isDone: (j['isDone'] as bool?) ?? false,
-      dueDate: _parseDate(j['dueDate']),
-      completedAt: _parseDate(j['completedAt']),
-      priority: _enumByName(
-          TaskPriority.values, j['priority'], TaskPriority.medium),
-      roomId: j['roomId'] as String?,
-      createdAt: _parseDate(j['createdAt']) ?? DateTime.now(),
-      subTasks: [
-        for (final s in (j['subTasks'] as List? ?? const []))
-          SubTask(
-            id: s['id'] as String,
-            title: s['title'] as String,
-            isDone: (s['isDone'] as bool?) ?? false,
-            reminders: _remindersFromJson(s['reminders']) ?? const [],
-          ),
-      ],
-      notes: [
-        for (final n in (j['notes'] as List? ?? const []))
-          Note(
-            id: n['id'] as String,
-            content: n['content'] as String,
-            createdAt: _parseDate(n['createdAt']) ?? DateTime.now(),
-          ),
-      ],
-      reminders: _remindersFromJson(j['reminders']) ??
-          [?_reminderFromJson(j['reminder'])],
-    );
-
-/// 세부 항목 내용 (id 제외, 서버 동기화에도 같은 모양을 쓴다)
-Map<String, Object?> subTaskToJson(SubTask s) => {
-      'title': s.title,
-      'isDone': s.isDone,
-      if (s.reminders.isNotEmpty) 'reminders': _remindersToJson(s.reminders),
-    };
 
 TaskReminder? _reminderFromJson(Object? v) {
   if (v is! Map || v['amount'] is! int) return null;

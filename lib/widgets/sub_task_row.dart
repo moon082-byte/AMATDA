@@ -15,9 +15,6 @@ class SubTaskRow extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback onReminder;
 
-  /// 상위 할 일에 마감이 있어 리마인더를 걸 수 있는지
-  final bool reminderReady;
-
   const SubTaskRow({
     super.key,
     required this.subTask,
@@ -25,7 +22,6 @@ class SubTaskRow extends StatefulWidget {
     required this.onRename,
     required this.onDelete,
     required this.onReminder,
-    this.reminderReady = true,
   });
 
   @override
@@ -124,8 +120,7 @@ class _SubTaskRowState extends State<SubTaskRow> {
                 ),
         ),
         ReminderBellButton(
-          count: sub.reminders.length,
-          ready: widget.reminderReady,
+          count: sub.remindAt.length,
           compact: true,
           onTap: widget.onReminder,
         ),
