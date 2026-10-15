@@ -7,15 +7,17 @@ import '../utils/ids.dart';
 import '../widgets/composer_frame.dart';
 import '../widgets/reminder_bell_button.dart';
 import '../widgets/reminder_popup.dart';
+import '../widgets/room_picker.dart';
 import '../widgets/routine_schedule_dialog.dart';
 import '../widgets/schedule_button.dart';
 
-/// 루틴 추가/수정 입력 블록: [루틴 이름][📅 반복 요일·시각][🔔 리마인더].
-/// [routine]이 있으면 수정 모드로 동작한다.
+/// 루틴 추가/수정 입력 블록: [루틴 이름][📅 반복 요일·시각][🔔 리마인더] + 업무방 선택.
+/// [routine]이 있으면 수정 모드로 동작한다. [roomId]는 새 루틴에 미리 고를 업무방.
 class RoutineComposer extends StatefulWidget {
   final Routine? routine;
+  final String? roomId;
 
-  const RoutineComposer({super.key, this.routine});
+  const RoutineComposer({super.key, this.routine, this.roomId});
 
   @override
   State<RoutineComposer> createState() => _RoutineComposerState();
@@ -30,6 +32,7 @@ class _RoutineComposerState extends State<RoutineComposer> {
   );
   late List<TaskReminder> _reminders = widget.routine?.reminders ??
       const [TaskReminder(amount: 0, unit: ReminderUnit.minute)];
+  late String? _roomId = widget.routine?.roomId ?? widget.roomId;
 
   bool get _isEdit => widget.routine != null;
   bool get _canSubmit =>
@@ -61,6 +64,7 @@ class _RoutineComposerState extends State<RoutineComposer> {
     hour: _time.hour,
     minute: _time.minute,
     reminders: _reminders,
+    roomId: _roomId,
   );
 
   Future<void> _pickSchedule() async {
@@ -112,6 +116,12 @@ class _RoutineComposerState extends State<RoutineComposer> {
         count: _reminders.length,
         onTap: _editReminders,
       ),
+      extra: [
+        RoomPicker(
+          value: _roomId,
+          onChanged: (id) => setState(() => _roomId = id),
+        ),
+      ],
       submitLabel: _isEdit ? '저장하기' : '추가하기',
       onSubmit: _canSubmit ? _submit : null,
     );

@@ -37,9 +37,9 @@ Future<void> openCreateRoom(BuildContext context) =>
 Future<void> openEditRoom(BuildContext context, TelegramRoom room) =>
     _open(context, RoomFormPage(room: room));
 
-/// 새 루틴 입력 블록을 연다
-Future<void> openAddRoutine(BuildContext context) =>
-    _sheet(context, const RoutineComposer());
+/// 새 루틴 입력 블록을 연다. [roomId]가 있으면 그 업무방을 미리 고른다.
+Future<void> openAddRoutine(BuildContext context, [String? roomId]) =>
+    _sheet(context, RoutineComposer(roomId: roomId));
 
 /// 기존 루틴 수정 입력 블록을 연다
 Future<void> openEditRoutine(BuildContext context, Routine routine) =>

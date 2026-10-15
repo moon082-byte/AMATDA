@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
 import '../utils/confirm_dialog.dart';
 import '../utils/nearest_due.dart';
+import '../utils/room_actions.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/common/section_header.dart';
@@ -19,15 +20,6 @@ class TodayTaskSlivers extends StatelessWidget {
   final String? focusTaskId;
 
   const TodayTaskSlivers({super.key, this.focusTaskId});
-
-  Future<void> _deleteRoom(BuildContext context, String id, String name) async {
-    final confirmed = await confirmDelete(
-      context,
-      '"$name" 방을 삭제하면 방에 속한 할 일도 함께 삭제돼요.',
-    );
-    if (!context.mounted || !confirmed) return;
-    context.read<RoomProvider>().deleteRoom(id);
-  }
 
   Future<void> _deleteTask(BuildContext context, String id, String title) async {
     final confirmed = await confirmDelete(context, '"$title" 항목을 삭제할까요?');
@@ -73,7 +65,7 @@ class TodayTaskSlivers extends StatelessWidget {
                         builder: (_) => RoomDetailView(roomId: room.id),
                       ),
                     ),
-                    onLongPress: () => _deleteRoom(context, room.id, room.name),
+                    onLongPress: () => confirmDeleteRoom(context, room.id, room.name),
                   );
                 },
               ),

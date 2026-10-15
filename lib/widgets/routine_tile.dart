@@ -22,6 +22,9 @@ class RoutineTile extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
+  /// 연결된 업무방 이름 (없거나 업무방 화면 안이면 null)
+  final String? roomName;
+
   const RoutineTile({
     super.key,
     required this.routine,
@@ -29,6 +32,7 @@ class RoutineTile extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
+    this.roomName,
   });
 
   @override
@@ -105,6 +109,8 @@ class RoutineTile extends StatelessWidget {
                             remindersSummary(routine.reminders),
                             icon: Icons.notifications_rounded,
                           ),
+                        if (roomName != null)
+                          TagChip.neutral(context, roomName!, icon: Icons.tag_rounded),
                       ],
                     ),
                   ],
