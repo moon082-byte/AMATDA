@@ -1,6 +1,8 @@
 import '../utils/date_format.dart';
 import 'task_reminder.dart';
 
+part 'routine_days.dart';
+
 /// 정해 둔 요일마다 같은 시각에 반복하는 습관 (예: 매일 09:00 물 마시기).
 /// 날짜별로 완료 여부를 기록하고, 리마인드는 그날의 [hour]:[minute] 기준으로 울린다.
 class Routine {
@@ -15,6 +17,9 @@ class Routine {
   final int hour;
   final int minute;
   final List<TaskReminder> reminders;
+
+  /// 연결한 텔레그램 업무방 (없으면 null)
+  final String? roomId;
 
   /// 완료한 날짜들 ("2026-10-06")
   final Set<String> doneDates;
@@ -31,6 +36,7 @@ class Routine {
     this.hour = 9,
     this.minute = 0,
     this.reminders = const [],
+    this.roomId,
     this.doneDates = const {},
     required this.createdAt,
     DateTime? remindFrom,
@@ -89,6 +95,7 @@ class Routine {
     required int hour,
     required int minute,
     required List<TaskReminder> reminders,
+    String? roomId,
   }) =>
       _copy(
         name: name,
@@ -96,8 +103,12 @@ class Routine {
         hour: hour,
         minute: minute,
         reminders: reminders,
+        roomId: () => roomId,
         remindFrom: DateTime.now(),
       );
+
+  /// 업무방 연결만 푼 루틴 (업무방을 삭제할 때)
+  Routine unlinked() => _copy(roomId: () => null);
 
   Routine _copy({
     String? name,
@@ -105,6 +116,7 @@ class Routine {
     int? hour,
     int? minute,
     List<TaskReminder>? reminders,
+    String? Function()? roomId,
     Set<String>? doneDates,
     DateTime? remindFrom,
   }) =>
@@ -115,29 +127,9 @@ class Routine {
         hour: hour ?? this.hour,
         minute: minute ?? this.minute,
         reminders: reminders ?? this.reminders,
+        roomId: roomId != null ? roomId() : this.roomId,
         doneDates: doneDates ?? this.doneDates,
         createdAt: createdAt,
         remindFrom: remindFrom ?? this.remindFrom,
       );
 }
-
-/// 반복 요일 빠른 선택
-const everyDay = {1, 2, 3, 4, 5, 6, 7};
-const weekDays = {1, 2, 3, 4, 5};
-const weekendDays = {6, 7};
-
-bool _sameDays(Set<int> a, Set<int> b) =>
-    a.length == b.length && a.containsAll(b);
-
-/// 반복 요일 요약: "매일", "평일", "주말", "월·수·금"
-String repeatLabelOf(Set<int> days) {
-  if (_sameDays(days, everyDay)) return '매일';
-  if (_sameDays(days, weekDays)) return '평일';
-  if (_sameDays(days, weekendDays)) return '주말';
-  if (days.isEmpty) return '반복 없음';
-  return ([...days]..sort()).map((d) => koWeekdays[d - 1]).join('·');
-}
-
-/// 날짜별 기록용 키 "2026-10-06"
-String dayKey(DateTime d) =>
-    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

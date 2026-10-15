@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
+import '../providers/routine_provider.dart';
 import '../theme/app_palette.dart';
-import '../utils/confirm_dialog.dart';
 import '../utils/nearest_due.dart';
+import '../utils/room_actions.dart';
 import '../widgets/add_menu_fab.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
-import '../widgets/common/section_header.dart';
-import '../widgets/reorder_handle.dart';
 import '../widgets/room_detail_header.dart';
-import '../widgets/task_detail_card.dart';
+import '../widgets/segment_tabs.dart';
 import 'form_routes.dart';
+import 'room_task_slivers.dart';
+import 'routine_slivers.dart';
 
-/// 텔레그램 업무방 상세 화면: 요약 카드, 체크리스트(꾹 눌러 순서 변경), 세부 항목/메모
-class RoomDetailView extends StatelessWidget {
+/// 텔레그램 업무방 상세 화면: 요약 카드 + [할일][루틴] 탭.
+/// 할일 탭은 체크리스트(꾹 눌러 순서 변경)·세부 항목/메모,
+/// 루틴 탭은 이 방에 연결된 루틴(오늘 할 루틴은 탭해서 완료 체크).
+class RoomDetailView extends StatefulWidget {
   final String roomId;
 
   /// 처음부터 펼쳐서 보여줄 할 일 (텔레그램 알림의 [앱에서 보기]로 들어온 경우)
@@ -22,34 +25,35 @@ class RoomDetailView extends StatelessWidget {
 
   const RoomDetailView({super.key, required this.roomId, this.focusTaskId});
 
-  Future<void> _deleteRoom(BuildContext context, String name) async {
-    final confirmed = await confirmDelete(
-      context,
-      '"$name" 방을 삭제하면 방에 속한 할 일도 함께 삭제돼요.',
-    );
-    if (!context.mounted || !confirmed) return;
-    context.read<RoomProvider>().deleteRoom(roomId);
-    Navigator.pop(context);
-  }
+  @override
+  State<RoomDetailView> createState() => _RoomDetailViewState();
+}
 
-  Future<void> _deleteTask(BuildContext context, String id, String title) async {
-    final confirmed = await confirmDelete(context, '"$title" 항목을 삭제할까요?');
-    if (!context.mounted || !confirmed) return;
-    context.read<RoomProvider>().deleteTask(id);
+class _RoomDetailViewState extends State<RoomDetailView> {
+  /// 0: 할일, 1: 루틴
+  int _tab = 0;
+
+  String get _roomId => widget.roomId;
+
+  Future<void> _deleteRoom(String name) async {
+    final deleted = await confirmDeleteRoom(context, _roomId, name);
+    if (deleted && mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final provider = context.watch<RoomProvider>();
-    final room = provider.roomById(roomId);
+    final room = provider.roomById(_roomId);
     if (room == null) {
       return const Scaffold(
         body: EmptyState(icon: Icons.delete_outline, title: '삭제된 방이에요'),
       );
     }
 
-    final activeTasks = provider.activeTasksForRoom(roomId);
+    final activeTasks = provider.activeTasksForRoom(_roomId);
+    final routineCount =
+        context.watch<RoutineProvider>().routinesForRoom(_roomId).length;
 
     return AppPage(
       title: room.name,
@@ -60,14 +64,20 @@ class RoomDetailView extends StatelessWidget {
           icon: Icon(Icons.edit_rounded, color: palette.bodyText),
         ),
         IconButton(
-          onPressed: () => _deleteRoom(context, room.name),
+          onPressed: () => _deleteRoom(room.name),
           tooltip: '방 삭제',
           icon: Icon(Icons.delete_outline_rounded, color: palette.danger),
         ),
       ],
       floatingActionButton: AddMenuFab(
-        onAddTask: () => openAddTask(context, roomId),
-        onAddRoutine: () => openAddRoutine(context),
+        onAddTask: () {
+          setState(() => _tab = 0);
+          openAddTask(context, _roomId);
+        },
+        onAddRoutine: () {
+          setState(() => _tab = 1);
+          openAddRoutine(context, _roomId);
+        },
       ),
       slivers: [
         paddedSliver(top: 8, [
@@ -75,38 +85,18 @@ class RoomDetailView extends StatelessWidget {
             room: room,
             nearestTask: nearestDueTask(activeTasks),
           ),
-          const SizedBox(height: 32),
-          SectionHeader(title: '체크리스트', count: activeTasks.length),
-          if (activeTasks.isEmpty)
-            const EmptyState(
-              icon: Icons.task_alt_rounded,
-              title: '완료하지 않은 할 일이 없어요',
-              message: '아래 버튼으로 새 할 일을 추가해 보세요',
-            ),
-        ]),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverReorderableList(
-            itemCount: activeTasks.length,
-            proxyDecorator: liftedProxy,
-            onReorderItem: (from, to) => provider.reorderTasks(
-              [for (final t in activeTasks) t.id],
-              from,
-              to,
-            ),
-            itemBuilder: (context, index) {
-              final task = activeTasks[index];
-              return TaskDetailCard(
-                key: ValueKey(task.id),
-                task: task,
-                dragIndex: index,
-                initiallyExpanded: task.id == focusTaskId,
-                onEdit: () => openEditTask(context, task),
-                onDelete: () => _deleteTask(context, task.id, task.title),
-              );
-            },
+          const SizedBox(height: 24),
+          SegmentTabs(
+            labels: ['할일 ${activeTasks.length}', '루틴 $routineCount'],
+            colors: [palette.accent, palette.routine],
+            index: _tab,
+            onChanged: (i) => setState(() => _tab = i),
           ),
-        ),
+          const SizedBox(height: 24),
+        ]),
+        _tab == 0
+            ? RoomTaskSlivers(roomId: _roomId, focusTaskId: widget.focusTaskId)
+            : RoutineSlivers(roomId: _roomId),
       ],
     );
   }

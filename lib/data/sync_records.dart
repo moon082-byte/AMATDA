@@ -8,7 +8,7 @@ import 'model_json.dart';
 class SyncRecord {
   final String id;
 
-  /// 할 일 → 업무방, 세부 항목·메모 → 할 일
+  /// 할 일·루틴 → 업무방, 세부 항목·메모 → 할 일
   final String? parentId;
 
   /// 화면에 보이는 순서
@@ -92,7 +92,8 @@ RecordSet toRecords(
     }
   }
   for (final (i, r) in routines.indexed) {
-    put('routines', r.id, i, routineToJson(r)..remove('id'));
+    put('routines', r.id, i, routineToJson(r)..remove('id')..remove('roomId'),
+        r.roomId);
   }
   return set;
 }
@@ -129,6 +130,9 @@ RecordSet toRecords(
           'notes': notes[r.id] ?? const [],
         }),
     ],
-    routines: [for (final r in sorted('routines')) routineFromJson(decode(r))],
+    routines: [
+      for (final r in sorted('routines'))
+        routineFromJson({...decode(r), 'roomId': r.parentId}),
+    ],
   );
 }

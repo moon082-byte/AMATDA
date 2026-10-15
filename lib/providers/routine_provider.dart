@@ -33,6 +33,19 @@ class RoutineProvider extends ChangeNotifier {
           (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
         );
 
+  /// [roomId] 업무방에 연결된 루틴
+  List<Routine> routinesForRoom(String roomId) =>
+      _routines.where((r) => r.roomId == roomId).toList();
+
+  /// 업무방을 삭제할 때 그 방의 루틴은 남기고 연결만 푼다
+  void unlinkRoom(String roomId) {
+    if (!_routines.any((r) => r.roomId == roomId)) return;
+    for (final (i, r) in _routines.indexed) {
+      if (r.roomId == roomId) _routines[i] = r.unlinked();
+    }
+    notifyListeners();
+  }
+
   void addRoutine(Routine routine) {
     _routines.add(routine);
     notifyListeners();
