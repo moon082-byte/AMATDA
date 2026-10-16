@@ -1,6 +1,8 @@
 // 허용 이메일 (누가 로그인할 수 있는지)
 // - 서버 비밀값 ALLOWED_EMAILS·OWNER_EMAIL: 항상 허용 (관리자가 잠기지 않게)
 // - allowed_emails 표: 관리자(OWNER_EMAIL)가 앱의 설정 → 관리자 → 허용 이메일 관리에서 추가·삭제
+//   삭제하면 그 사람에게 가던 알림(푸시 구독·알림 일정·텔레그램 연결)도 함께 지운다.
+//   앱 데이터(업무방·할 일·루틴)는 남겨 두므로 다시 허용하면 그대로 이어 쓸 수 있다.
 
 import { HttpError, readJson } from './http.js';
 import { parseEmails } from './logic.js';
@@ -18,6 +20,17 @@ export async function isAllowedEmail(env, email, inTable) {
   if (fixedEmails(env).has(e)) return true;
   if (inTable !== undefined) return !!inTable;
   return !!(await env.DB.prepare('SELECT 1 FROM allowed_emails WHERE email = ?').bind(e).first());
+}
+
+/** [email] 계정으로 가던 알림을 모두 끊는다: 푸시 구독, 알림 일정, 텔레그램 연결 */
+export async function stopNotifications(env, email) {
+  const ids = 'SELECT id FROM users WHERE lower(email) = ?1';
+  const codes = `SELECT code FROM links WHERE user_id IN (${ids})`;
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM push_subscriptions WHERE user_id IN (${ids})`).bind(email),
+    env.DB.prepare(`DELETE FROM reminders WHERE code IN (${ids}) OR code IN (${codes})`).bind(email),
+    env.DB.prepare(`DELETE FROM links WHERE user_id IN (${ids}) OR code IN (${ids})`).bind(email),
+  ]);
 }
 
 async function list(env) {
@@ -48,6 +61,7 @@ export async function adminRoute(path, method, user, request, env, url) {
     const email = String(url.searchParams.get('email') ?? '').toLowerCase();
     if (fixedEmails(env).has(email)) throw new HttpError(400, '서버 설정에 있는 이메일은 여기서 지울 수 없어요');
     await env.DB.prepare('DELETE FROM allowed_emails WHERE email = ?').bind(email).run();
+    await stopNotifications(env, email);
     return list(env);
   }
   throw new HttpError(405, '지원하지 않는 요청이에요');

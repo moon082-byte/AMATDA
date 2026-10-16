@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import { sha256Hex } from '../src/crypto.js';
+import { replaceReminders } from '../src/db.js';
 import worker from '../src/index.js';
 import { fakeD1 } from './support/d1.js';
 
@@ -47,4 +48,26 @@ test('관리자만 쓸 수 있고, 서버 설정의 이메일은 지울 수 없�
   assert.equal((await call('u_boss', 'POST', '/admin/allowed-emails', { email: 'not-an-email' })).status, 400);
   const me = await (await call('u_boss', 'GET', '/auth/me')).json();
   assert.equal(me.user.owner, true);
+});
+
+test('허용 목록에서 지우면 그 사람에게 가던 푸시·텔레그램 알림도 끊고, 앱 데이터는 남긴다', async () => {
+  await call('u_boss', 'POST', '/admin/allowed-emails', { email: 'friend@x.com' });
+  const item = { key: 'task:t:x', fireAt: Date.now() + 60000, dueAt: Date.now() + 3600000, text: '할 일' };
+  for (const id of ['u_friend', 'u_boss']) {
+    env.DB.exec(`INSERT INTO push_subscriptions (endpoint, user_id, p256dh, auth, created_at)
+        VALUES ('https://push.test/${id}', '${id}', 'p', 'a', 0);
+      INSERT INTO links (code, chat_id, chat_name, created_at, user_id) VALUES ('${id}', 1, 'n', 0, '${id}');
+      INSERT INTO tasks (user_id, id, data, version, updated_at) VALUES ('${id}', 't_${id}', '{}', 1, 0);`);
+    await replaceReminders(env, id, [item]);
+  }
+  // 예전 앱이 만든 무작위 코드 연결도 같은 사람 것이면 끊는다
+  env.DB.exec(`INSERT INTO links (code, chat_id, chat_name, created_at, user_id) VALUES ('old_code', 2, 'n', 0, 'u_friend');`);
+  await replaceReminders(env, 'old_code', [item]);
+
+  await call('u_boss', 'DELETE', '/admin/allowed-emails?email=friend%40x.com');
+  const owners = (sql) => env.DB.rows(sql).map((r) => r.o).sort();
+  assert.deepEqual(owners('SELECT user_id AS o FROM push_subscriptions'), ['u_boss']);
+  assert.deepEqual(owners('SELECT code AS o FROM reminders'), ['u_boss']);
+  assert.deepEqual(owners('SELECT code AS o FROM links'), ['u_boss']);
+  assert.deepEqual(owners('SELECT user_id AS o FROM tasks'), ['u_boss', 'u_friend'], '앱 데이터는 남긴다');
 });
