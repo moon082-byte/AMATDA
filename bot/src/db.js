@@ -18,21 +18,25 @@ export async function pendingCount(env, codes) {
   return row?.n ?? 0;
 }
 
+/** 텔레그램 연결을 끊는다. 알림 일정은 푸시 구독 기기가 없을 때만 지운다 (푸시는 계속 받도록) */
 export async function unlinkCodes(env, codes) {
   if (!codes.length) return;
   await env.DB.batch(codes.flatMap((code) => [
-    env.DB.prepare('DELETE FROM reminders WHERE code = ?').bind(code),
+    env.DB.prepare(
+      'DELETE FROM reminders WHERE code = ?1 AND NOT EXISTS (SELECT 1 FROM push_subscriptions WHERE user_id = ?1)',
+    ).bind(code),
     env.DB.prepare('DELETE FROM links WHERE code = ?').bind(code),
   ]));
 }
 
 /**
- * 알림 일정을 통째로 교체한다. 이미 보낸 알림은 다시 보내지 않도록 보냄·확인·다시 보낸 상태를 유지한다.
+ * 알림 일정을 통째로 교체한다. 이미 보낸 알림은 다시 보내지 않도록
+ * 보냄(텔레그램·푸시 따로)·확인·다시 보낸 상태를 유지한다.
  * 무료 요금제의 요청당 쿼리 수 제한에 걸리지 않도록 목록 전체를 JSON 하나로 넣는다.
  */
 export async function replaceReminders(env, code, items) {
   const { results } = await env.DB.prepare(
-    'SELECT key, acked, repeats, next_at FROM reminders WHERE code = ? AND sent = 1',
+    'SELECT key, sent, push_sent, acked, repeats, next_at FROM reminders WHERE code = ? AND (sent = 1 OR push_sent = 1)',
   ).bind(code).all();
   const sent = new Map(results.map((r) => [r.key, r]));
   const ackIds = await Promise.all(items.map((i) => ackIdFor(env, code, i.key)));
@@ -43,7 +47,8 @@ export async function replaceReminders(env, code, items) {
     text: i.text,
     buttons: i.buttons?.length ? JSON.stringify(i.buttons) : null,
     ack_id: ackIds[n],
-    sent: sent.has(i.key) ? 1 : 0,
+    sent: sent.get(i.key)?.sent ?? 0,
+    push_sent: sent.get(i.key)?.push_sent ?? 0,
     acked: sent.get(i.key)?.acked ?? 0,
     repeats: sent.get(i.key)?.repeats ?? 0,
     next_at: sent.get(i.key)?.next_at ?? null,
@@ -51,10 +56,10 @@ export async function replaceReminders(env, code, items) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM reminders WHERE code = ?').bind(code),
     env.DB.prepare(
-      `INSERT INTO reminders (code, key, fire_at, due_at, text, buttons, ack_id, sent, acked, repeats, next_at)
+      `INSERT INTO reminders (code, key, fire_at, due_at, text, buttons, ack_id, sent, push_sent, acked, repeats, next_at)
        SELECT ?1, j.value ->> 'key', j.value ->> 'fire_at', j.value ->> 'due_at',
               j.value ->> 'text', j.value ->> 'buttons', j.value ->> 'ack_id', j.value ->> 'sent',
-              j.value ->> 'acked', j.value ->> 'repeats', j.value ->> 'next_at'
+              j.value ->> 'push_sent', j.value ->> 'acked', j.value ->> 'repeats', j.value ->> 'next_at'
        FROM json_each(?2) AS j`,
     ).bind(code, JSON.stringify(rows)),
   ]);

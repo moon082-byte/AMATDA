@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
+import '../services/push_service.dart';
 import '../services/telegram_link.dart';
+import '../utils/maybe_provider.dart';
 import '../services/telegram_payload.dart';
 
-/// 할 일·업무방·루틴이 바뀌면 잠시 뒤(연속 변경은 한 번에) 알림 일정을 봇 서버에 올리고,
+/// 할 일·업무방·루틴이 바뀌면 잠시 뒤(연속 변경은 한 번에) 알림 일정을 봇 서버에 올리고
+/// (텔레그램을 연결했거나 이 기기에서 시스템 알림(푸시)을 켰을 때),
 /// 앱으로 돌아올 때마다 텔레그램 연결 상태를 확인한다.
 /// 루틴은 앞으로 7일 치만 올리므로, 앱을 켜 둔 동안에도 1시간마다 다시 계산해 올린다.
 class TelegramSyncHost extends StatefulWidget {
@@ -23,6 +26,7 @@ class _TelegramSyncHostState extends State<TelegramSyncHost>
   late final RoomProvider _rooms = context.read<RoomProvider>();
   late final RoutineProvider _routines = context.read<RoutineProvider>();
   late final TelegramLink _link = context.read<TelegramLink>();
+  late final PushService? _push = maybeProvider<PushService>(context, listen: false);
   Timer? _debounce;
   Timer? _hourly;
 
@@ -33,6 +37,7 @@ class _TelegramSyncHostState extends State<TelegramSyncHost>
     _rooms.addListener(_schedule);
     _routines.addListener(_schedule);
     _link.addListener(_schedule);
+    _push?.addListener(_schedule);
     _hourly = Timer.periodic(const Duration(hours: 1), (_) => _schedule());
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshThenSync());
   }
@@ -43,6 +48,7 @@ class _TelegramSyncHostState extends State<TelegramSyncHost>
     _rooms.removeListener(_schedule);
     _routines.removeListener(_schedule);
     _link.removeListener(_schedule);
+    _push?.removeListener(_schedule);
     _debounce?.cancel();
     _hourly?.cancel();
     super.dispose();
@@ -61,7 +67,7 @@ class _TelegramSyncHostState extends State<TelegramSyncHost>
   }
 
   void _schedule() {
-    if (!_link.linked) return;
+    if (!_link.linked && !(_push?.on ?? false)) return;
     _debounce?.cancel();
     _debounce = Timer(const Duration(seconds: 2), () {
       _link.sync(buildTelegramReminders(

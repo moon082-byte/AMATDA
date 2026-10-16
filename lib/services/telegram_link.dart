@@ -96,15 +96,18 @@ class TelegramLink extends ChangeNotifier {
     }
   }
 
-  /// 알림 일정을 봇 서버에 올린다 (바뀐 게 없으면 보내지 않는다)
+  /// 알림 일정을 봇 서버에 올린다 (바뀐 게 없으면 보내지 않는다).
+  /// 텔레그램과 시스템 알림(푸시)이 같은 일정을 쓰므로 둘 중 하나라도 켜져 있으면 부른다.
   Future<void> sync(List<Map<String, Object>> reminders) async {
-    if (!available || !linked) return;
+    if (!available) return;
     final body = {'reminders': reminders};
     final encoded = jsonEncode(body);
     if (encoded == _lastSynced) return;
     try {
-      await _api!.put('/api/reminders', body);
+      final res = await _api!.put('/api/reminders', body);
       _lastSynced = encoded;
+      // 텔레그램에서 /stop 등으로 연결이 끊겼다
+      if (res['linked'] == false && linked) _setName(null);
     } on ApiException catch (e) {
       // 404: 텔레그램에서 /stop 등으로 연결이 끊겼다
       if (e.status == 404) _setName(null);

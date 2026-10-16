@@ -17,7 +17,10 @@ Cloudflare Workers(무료 플랜)에서 돌아갑니다.
    ```
    메시지 아래에는 [📱 앱에서 보기] 버튼이 붙어, 누르면 텔레그램 안(미니앱)에서 그 할 일 화면이 바로 열립니다.
    구글은 텔레그램 안 브라우저 로그인을 막으므로, 텔레그램이 서명한 사용자 정보로 연결된 계정에 자동 로그인합니다. 텔레그램이 버튼 주소를 거부하면 글만 보냅니다.
-5. **끈질긴 알림**(설정에서 켜기/끄기, 기본 켬): [✅ 확인]을 누르거나 [📱 앱에서 보기]로 앱을 열 때까지
+5. **시스템 알림(Web Push)**: 앱의 **설정 → 시스템 알림 → [알림 허용]**을 누른 기기(PC 크롬, 안드로이드,
+   iOS 16.4 이상에서 홈 화면에 추가한 앱)에는 같은 시각에 푸시 알림도 보냅니다. 누르면 그 할 일 화면이 열립니다.
+   텔레그램 연결 여부와 상관없이 동작하고, 둘 다 켜 두면 둘 다 받습니다.
+6. **끈질긴 알림**(설정에서 켜기/끄기, 기본 켬): [✅ 확인]을 누르거나 [📱 앱에서 보기]로 앱을 열 때까지
    5분마다 최대 3번 더 보냅니다(`🔁 다시 알림 (2/4)`). 앱에서 그 할 일·루틴을 완료해도 멈춥니다.
 
 서버에 저장되는 것: 구글 계정(번호·이메일·이름), 로그인 세션(토큰의 해시), 계정별 앱 데이터(업무방·할 일·세부 항목·메모·루틴),
@@ -84,7 +87,18 @@ npm run deploy
    ```
    이 값을 바꾸면 모든 사용자의 PIN이 맞지 않게 되니 한 번 등록한 뒤에는 바꾸지 마세요.
 
-### 8. 앱에 서버 연결
+### 8. 시스템 알림(Web Push) 키 등록
+휴대폰(홈 화면에 추가한 앱)·PC 크롬에 앱을 닫아 둬도 알림을 보내려면 VAPID 키 한 쌍이 필요합니다.
+```bash
+npm run vapid:keys                                # VAPID_PUBLIC_KEY=... / VAPID_PRIVATE_KEY=... 출력
+npx wrangler secret put VAPID_PUBLIC_KEY          # 출력된 공개키 붙여 넣기
+npx wrangler secret put VAPID_PRIVATE_KEY         # 출력된 비밀키 붙여 넣기 (다른 사람에게 보여 주지 마세요)
+npx wrangler secret put VAPID_SUBJECT             # 연락처, 예: mailto:me@example.com
+```
+키를 바꾸면 기존 구독이 모두 무효가 되어 각 기기에서 [알림 허용]을 다시 눌러야 하니, 한 번 등록한 뒤에는 바꾸지 마세요.
+키가 없으면 푸시만 꺼지고 나머지(텔레그램 등)는 그대로 동작합니다.
+
+### 9. 앱에 서버 연결
 `lib/config/bot_config.dart`에 배포 주소와 봇 아이디를 넣고 앱을 다시 배포합니다.
 ```dart
 const kBotApiUrl = String.fromEnvironment('BOT_API_URL', defaultValue: 'https://amatda-bot.<하위 도메인>.workers.dev');
@@ -108,6 +122,8 @@ npm run db:migrate:accounts  # migrations/0002_accounts.sql: 사용자·세션·
 npm run db:migrate:pin       # migrations/0003_pin.sql: 2차 비밀번호(PIN) 칸
 npm run db:migrate:tgroom    # migrations/0004_tg_room_url.sql: (지금은 쓰지 않는 칸)
 npm run db:migrate:nag       # migrations/0005_nag.sql: 끈질긴 알림 (적용 후 /setup 을 한 번 다시 열어 웹훅 갱신)
+npm run db:migrate:allowed   # migrations/0006_allowed_emails.sql: 관리자 화면의 허용 이메일
+npm run db:migrate:push      # migrations/0007_push.sql: 시스템 알림(Web Push) 구독 표 (위 8단계의 키도 등록)
 npm run deploy
 ```
 
@@ -127,7 +143,9 @@ npm run deploy
 | `POST /api/telegram/code` | 텔레그램 연결 코드 만들기 🔒 |
 | `GET` / `DELETE /api/telegram` | 텔레그램 연결·끈질긴 알림 설정 확인 / 끊기 🔒 |
 | `PUT /api/telegram/nag` | 끈질긴 알림 켜기·끄기 (`{"enabled": true}`) 🔒 |
-| `PUT /api/reminders` | 알림 일정 전체 올리기 🔒 |
+| `PUT /api/reminders` | 알림 일정 전체 올리기 (텔레그램·푸시 공용, 텔레그램 연결 없이도 저장) 🔒 |
+| `GET /api/push/key` | 푸시 구독용 서버 공개키 (`{"key": null}`이면 서버에 키가 없음) 🔒 |
+| `POST` / `DELETE /api/push/subscribe` | 이 기기의 푸시 구독 저장(`{endpoint, keys: {p256dh, auth}}`) / 삭제(`{endpoint}`) 🔒 |
 | `POST /api/reminders/ack` | 끈질긴 알림 끄기 (`{"ack": "<확인값>"}`, 앱의 [앱에서 보기]로 연 경우) 🔒 |
 | `POST /telegram/webhook` | 텔레그램이 보내는 메시지 (`/start <코드>`, `/stop`, `/status`)와 [✅ 확인] 버튼 누름 |
 | `GET /setup` | 텔레그램 웹훅·명령어 등록 (여러 번 호출해도 안전) |
