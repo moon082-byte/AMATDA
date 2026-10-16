@@ -10,8 +10,8 @@ import '../utils/confirm_dialog.dart';
 import '../widgets/account_tile.dart';
 import '../widgets/admin_settings_group.dart';
 import '../widgets/common/app_page.dart';
-import '../widgets/browser_notification_tile.dart';
 import '../widgets/pin_settings_tile.dart';
+import '../widgets/push_notification_tile.dart';
 import '../widgets/settings_group.dart';
 import '../widgets/telegram_link_tile.dart';
 import '../widgets/telegram_nag_tile.dart';
@@ -59,7 +59,7 @@ class SettingsView extends StatelessWidget {
                   onChanged: (_) => notif.toggle(),
                 ),
               ),
-              if (notif.enabled) const BrowserNotificationTile(),
+              if (notif.enabled) const PushNotificationTile(),
               if (notif.enabled) const TelegramLinkTile(),
               if (notif.enabled) const TelegramNagTile(),
             ],

@@ -9,6 +9,7 @@ const FILES = [
   'migrations/0004_tg_room_url.sql',
   'migrations/0005_nag.sql',
   'migrations/0006_allowed_emails.sql',
+  'migrations/0007_push.sql',
 ];
 
 export function fakeD1() {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/room_provider.dart';
 import '../utils/confirm_dialog.dart';
 import '../utils/nearest_due.dart';
@@ -7,6 +8,7 @@ import '../utils/room_actions.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/common/section_header.dart';
+import '../widgets/horizontal_scroller.dart';
 import '../widgets/reorder_handle.dart';
 import '../widgets/task_detail_card.dart';
 import '../widgets/telegram_room_card.dart';
@@ -21,7 +23,11 @@ class TodayTaskSlivers extends StatelessWidget {
 
   const TodayTaskSlivers({super.key, this.focusTaskId});
 
-  Future<void> _deleteTask(BuildContext context, String id, String title) async {
+  Future<void> _deleteTask(
+    BuildContext context,
+    String id,
+    String title,
+  ) async {
     final confirmed = await confirmDelete(context, '"$title" 항목을 삭제할까요?');
     if (!context.mounted || !confirmed) return;
     context.read<RoomProvider>().deleteTask(id);
@@ -42,41 +48,44 @@ class TodayTaskSlivers extends StatelessWidget {
             height: 172,
             child: OverflowBox(
               maxWidth: MediaQuery.sizeOf(context).width,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                itemCount: rooms.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == rooms.length) {
-                    return AddRoomCard(onTap: () => openCreateRoom(context));
-                  }
-                  final room = rooms[index];
-                  return TelegramRoomCard(
-                    room: room,
-                    pendingTaskCount: provider.pendingCountForRoom(room.id),
-                    nearestDue: nearestDueTask(
-                            provider.activeTasksForRoom(room.id))
-                        ?.dueDate,
-                    totalTaskCount: provider.tasksForRoom(room.id).length,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RoomDetailView(roomId: room.id),
+              // PC에서는 마우스로 끌거나 ◀ ▶ 버튼으로 넘긴다
+              child: HorizontalScroller(
+                builder: (controller) => ListView.builder(
+                  controller: controller,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  itemCount: rooms.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == rooms.length) {
+                      return AddRoomCard(onTap: () => openCreateRoom(context));
+                    }
+                    final room = rooms[index];
+                    return TelegramRoomCard(
+                      room: room,
+                      pendingTaskCount: provider.pendingCountForRoom(room.id),
+                      nearestDue: nearestDueTask(
+                        provider.activeTasksForRoom(room.id),
+                      )?.dueDate,
+                      totalTaskCount: provider.tasksForRoom(room.id).length,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RoomDetailView(roomId: room.id),
+                        ),
                       ),
-                    ),
-                    onLongPress: () => confirmDeleteRoom(context, room.id, room.name),
-                  );
-                },
+                      onLongPress: () =>
+                          confirmDeleteRoom(context, room.id, room.name),
+                    );
+                  },
+                ),
               ),
             ),
           ),
           const SizedBox(height: 32),
           SectionHeader(
             title: '할 일 목록',
-            trailing: activeTasks.length > 1
-                ? const _ReorderHint()
-                : null,
+            trailing: activeTasks.length > 1 ? const _ReorderHint() : null,
           ),
           if (activeTasks.isEmpty)
             const EmptyState(
@@ -122,9 +131,8 @@ class _ReorderHint extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       '꾹 눌러서 순서 변경',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).hintColor,
-          ),
+      style: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: Theme.of(context).hintColor),
     );
   }
 }

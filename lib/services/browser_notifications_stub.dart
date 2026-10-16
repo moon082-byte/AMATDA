@@ -15,3 +15,15 @@ Future<bool> showBrowserNotification(
 
 /// 앱 화면이 가려져 있는지(다른 탭/앱으로 전환)
 bool isPageHidden() => false;
+
+// ---- 시스템 알림 (Web Push): 웹에서만 지원 ----
+
+bool pushSupported() => false;
+
+bool pushNeedsHomeScreen() => false;
+
+Future<String> pushSubscription() async => '';
+
+Future<String> pushSubscribe(String key) async => 'error:unsupported';
+
+Future<String> pushUnsubscribe() async => '';

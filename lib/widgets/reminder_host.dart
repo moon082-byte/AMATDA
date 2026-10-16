@@ -6,8 +6,10 @@ import '../providers/notification_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import '../services/browser_notifications.dart';
+import '../services/push_service.dart';
 import '../services/telegram_link.dart';
 import '../services/reminder_checker.dart';
+import '../utils/maybe_provider.dart';
 import 'reminder_banner.dart';
 
 /// 앱 전체를 감싸 리마인드 시각이 되면 알림을 띄운다.
@@ -64,9 +66,10 @@ class _ReminderHostState extends State<ReminderHost>
 
     _fired.addAll([for (final r in due) ...r.alsoCovers, for (final r in due) r.key]);
     widget.store?.saveFiredReminders(_fired);
-    // 텔레그램으로 연결돼 있으면 휴대폰 알림은 텔레그램이 보내므로 브라우저 알림은 생략
-    final viaTelegram = context.read<TelegramLink>().linked;
-    if (isPageHidden() && !viaTelegram) {
+    // 텔레그램이나 이 기기의 시스템 알림(푸시)으로 받으면 브라우저 알림은 생략 (중복 방지)
+    final viaServer = context.read<TelegramLink>().linked ||
+        (maybeProvider<PushService>(context, listen: false)?.on ?? false);
+    if (isPageHidden() && !viaServer) {
       for (final r in due) {
         showBrowserNotification('🔔 ${r.title}', r.body, r.key);
       }

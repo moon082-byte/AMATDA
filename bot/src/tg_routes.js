@@ -1,4 +1,4 @@
-// 로그인한 계정의 텔레그램 API: 연결, 끈질긴 알림 설정, 알림 일정 올리기·끄기
+// 로그인한 계정의 텔레그램 API: 연결, 끈질긴 알림 설정, 알림 일정 올리기(텔레그램·푸시 공용)·끄기
 
 import { randomToken } from './crypto.js';
 import { ackReminder, getLink, putState, replaceReminders, unlinkCodes } from './db.js';
@@ -30,11 +30,11 @@ export async function telegramRoute(path, method, user, request, env) {
     return [{ nag: raw.enabled }];
   }
   if (path === '/api/reminders' && method === 'PUT') {
-    if (!(await getLink(env, user.id))) return [{ linked: false }, 404];
+    // 텔레그램을 연결하지 않았어도 푸시(시스템 알림)로 받을 수 있으므로 일정은 항상 저장한다
     const raw = await readJson(request);
     const items = validate(() => sanitizeReminders(raw));
     await replaceReminders(env, user.id, items);
-    return [{ ok: true, count: items.length }];
+    return [{ ok: true, count: items.length, linked: !!(await getLink(env, user.id)) }];
   }
   if (path === '/api/reminders/ack' && method === 'POST') {
     // 텔레그램 [앱에서 보기]로 앱을 열면 그 알림의 끈질긴 알림을 끈다
