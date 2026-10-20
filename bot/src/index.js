@@ -16,6 +16,9 @@
 // - GET /api/push/key, POST·DELETE /api/push/subscribe   시스템 알림(Web Push) 구독 (push.js)
 // - GET·PUT /api/profile                      닉네임#태그·사진·자기소개 (profile.js)
 // - GET /api/notifications, POST /api/notifications/read   앱 알림함 (inbox.js)
+// - /api/project-rooms..., /api/users/lookup   프로젝트방·팀원 초대 (project_rooms.js)
+// - /api/projects..., /api/project-tasks...    프로젝트·세부업무, 완료 보고 (project_items.js)
+//   팀장·팀원 권한은 project_db.js의 requireRoom이 요청마다 확인한다
 // - GET/POST/DELETE /admin/allowed-emails     허용 이메일 관리 (관리자만, admin.js)
 // - POST /api/reminders/ack                   끈질긴 알림 끄기 (앱의 [앱에서 보기]로 연 경우)
 // 텔레그램
@@ -32,6 +35,8 @@ import { HttpError, cors, json, readJson, text } from './http.js';
 import { inboxRoute } from './inbox.js';
 import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
 import { profileRoute } from './profile.js';
+import { projectItemRoute } from './project_items.js';
+import { projectRoomRoute } from './project_rooms.js';
 import { pushRoute, sendDuePushes } from './push.js';
 import { sync } from './sync.js';
 import { botInfo, sendDueReminders, setup, webhook } from './telegram.js';
@@ -39,9 +44,9 @@ import { telegramLogin } from './tg_login.js';
 import { telegramRoute } from './tg_routes.js';
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     try {
-      return await route(request, env);
+      return await route(request, env, ctx);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message, ...e.extra }, e.status, request, env);
       console.error(e);
@@ -55,7 +60,7 @@ export default {
   },
 };
 
-async function route(request, env) {
+async function route(request, env, ctx) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const method = request.method;
@@ -100,6 +105,10 @@ async function route(request, env) {
   if (profileReply) return reply(...profileReply);
   const inboxReply = await inboxRoute(path, method, user, request, env, url);
   if (inboxReply) return reply(...inboxReply);
+  const roomReply = await projectRoomRoute(path, method, user, request, env, url, ctx);
+  if (roomReply) return reply(...roomReply);
+  const itemReply = await projectItemRoute(path, method, user, request, env, ctx);
+  if (itemReply) return reply(...itemReply);
   return reply({ error: '없는 주소예요' }, 404);
 }
 

@@ -104,6 +104,9 @@ void main() {
 
   testWidgets('메인의 오늘의 일정에서 할 일을 누르면 오늘 할일에서 펼쳐서 보여준다', (tester) async {
     await _boot(tester);
+    // 아래 탭 바 위쪽으로 보이게 스크롤한 뒤 누른다
+    await tester.ensureVisible(find.text('회의실 예약하기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('회의실 예약하기'));
     await tester.pumpAndSettle();
     expect(find.text('세부 체크리스트'), findsOneWidget);

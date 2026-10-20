@@ -8,7 +8,7 @@ import 'providers/theme_provider.dart';
 import 'services/auth_service.dart';
 import 'services/launch_link.dart';
 import 'theme/app_theme.dart';
-import 'views/main_dashboard_view.dart';
+import 'views/home_shell.dart';
 import 'widgets/auth_gate.dart';
 import 'widgets/phone_frame.dart';
 
@@ -60,7 +60,7 @@ class MyApp extends StatelessWidget {
             builder: (context, child) => PhoneFrame(
               child: AuthGate(auth: auth, store: store, child: child!),
             ),
-            home: const MainDashboardView(),
+            home: const HomeShell(),
           );
         },
       ),

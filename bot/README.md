@@ -125,6 +125,7 @@ npm run db:migrate:nag       # migrations/0005_nag.sql: 끈질긴 알림 (적용
 npm run db:migrate:allowed   # migrations/0006_allowed_emails.sql: 관리자 화면의 허용 이메일
 npm run db:migrate:push      # migrations/0007_push.sql: 시스템 알림(Web Push) 구독 표 (위 8단계의 키도 등록)
 npm run db:migrate:profile   # migrations/0008_profile.sql: 프로필(닉네임#태그·사진·자기소개) 칸, 앱 알림함 표
+npm run db:migrate:projects  # migrations/0009_projects.sql: 프로젝트방·팀원·프로젝트·세부업무 표 (팀 공유 데이터)
 npm run deploy
 ```
 
@@ -148,6 +149,14 @@ npm run deploy
 | `GET` / `PUT /api/profile` | 내 프로필 `{nickname, tag, bio, avatar}` / 바꿀 것만 보내기 (`avatar`: data URL 200KB 이하, `null`이면 삭제) 🔒 |
 | `GET /api/notifications?device=<기기>` | 앱 알림함 최신 50개와 안 읽은 개수 (그 기기가 올린 변경은 제외) 🔒 |
 | `POST /api/notifications/read` | 읽음 처리 (`{"ids": [...]}` 또는 `{"all": true, "device": ...}`) 🔒 |
+| `GET /api/project-rooms?page=N`, `POST /api/project-rooms` | 내 프로젝트방 10개씩 + 받은 초대 / 방 만들기(만든 사람이 팀장) 🔒 |
+| `GET` / `PUT` / `DELETE /api/project-rooms/:id` | 방 상세(초대받은 사람도 미리 보기) / 수정·삭제(팀장) 🔒 |
+| `GET /api/users/lookup?handle=닉네임#1234` | 초대할 사람 찾기 🔒 |
+| `POST /api/project-rooms/:id/invites`, `.../accept`, `.../decline` | 초대(팀장) / 수락·거절(초대받은 사람) 🔒 |
+| `DELETE /api/project-rooms/:id/members/:userId` | 팀원 내보내기·초대 취소(팀장, 진행 중 업무는 담당자 없음으로) 🔒 |
+| `POST /api/project-rooms/:id/projects`, `PUT`·`DELETE /api/projects/:id` | 프로젝트 추가·수정·삭제(팀장) 🔒 |
+| `POST /api/projects/:id/tasks`, `PUT`·`DELETE /api/project-tasks/:id` | 세부업무 추가·수정·삭제(팀장, 담당자에게 알림) 🔒 |
+| `POST /api/project-tasks/:id/complete` | 내 업무 완료 보고(담당자 본인, 팀장에게 알림) 🔒 |
 | `GET /api/push/key` | 푸시 구독용 서버 공개키 (`{"key": null}`이면 서버에 키가 없음) 🔒 |
 | `POST` / `DELETE /api/push/subscribe` | 이 기기의 푸시 구독 저장(`{endpoint, keys: {p256dh, auth}}`) / 삭제(`{endpoint}`) 🔒 |
 | `POST /api/reminders/ack` | 끈질긴 알림 끄기 (`{"ack": "<확인값>"}`, 앱의 [앱에서 보기]로 연 경우) 🔒 |

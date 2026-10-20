@@ -14,6 +14,8 @@ crons = ["* * * * *"]
 # 앱(GitHub Pages)에서만 봇 서버를 호출할 수 있게 한다
 [vars]
 ALLOWED_ORIGINS = "https://moon082-byte.github.io"
+# 알림의 [앱에서 보기]로 열 앱 주소 (프로젝트 알림)
+APP_URL = "https://moon082-byte.github.io/AMATDA/"
 
 # `npx wrangler d1 create amatda-bot`으로 만든 데이터베이스
 [[d1_databases]]
