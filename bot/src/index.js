@@ -14,6 +14,8 @@
 // - PUT  /api/telegram/nag                    끈질긴 알림 켜기·끄기
 // - PUT  /api/reminders                       알림 일정 전체 올리기 (텔레그램·푸시 공용)
 // - GET /api/push/key, POST·DELETE /api/push/subscribe   시스템 알림(Web Push) 구독 (push.js)
+// - GET·PUT /api/profile                      닉네임#태그·사진·자기소개 (profile.js)
+// - GET /api/notifications, POST /api/notifications/read   앱 알림함 (inbox.js)
 // - GET/POST/DELETE /admin/allowed-emails     허용 이메일 관리 (관리자만, admin.js)
 // - POST /api/reminders/ack                   끈질긴 알림 끄기 (앱의 [앱에서 보기]로 연 경우)
 // 텔레그램
@@ -27,7 +29,9 @@
 import { adminRoute } from './admin.js';
 import { exchangeLogin, finishLogin, logout, publicUser, requireUser, startLogin } from './auth.js';
 import { HttpError, cors, json, readJson, text } from './http.js';
+import { inboxRoute } from './inbox.js';
 import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
+import { profileRoute } from './profile.js';
 import { pushRoute, sendDuePushes } from './push.js';
 import { sync } from './sync.js';
 import { botInfo, sendDueReminders, setup, webhook } from './telegram.js';
@@ -92,6 +96,10 @@ async function route(request, env) {
   if (tgReply) return reply(...tgReply);
   const pushReply = await pushRoute(path, method, user, request, env);
   if (pushReply) return reply(...pushReply);
+  const profileReply = await profileRoute(path, method, user, request, env);
+  if (profileReply) return reply(...profileReply);
+  const inboxReply = await inboxRoute(path, method, user, request, env, url);
+  if (inboxReply) return reply(...inboxReply);
   return reply({ error: '없는 주소예요' }, 404);
 }
 

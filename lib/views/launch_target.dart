@@ -18,6 +18,12 @@ Future<void> openLaunchTarget(BuildContext context) async {
   if (ack != null) maybeProvider<TelegramNag>(context, listen: false)?.acknowledge(ack);
   final target = takeLaunchTarget();
   if (target == null) return;
+  await openTarget(context, target);
+}
+
+/// [target] 항목 화면을 연다 (텔레그램·푸시 알림, 앱 알림함 공용).
+/// 이 기기에 아직 없으면 첫 동기화를 잠시 기다렸다가 다시 찾고, 그래도 없으면 안내만 띄운다.
+Future<void> openTarget(BuildContext context, LaunchTarget target) async {
   var page = _pageFor(context, target);
   final sync = maybeProvider<SyncService>(context, listen: false);
   if (page == null && sync != null) {

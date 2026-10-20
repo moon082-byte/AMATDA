@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/profile_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_palette.dart';
 import '../utils/maybe_provider.dart';
+import '../views/profile_edit_page.dart';
 import 'settings_group.dart';
 
-/// 설정 화면 '계정' 그룹: 로그인한 구글 계정, 동기화 상태, 로그아웃
+/// 설정 화면 '계정' 그룹: 프로필 편집, 로그인한 구글 계정, 동기화 상태, 로그아웃
 class AccountGroup extends StatelessWidget {
   const AccountGroup({super.key});
 
@@ -43,6 +45,25 @@ class AccountGroup extends StatelessWidget {
       child: SettingsGroup(
         title: '계정',
         children: [
+          if (maybeProvider<ProfileService>(context) case final profile?
+              when profile.available)
+            InkWell(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder: (_) => const ProfileEditPage(),
+                ),
+              ),
+              child: SettingsTile(
+                icon: Icons.badge_rounded,
+                iconColor: palette.accent,
+                title: '프로필 편집',
+                subtitle: '${profile.profile.handle} · 닉네임·사진·자기소개',
+                trailing:
+                    Icon(Icons.chevron_right_rounded, color: palette.subText),
+              ),
+            ),
           SettingsTile(
             icon: Icons.account_circle_rounded,
             iconColor: palette.accent,

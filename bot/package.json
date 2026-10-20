@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute amatda-bot --remote --file=schema.sql && npm run db:migrate:accounts && npm run db:migrate:pin && npm run db:migrate:tgroom && npm run db:migrate:nag && npm run db:migrate:allowed && npm run db:migrate:push",
+    "db:init": "wrangler d1 execute amatda-bot --remote --file=schema.sql && npm run db:migrate:accounts && npm run db:migrate:pin && npm run db:migrate:tgroom && npm run db:migrate:nag && npm run db:migrate:allowed && npm run db:migrate:push && npm run db:migrate:profile",
     "db:migrate": "wrangler d1 execute amatda-bot --remote --file=migrations/0001_reminder_buttons.sql",
     "db:migrate:accounts": "wrangler d1 execute amatda-bot --remote --file=migrations/0002_accounts.sql",
     "db:migrate:pin": "wrangler d1 execute amatda-bot --remote --file=migrations/0003_pin.sql",
@@ -14,6 +14,7 @@
     "db:migrate:nag": "wrangler d1 execute amatda-bot --remote --file=migrations/0005_nag.sql",
     "db:migrate:allowed": "wrangler d1 execute amatda-bot --remote --file=migrations/0006_allowed_emails.sql",
     "db:migrate:push": "wrangler d1 execute amatda-bot --remote --file=migrations/0007_push.sql",
+    "db:migrate:profile": "wrangler d1 execute amatda-bot --remote --file=migrations/0008_profile.sql",
     "vapid:keys": "node scripts/vapid-keys.js",
     "logs": "wrangler tail"
   },

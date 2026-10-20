@@ -1,18 +1,23 @@
 // 기기 간 데이터 동기화: POST /api/sync
 //
-// 요청: { since: <마지막으로 받은 순번>, changes: { rooms: [...], tasks: [...], ... } }
+// 요청: { since: <마지막으로 받은 순번>, device: <이 기기 번호>, changes: { rooms: [...], tasks: [...], ... } }
 // 응답: { version: <새 순번>, more: <더 받을 게 있는지>, changes: { 표: [since 이후 바뀐 행] } }
 //
 // - 올린 변경은 받은 순서대로 사용자별 순번(users.version)을 매겨 저장한다 (나중에 저장한 쪽이 이김)
 // - 삭제는 deleted=1로 남겨 다른 기기에도 전달한다
 // - 무료 요금제의 요청당 쿼리 수 제한에 맞게 표마다 JSON 한 번으로 넣는다
 
+import { cleanDevice, recordTaskChanges } from './inbox.js';
 import { MAX_PULL_ROWS, SYNC_TABLES, sanitizeSyncChanges } from './logic.js';
 import { validate } from './http.js';
 
 export async function sync(user, body, env) {
   const { since, changes, total } = validate(() => sanitizeSyncChanges(body));
-  if (total > 0) await saveChanges(env, user.id, changes, total);
+  if (total > 0) {
+    // 저장하기 전에 이전 내용과 비교해, 다른 기기 알림함에 보일 할 일 변경을 남긴다
+    await recordTaskChanges(env, user.id, cleanDevice(body?.device), changes.tasks);
+    await saveChanges(env, user.id, changes, total);
+  }
 
   const union = SYNC_TABLES.map(
     (t) => `SELECT '${t}' AS tbl, id, parent_id, position, data, deleted, version

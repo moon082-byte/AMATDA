@@ -28,6 +28,8 @@ LaunchTarget? parseLaunchTarget(Uri uri) =>
     _parseValue(uri.queryParameters[_param]);
 
 /// `task:<id>` → 열 항목. 형식이 맞지 않으면 null.
+LaunchTarget? parseTargetValue(String? value) => _parseValue(value);
+
 LaunchTarget? _parseValue(String? value) {
   final sep = value?.indexOf(':') ?? -1;
   if (value == null || sep <= 0) return null;

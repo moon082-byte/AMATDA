@@ -1,6 +1,7 @@
 // 텔레그램 처리: 웹훅 명령어, 웹훅 등록, 1분마다 알림 발송
 
 import { ackReminder, codesForChat, markDelivered, pendingCount, takeState, unlinkCodes } from './db.js';
+import { recordReminders } from './inbox.js';
 import { MESSAGES, STALE_MS, cleanupBefore, parseCommand } from './logic.js';
 import { afterSend, nagKeyboard, nagText } from './nag.js';
 
@@ -153,6 +154,7 @@ export async function sendDueReminders(env) {
     }
   }
   await markDelivered(env, done);
+  await recordReminders(env, results.filter((r) => !r.sent), done); // 처음 보낸 것만 알림함에
   await unlinkCodes(env, [...blocked]);
   await env.DB.prepare('DELETE FROM reminders WHERE due_at < ?').bind(cleanupBefore(now)).run();
 }
