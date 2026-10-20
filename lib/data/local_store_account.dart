@@ -79,6 +79,30 @@ extension LocalStoreAccount on LocalStore {
       ? _prefs.setBool(_key('pin_reset_pending'), true)
       : _prefs.remove(_key('pin_reset_pending'));
 
+  /// 이 기기 고유 번호 (기기 단위, 처음 부를 때 만든다). 알림함에서 '다른 기기' 변경을 가려낼 때 쓴다.
+  String get deviceId {
+    final saved = _prefs.getString('device_id');
+    if (saved != null) return saved;
+    final random = Random.secure();
+    final id = 'd_${List.generate(16, (_) => random.nextInt(36).toRadixString(36)).join()}';
+    _prefs.setString('device_id', id);
+    return id;
+  }
+
+  /// 마지막으로 받은 내 프로필 (계정 단위, 오프라인에서도 바로 보여주기용)
+  Map<String, dynamic>? loadProfile() {
+    final raw = _prefs.getString(_key('profile_v1'));
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveProfile(Map<String, Object?> profile) =>
+      _prefs.setString(_key('profile_v1'), jsonEncode(profile));
+
   /// 이 기기의 예전 데이터를 계정으로 가져올지 이미 물어봤는지 (기기 단위)
   bool get legacyImportAsked => _prefs.getBool(_importKey) ?? false;
 

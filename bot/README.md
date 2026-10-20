@@ -124,6 +124,7 @@ npm run db:migrate:tgroom    # migrations/0004_tg_room_url.sql: (지금은 쓰�
 npm run db:migrate:nag       # migrations/0005_nag.sql: 끈질긴 알림 (적용 후 /setup 을 한 번 다시 열어 웹훅 갱신)
 npm run db:migrate:allowed   # migrations/0006_allowed_emails.sql: 관리자 화면의 허용 이메일
 npm run db:migrate:push      # migrations/0007_push.sql: 시스템 알림(Web Push) 구독 표 (위 8단계의 키도 등록)
+npm run db:migrate:profile   # migrations/0008_profile.sql: 프로필(닉네임#태그·사진·자기소개) 칸, 앱 알림함 표
 npm run deploy
 ```
 
@@ -144,6 +145,9 @@ npm run deploy
 | `GET` / `DELETE /api/telegram` | 텔레그램 연결·끈질긴 알림 설정 확인 / 끊기 🔒 |
 | `PUT /api/telegram/nag` | 끈질긴 알림 켜기·끄기 (`{"enabled": true}`) 🔒 |
 | `PUT /api/reminders` | 알림 일정 전체 올리기 (텔레그램·푸시 공용, 텔레그램 연결 없이도 저장) 🔒 |
+| `GET` / `PUT /api/profile` | 내 프로필 `{nickname, tag, bio, avatar}` / 바꿀 것만 보내기 (`avatar`: data URL 200KB 이하, `null`이면 삭제) 🔒 |
+| `GET /api/notifications?device=<기기>` | 앱 알림함 최신 50개와 안 읽은 개수 (그 기기가 올린 변경은 제외) 🔒 |
+| `POST /api/notifications/read` | 읽음 처리 (`{"ids": [...]}` 또는 `{"all": true, "device": ...}`) 🔒 |
 | `GET /api/push/key` | 푸시 구독용 서버 공개키 (`{"key": null}`이면 서버에 키가 없음) 🔒 |
 | `POST` / `DELETE /api/push/subscribe` | 이 기기의 푸시 구독 저장(`{endpoint, keys: {p256dh, auth}}`) / 삭제(`{endpoint}`) 🔒 |
 | `POST /api/reminders/ack` | 끈질긴 알림 끄기 (`{"ack": "<확인값>"}`, 앱의 [앱에서 보기]로 연 경우) 🔒 |

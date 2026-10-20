@@ -4,6 +4,8 @@ import '../data/local_store.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import '../services/api_client.dart';
+import '../services/inbox_service.dart';
+import '../services/profile_service.dart';
 import '../services/push_service.dart';
 import '../services/sync_service.dart';
 import '../services/telegram_link.dart';
@@ -33,6 +35,9 @@ class SessionScope extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => TelegramNag(api: api)),
         ChangeNotifierProvider(create: (_) => PushService(api: api)),
+        ChangeNotifierProvider(
+            create: (_) => ProfileService(api: api, store: store)),
+        ChangeNotifierProvider(create: (_) => InboxService(api: api, store: store)),
         if (api != null && store != null)
           ChangeNotifierProvider(
             lazy: false,

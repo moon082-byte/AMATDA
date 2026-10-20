@@ -5,6 +5,7 @@
 // - 1분마다(cron) 시각이 된 알림을 그 계정의 모든 구독 기기로 보낸다 (텔레그램과 별도로 push_sent에 기록)
 
 import { HttpError, readJson, validate } from './http.js';
+import { recordReminders } from './inbox.js';
 import { STALE_MS } from './logic.js';
 import { fromBase64url, pushConfigured, sendWebPush } from './webpush.js';
 
@@ -128,4 +129,5 @@ export async function sendDuePushes(env) {
     ).bind(JSON.stringify(done)));
   }
   if (statements.length) await env.DB.batch(statements);
+  await recordReminders(env, results, done);
 }

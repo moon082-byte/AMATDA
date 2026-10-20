@@ -97,6 +97,7 @@ class SyncService extends ChangeNotifier {
     final pushed = diffRecords(_currentRecords(), _shadow, max: _maxPush);
     final res = await _api.post('/api/sync', {
       'since': _cursor,
+      'device': _store.deviceId, // 다른 기기 알림함에 '다른 기기에서 바꿈'으로 남긴다
       'changes': {
         for (final t in syncTables)
           t: [for (final r in pushed[t]!) r.toJson()],
