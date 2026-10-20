@@ -3,6 +3,7 @@ import '../models/project.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import 'common/due_badge.dart';
+import 'reminder_bell_button.dart';
 
 /// 세부업무 한 줄: 완료 표시, 업무 이름, 담당자, 마감 D-DAY.
 /// 내 진행 중 업무면 [완료] 버튼, 팀장이면 줄을 눌러 수정.
@@ -11,6 +12,10 @@ class ProjectTaskRow extends StatelessWidget {
   final String assignee;
   final bool mine;
   final VoidCallback? onComplete;
+
+  /// 내 업무의 🔔 (개인 할일 리마인더)
+  final VoidCallback? onReminder;
+  final int reminderCount;
   final VoidCallback? onEdit;
 
   const ProjectTaskRow({
@@ -19,6 +24,8 @@ class ProjectTaskRow extends StatelessWidget {
     required this.assignee,
     this.mine = false,
     this.onComplete,
+    this.onReminder,
+    this.reminderCount = 0,
     this.onEdit,
   });
 
@@ -67,6 +74,8 @@ class ProjectTaskRow extends StatelessWidget {
                 ],
               ),
             ),
+            if (onReminder != null)
+              ReminderBellButton(count: reminderCount, compact: true, onTap: onReminder!),
             if (onComplete != null)
               FilledButton(
                 onPressed: onComplete,

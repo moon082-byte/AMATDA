@@ -1,4 +1,5 @@
 import '../models/note.dart';
+import '../models/project_link.dart';
 import '../models/routine.dart';
 import '../models/sub_task.dart';
 import '../models/task_item.dart';
@@ -11,7 +12,9 @@ part 'task_json.dart';
 /// 브라우저/기기 저장소에 넣기 위한 모델 ↔ JSON 변환
 
 String? _date(DateTime? d) => d?.toIso8601String();
-DateTime? _parseDate(Object? v) => v is String ? DateTime.tryParse(v) : null;
+/// 서버가 만든 값(UTC, ...Z)도 이 기기 시간대로 바꿔 읽는다
+DateTime? _parseDate(Object? v) =>
+    v is String ? DateTime.tryParse(v)?.toLocal() : null;
 
 T _enumByName<T extends Enum>(List<T> values, Object? name, T fallback) {
   for (final v in values) {

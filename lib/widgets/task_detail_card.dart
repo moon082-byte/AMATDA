@@ -109,12 +109,9 @@ class _TaskDetailCardState extends State<TaskDetailCard> {
         key: ValueKey(task.id),
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
-          extentRatio: 0.44,
-          children: buildEditDeleteActions(
-            context,
-            onEdit: widget.onEdit,
-            onDelete: widget.onDelete,
-          ),
+          extentRatio: task.isProjectTask ? 0.24 : 0.44,
+          children: buildEditDeleteActions(context,
+              onEdit: widget.onEdit, onDelete: task.isProjectTask ? null : widget.onDelete),
         ),
         child: AppCard(
           padding: EdgeInsets.zero,

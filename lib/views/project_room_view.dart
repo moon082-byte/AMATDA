@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/project.dart';
 import '../models/project_room.dart';
+import '../providers/room_provider.dart';
 import '../services/project_service.dart';
 import '../theme/app_palette.dart';
 import '../utils/confirm_action.dart';
@@ -47,12 +47,6 @@ class _ProjectRoomViewState extends State<ProjectRoomView> {
     if (room != null && mounted) setState(() => _room = room);
   }
 
-  Future<void> _complete(ProjectTask task) async {
-    final ok = await confirmAction(context,
-        title: '완료 보고 드리겠습니까?', message: '"${task.title}" 완료를 팀장에게 알려요.', confirmLabel: '완료 보고');
-    if (ok) await _apply(() => _service.complete(task.id));
-  }
-
   ProjectEditActions get _edits =>
       ProjectEditActions(context: context, service: _service, apply: _apply);
 
@@ -83,6 +77,7 @@ class _ProjectRoomViewState extends State<ProjectRoomView> {
       );
     }
     final palette = context.palette;
+    final rooms = context.watch<RoomProvider>();
     return AppPage(
       title: room.name,
       actions: [
@@ -137,7 +132,9 @@ class _ProjectRoomViewState extends State<ProjectRoomView> {
               key: ValueKey(p.id),
               project: p,
               room: room,
-              onComplete: _complete,
+              onComplete: _edits.complete,
+              onReminder: _edits.remind,
+              reminderCount: (t) => rooms.taskById(ProjectEditActions.mirrorId(t))?.remindAt.length ?? 0,
               onEditTask: (t) => _edits.editTask(room, p, t),
               onAddTask: () => _edits.editTask(room, p),
               onEdit: () => _edits.editProject(room, p),

@@ -1,17 +1,55 @@
 import 'package:flutter/material.dart';
 import '../models/project.dart';
 import '../models/project_room.dart';
+import 'package:provider/provider.dart';
+import '../providers/room_provider.dart';
 import '../services/project_service.dart';
+import '../services/sync_service.dart';
+import '../utils/confirm_action.dart';
 import '../utils/confirm_dialog.dart';
+import '../utils/maybe_provider.dart';
+import '../widgets/remind_at_popup.dart';
 import 'project_sheets.dart';
 
-/// 팀장의 프로젝트·세부업무 추가·수정·삭제 흐름 (시트 → 서버 요청 → [apply]로 방 화면 갱신)
+/// 방 화면의 업무 동작 (시트·확인 창 → 서버 요청 → [apply]로 방 화면 갱신)
+/// - 팀장: 프로젝트·세부업무 추가·수정·삭제
+/// - 담당자: 내 업무 완료 보고, 리마인더(내 개인 할일에 연결된 할 일의 리마인더를 바꾼다)
 class ProjectEditActions {
   final BuildContext context;
   final ProjectService service;
   final Future<void> Function(Future<ProjectRoom> Function() request) apply;
 
   const ProjectEditActions({required this.context, required this.service, required this.apply});
+
+  /// 내 개인 할일에 들어온 연결 할 일 (서버가 배정할 때 넣고, 동기화로 받는다)
+  static String mirrorId(ProjectTask t) => 'pt_${t.id}';
+
+  void _syncSoon() => maybeProvider<SyncService>(context, listen: false)?.syncNow();
+
+  /// "완료 보고 드리겠습니까?" → 완료 보고 (개인 할일도 곧 완료로 바뀐다)
+  Future<void> complete(ProjectTask task) async {
+    final ok = await confirmAction(context,
+        title: '완료 보고 드리겠습니까?', message: '"${task.title}" 완료를 팀장에게 알려요.', confirmLabel: '완료 보고');
+    if (!ok) return;
+    await apply(() => service.complete(task.id));
+    _syncSoon();
+  }
+
+  /// 내 업무의 리마인더 (개인 할일과 같은 날짜·시간 방식)
+  Future<void> remind(ProjectTask task) async {
+    final rooms = context.read<RoomProvider>();
+    final mine = rooms.taskById(mirrorId(task));
+    if (mine == null) {
+      _syncSoon();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('개인 할일로 가져오는 중이에요. 잠시 후 다시 눌러 주세요')));
+      return;
+    }
+    final picked = await showRemindAtPopup(context,
+        initial: mine.remindAt, dueDate: mine.dueDate, title: '리마인더 · ${task.title}');
+    if (picked == null) return;
+    rooms.updateTask(mine.copyWithEdits(title: mine.title, dueDate: mine.dueDate, remindAt: picked));
+  }
 
   /// [p]가 없으면 새 프로젝트 추가
   Future<void> editProject(ProjectRoom room, [Project? p]) async {

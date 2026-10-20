@@ -14,6 +14,8 @@ class ProjectCard extends StatefulWidget {
   final Project project;
   final ProjectRoom room;
   final void Function(ProjectTask task) onComplete;
+  final void Function(ProjectTask task) onReminder;
+  final int Function(ProjectTask task) reminderCount;
   final void Function(ProjectTask task) onEditTask;
   final VoidCallback onAddTask;
   final VoidCallback onEdit;
@@ -23,6 +25,8 @@ class ProjectCard extends StatefulWidget {
     required this.project,
     required this.room,
     required this.onComplete,
+    required this.onReminder,
+    required this.reminderCount,
     required this.onEditTask,
     required this.onAddTask,
     required this.onEdit,
@@ -91,6 +95,10 @@ class _ProjectCardState extends State<ProjectCard> {
                   onComplete: t.assigneeId == room.myId && !t.isDone && !room.invited
                       ? () => widget.onComplete(t)
                       : null,
+                  onReminder: t.assigneeId == room.myId && !t.isDone && !room.invited
+                      ? () => widget.onReminder(t)
+                      : null,
+                  reminderCount: widget.reminderCount(t),
                   onEdit: room.isLeader ? () => widget.onEditTask(t) : null,
                 ),
               if (p.tasks.isEmpty)
