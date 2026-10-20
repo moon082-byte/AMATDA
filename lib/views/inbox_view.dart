@@ -69,7 +69,10 @@ class _InboxTile extends StatelessWidget {
         'reminder' => Icons.notifications_active_rounded,
         'task_added' => Icons.add_task_rounded,
         'task_done' => Icons.task_alt_rounded,
-        'task_deleted' => Icons.delete_outline_rounded,
+        'task_deleted' || 'project_deleted' => Icons.delete_outline_rounded,
+        'project_invite' => Icons.group_add_rounded,
+        'project_assigned' => Icons.assignment_ind_rounded,
+        'project_done' => Icons.verified_rounded,
         _ => Icons.edit_note_rounded,
       };
 

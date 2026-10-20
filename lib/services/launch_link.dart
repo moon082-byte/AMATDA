@@ -8,7 +8,7 @@ typedef LaunchTarget = ({String kind, String id});
 
 const _param = 'open';
 const _ackParam = 'ack';
-const _kinds = {'task', 'room', 'routine'};
+const _kinds = {'task', 'room', 'routine', 'project'};
 final _ackPattern = RegExp(r'^[0-9a-f]{24}$');
 
 LaunchTarget? _pending;

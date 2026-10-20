@@ -7,6 +7,7 @@ import '../services/sync_service.dart';
 import '../services/telegram_nag.dart';
 import '../utils/maybe_provider.dart';
 import 'archive_view.dart';
+import 'project_room_view.dart';
 import 'room_detail_view.dart';
 import 'today_tasks_view.dart';
 
@@ -63,6 +64,9 @@ Widget? _pageFor(BuildContext context, LaunchTarget target) {
       return rooms.roomById(target.id) == null
           ? null
           : RoomDetailView(roomId: target.id);
+    case 'project':
+      // 공유 데이터라 이 기기에 없어도 서버에서 받아 연다 (없으면 그 화면이 안내)
+      return ProjectRoomView(roomId: target.id);
     case 'routine':
       return context.read<RoutineProvider>().routineById(target.id) == null
           ? null

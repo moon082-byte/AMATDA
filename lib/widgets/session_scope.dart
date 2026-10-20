@@ -6,6 +6,7 @@ import '../providers/routine_provider.dart';
 import '../services/api_client.dart';
 import '../services/inbox_service.dart';
 import '../services/profile_service.dart';
+import '../services/project_service.dart';
 import '../services/push_service.dart';
 import '../services/sync_service.dart';
 import '../services/telegram_link.dart';
@@ -38,6 +39,7 @@ class SessionScope extends StatelessWidget {
         ChangeNotifierProvider(
             create: (_) => ProfileService(api: api, store: store)),
         ChangeNotifierProvider(create: (_) => InboxService(api: api, store: store)),
+        if (api != null) Provider(create: (_) => ProjectService(api)),
         if (api != null && store != null)
           ChangeNotifierProvider(
             lazy: false,
