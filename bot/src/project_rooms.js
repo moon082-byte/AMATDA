@@ -11,6 +11,7 @@
 
 import { HttpError, readJson } from './http.js';
 import { notifyUsers } from './notify.js';
+import { refreshMirrors, removeOpenMirrors } from './project_mirror.js';
 import {
   handleOf, linkUrl, listRooms, membership, newId, requireRoom, roomDetail, roomRow, text, touchRoom,
 } from './project_db.js';
@@ -65,10 +66,12 @@ export async function projectRoomRoute(path, method, user, request, env, url, ct
       const f = roomFields(await readJson(request));
       await env.DB.prepare('UPDATE project_rooms SET name = ?, goal = ?, telegram_url = ?, updated_at = ? WHERE id = ?')
         .bind(f.name, f.goal, f.telegramUrl, Date.now(), roomId).run();
+      await refreshMirrors(env, 't.room_id = ?', roomId); // 개인 할일의 방 이름도 맞춘다
       return [await roomDetail(env, roomId, { id: user.id, role: 'leader', status: 'active' })];
     }
     if (method === 'DELETE') {
       await requireRoom(env, roomId, user, { leader: true });
+      await removeOpenMirrors(env, 't.room_id = ?', roomId);
       await env.DB.batch(['project_tasks', 'projects', 'project_members'].map((t) =>
         env.DB.prepare(`DELETE FROM ${t} WHERE room_id = ?`).bind(roomId),
       ).concat(env.DB.prepare('DELETE FROM project_rooms WHERE id = ?').bind(roomId)));
@@ -107,7 +110,8 @@ export async function projectRoomRoute(path, method, user, request, env, url, ct
   if (action === 'members' && targetId && method === 'DELETE') {
     await requireRoom(env, roomId, user, { leader: true });
     if (targetId === user.id) throw new HttpError(400, '팀장은 자신을 내보낼 수 없어요');
-    // 내보낸 사람의 진행 중인 세부업무는 담당자 없음으로 돌린다
+    // 내보낸 사람의 진행 중인 세부업무는 담당자 없음으로 돌리고, 그 사람 개인 할일에서도 지운다
+    await removeOpenMirrors(env, 't.room_id = ? AND t.assignee_id = ?', roomId, targetId);
     await env.DB.batch([
       env.DB.prepare('DELETE FROM project_members WHERE room_id = ? AND user_id = ?').bind(roomId, targetId),
       env.DB.prepare('UPDATE project_tasks SET assignee_id = NULL WHERE room_id = ? AND assignee_id = ? AND done_at IS NULL')

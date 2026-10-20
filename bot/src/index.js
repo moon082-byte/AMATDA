@@ -95,7 +95,7 @@ async function route(request, env, ctx) {
   }
   const adminReply = await adminRoute(path, method, user, request, env, url);
   if (adminReply) return reply(adminReply);
-  if (path === '/api/sync' && method === 'POST') return reply(await sync(user, await readJson(request), env));
+  if (path === '/api/sync' && method === 'POST') return reply(await sync(user, await readJson(request), env, ctx));
 
   const tgReply = await telegramRoute(path, method, user, request, env);
   if (tgReply) return reply(...tgReply);

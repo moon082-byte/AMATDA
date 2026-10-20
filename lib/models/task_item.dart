@@ -1,4 +1,5 @@
 import 'note.dart';
+import 'project_link.dart';
 import 'sub_task.dart';
 
 /// 할 일의 우선순위
@@ -22,6 +23,9 @@ class TaskItem {
   /// 리마인더 알림 시각들 (직접 고른 날짜·시간, 마감과 무관하게 울린다)
   final List<DateTime> remindAt;
 
+  /// 프로젝트에서 배정된 업무면 그 연결 (제목·마감 잠금, 체크하면 완료 보고)
+  final ProjectLink? project;
+
   const TaskItem({
     required this.id,
     required this.title,
@@ -35,7 +39,10 @@ class TaskItem {
     this.subTasks = const [],
     this.notes = const [],
     this.remindAt = const [],
+    this.project,
   });
+
+  bool get isProjectTask => project != null;
 
   TaskItem _copy({
     String? title,
@@ -45,6 +52,7 @@ class TaskItem {
     List<SubTask>? subTasks,
     List<Note>? notes,
     List<DateTime>? remindAt,
+    String? Function()? roomId,
   }) {
     return TaskItem(
       id: id,
@@ -54,11 +62,12 @@ class TaskItem {
       dueDate: dueDate != null ? dueDate() : this.dueDate,
       completedAt: completedAt != null ? completedAt() : this.completedAt,
       priority: priority,
-      roomId: roomId,
+      roomId: roomId != null ? roomId() : this.roomId,
       createdAt: createdAt,
       subTasks: subTasks ?? this.subTasks,
       notes: notes ?? this.notes,
       remindAt: remindAt ?? this.remindAt,
+      project: project,
     );
   }
 
@@ -79,4 +88,7 @@ class TaskItem {
     List<DateTime> remindAt = const [],
   }) =>
       _copy(title: title, dueDate: () => dueDate, remindAt: remindAt);
+
+  /// 업무방 태그만 바꾼다 (프로젝트 업무도 바꿀 수 있다)
+  TaskItem withRoom(String? roomId) => _copy(roomId: () => roomId);
 }

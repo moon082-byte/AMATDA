@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_application_amatda/models/project_link.dart';
+import 'package:flutter_application_amatda/models/task_item.dart';
 import 'package:flutter_application_amatda/providers/notification_provider.dart';
+import 'package:flutter_application_amatda/providers/room_provider.dart';
 import 'package:flutter_application_amatda/services/api_client.dart';
 import 'package:flutter_application_amatda/views/home_shell.dart';
 import 'package:flutter_application_amatda/views/project_list_view.dart';
@@ -143,5 +146,25 @@ void main() {
     await _boot(tester, _Server());
     await _tap(tester, find.text('프로세스').last);
     expect(find.text('준비 중이에요'), findsOneWidget);
+  });
+
+  testWidgets('팀원: 내 업무 [🔔]은 개인 할일에 들어온 그 업무의 리마인더를 바꾼다', (tester) async {
+    await _boot(tester, _Server());
+    final rooms = tester.element(find.byType(HomeShell)).read<RoomProvider>();
+    await _tap(tester, find.text('방 0'));
+    await _tap(tester, find.byTooltip('리마인더 설정'));
+    expect(find.textContaining('개인 할일로 가져오는 중'), findsOneWidget, reason: '아직 동기화 전');
+
+    rooms.addTask(TaskItem(
+      id: 'pt_t1', title: '시안 만들기', createdAt: DateTime.now(),
+      dueDate: DateTime.now().add(const Duration(days: 3)),
+      project: const ProjectLink(roomId: 'r1', roomName: '신제품', projectName: '디자인', taskId: 't1'),
+    ));
+    await tester.pumpAndSettle();
+    await _tap(tester, find.byTooltip('리마인더 설정'));
+    await _tap(tester, find.text('리마인더 추가'));
+    await _tap(tester, find.text('확인'));
+    expect(rooms.taskById('pt_t1')!.remindAt, hasLength(1));
+    expect(find.byTooltip('리마인더 1개'), findsOneWidget);
   });
 }

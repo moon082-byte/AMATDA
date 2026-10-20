@@ -8,16 +8,21 @@
 // - 무료 요금제의 요청당 쿼리 수 제한에 맞게 표마다 JSON 한 번으로 넣는다
 
 import { cleanDevice, recordTaskChanges } from './inbox.js';
+import { guardMirrors, resendMirrors } from './project_mirror.js';
 import { MAX_PULL_ROWS, SYNC_TABLES, sanitizeSyncChanges } from './logic.js';
 import { validate } from './http.js';
 
-export async function sync(user, body, env) {
-  const { since, changes, total } = validate(() => sanitizeSyncChanges(body));
+export async function sync(user, body, env, ctx) {
+  const { since, changes } = validate(() => sanitizeSyncChanges(body));
+  // 프로젝트 업무(pt_)는 잠긴 칸을 되돌리고, 체크하면 완료 보고로 처리한다
+  const resend = await guardMirrors(env, ctx, user, changes);
+  const total = Object.values(changes).reduce((n, list) => n + list.length, 0);
   if (total > 0) {
     // 저장하기 전에 이전 내용과 비교해, 다른 기기 알림함에 보일 할 일 변경을 남긴다
     await recordTaskChanges(env, user.id, cleanDevice(body?.device), changes.tasks);
     await saveChanges(env, user.id, changes, total);
   }
+  await resendMirrors(env, resend);
 
   const union = SYNC_TABLES.map(
     (t) => `SELECT '${t}' AS tbl, id, parent_id, position, data, deleted, version

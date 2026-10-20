@@ -10,6 +10,9 @@ class ComposerFrame extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final bool autofocus;
+
+  /// 이름을 바꿀 수 없게 (프로젝트에서 배정된 업무)
+  final bool readOnly;
   final Widget schedule;
   final Widget bell;
 
@@ -28,6 +31,7 @@ class ComposerFrame extends StatelessWidget {
     required this.submitLabel,
     required this.onSubmit,
     this.autofocus = false,
+    this.readOnly = false,
     this.extra = const [],
   });
 
@@ -61,6 +65,7 @@ class ComposerFrame extends StatelessWidget {
                   child: TextField(
                     controller: controller,
                     autofocus: autofocus,
+                    readOnly: readOnly,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => onSubmit?.call(),
                     style: text.body.copyWith(color: palette.titleText),

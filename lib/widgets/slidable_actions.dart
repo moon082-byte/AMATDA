@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import '../theme/app_palette.dart';
 
-/// 항목을 옆으로 슬라이드했을 때 나타나는 '수정'/'삭제' 액션 목록
+/// 항목을 옆으로 슬라이드했을 때 나타나는 '수정'/'삭제' 액션 목록 ([onDelete]가 없으면 수정만)
 List<Widget> buildEditDeleteActions(
   BuildContext context, {
   required VoidCallback onEdit,
-  required VoidCallback onDelete,
+  required VoidCallback? onDelete,
 }) {
   final p = context.palette;
   return [
     _action(color: p.accent, icon: Icons.edit_rounded, label: '수정', onTap: onEdit),
-    _action(color: p.danger, icon: Icons.delete_rounded, label: '삭제', onTap: onDelete),
+    if (onDelete != null)
+      _action(color: p.danger, icon: Icons.delete_rounded, label: '삭제', onTap: onDelete),
   ];
 }
 
