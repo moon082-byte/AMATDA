@@ -56,10 +56,12 @@ class ProjectEditActions {
     final input = await showProjectSheet(context, project: p);
     if (input == null) return;
     if (p == null) {
-      return apply(() => service.addProject(room.id, name: input.name, dueAt: input.due));
+      return apply(() => service.addProject(room.id,
+          name: input.name, dueAt: input.due, remindAt: input.remindAt));
     }
     if (!input.delete) {
-      return apply(() => service.updateProject(p.id, name: input.name, dueAt: input.due));
+      return apply(() => service.updateProject(p.id,
+          name: input.name, dueAt: input.due, remindAt: input.remindAt));
     }
     if (!context.mounted) return;
     if (await confirmDelete(context, '"${p.name}" 프로젝트와 세부업무를 모두 삭제할까요?')) {

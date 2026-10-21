@@ -64,10 +64,18 @@ class Project {
   final String id;
   final String name;
   final DateTime? dueAt;
+
+  /// 팀장이 건 리마인더 시각 (팀장과 진행 중 업무 담당자에게 간다)
+  final List<DateTime> remindAt;
   final List<ProjectTask> tasks;
 
-  const Project(
-      {required this.id, required this.name, this.dueAt, this.tasks = const []});
+  const Project({
+    required this.id,
+    required this.name,
+    this.dueAt,
+    this.remindAt = const [],
+    this.tasks = const [],
+  });
 
   int get doneCount => tasks.where((t) => t.isDone).length;
   double get progress => tasks.isEmpty ? 0 : doneCount / tasks.length;
@@ -76,6 +84,7 @@ class Project {
         id: j['id'] as String,
         name: j['name'] as String,
         dueAt: _ms(j['dueAt']),
+        remindAt: [for (final t in j['remindAt'] as List? ?? const []) ?_ms(t)],
         tasks: [
           for (final t in j['tasks'] as List? ?? const [])
             ProjectTask.fromJson(t as Map<String, dynamic>),

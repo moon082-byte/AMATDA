@@ -36,6 +36,15 @@ class ProjectRoom {
   int get myOpenCount =>
       allTasks.where((t) => t.assigneeId == myId && !t.isDone).length;
 
+  /// 세부업무가 속한 프로젝트
+  Project projectOf(ProjectTask t) => projects.firstWhere((p) => p.id == t.projectId);
+
+  /// [userId]에게 배정된 업무 (진행 중 먼저)
+  List<ProjectTask> tasksOf(String? userId) => [
+        for (final t in allTasks) if (t.assigneeId == userId && !t.isDone) t,
+        for (final t in allTasks) if (t.assigneeId == userId && t.isDone) t,
+      ];
+
   ProjectMember? memberById(String? id) =>
       members.where((m) => m.userId == id).firstOrNull;
 

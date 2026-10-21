@@ -17,16 +17,17 @@ import 'package:flutter_application_amatda/widgets/session_scope.dart';
 class _Server {
   final calls = <String>[];
   final bool leader;
+  final int dueInDays;
   bool done = false;
   final projects = <Map<String, Object?>>[];
 
-  _Server({this.leader = false}) {
+  _Server({this.leader = false, this.dueInDays = 3}) {
     projects.add({'id': 'p1', 'name': '디자인', 'dueAt': null, 'tasks': [_task()]});
   }
 
   Map<String, Object?> _task() => {
         'id': 't1', 'projectId': 'p1', 'title': '시안 만들기', 'assigneeId': 'me',
-        'dueAt': DateTime.now().add(const Duration(days: 3)).millisecondsSinceEpoch,
+        'dueAt': DateTime.now().add(Duration(days: dueInDays)).millisecondsSinceEpoch,
         'doneAt': done ? 1 : null,
       };
 
@@ -166,5 +167,31 @@ void main() {
     await _tap(tester, find.text('확인'));
     expect(rooms.taskById('pt_t1')!.remindAt, hasLength(1));
     expect(find.byTooltip('리마인더 1개'), findsOneWidget);
+  });
+
+  testWidgets('방 화면: 오늘 마감 업무는 "오늘의 일정"에, [팀원] 탭은 팀원별 업무를 보여준다', (tester) async {
+    await _boot(tester, _Server(dueInDays: 0));
+    await _tap(tester, find.text('방 0'));
+    expect(find.text('오늘의 일정'), findsOneWidget);
+    expect(find.text('📁 디자인'), findsOneWidget, reason: '오늘의 일정에는 프로젝트 이름도 붙는다');
+
+    await _tap(tester, find.text('팀원 2'));
+    expect(find.text('팀장#1111'), findsOneWidget);
+    expect(find.text('진행 1 · 완료 0'), findsOneWidget); // 나#2222
+    expect(find.text('배정된 업무가 없어요'), findsOneWidget); // 팀장
+  });
+
+  testWidgets('팀장: 프로젝트에 리마인더를 걸면 함께 저장된다', (tester) async {
+    final server = _Server(leader: true);
+    await _boot(tester, server);
+    await _tap(tester, find.text('방 0'));
+    await _tap(tester, find.text('프로젝트 추가'));
+    await tester.enterText(find.byType(TextField).last, '홍보');
+    await _tap(tester, find.byTooltip('리마인더 설정').last);
+    await _tap(tester, find.text('리마인더 추가'));
+    await _tap(tester, find.text('확인'));
+    await _tap(tester, find.text('저장하기'));
+    final body = server.calls.firstWhere((c) => c.startsWith('POST /api/project-rooms/r1/projects'));
+    expect(RegExp(r'"remindAt":\[\d+\]').hasMatch(body), isTrue, reason: body);
   });
 }

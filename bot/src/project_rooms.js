@@ -72,7 +72,7 @@ export async function projectRoomRoute(path, method, user, request, env, url, ct
     if (method === 'DELETE') {
       await requireRoom(env, roomId, user, { leader: true });
       await removeOpenMirrors(env, 't.room_id = ?', roomId);
-      await env.DB.batch(['project_tasks', 'projects', 'project_members'].map((t) =>
+      await env.DB.batch(['project_tasks', 'projects', 'project_members', 'project_reminders'].map((t) =>
         env.DB.prepare(`DELETE FROM ${t} WHERE room_id = ?`).bind(roomId),
       ).concat(env.DB.prepare('DELETE FROM project_rooms WHERE id = ?').bind(roomId)));
       return [{ ok: true }];
