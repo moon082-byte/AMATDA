@@ -36,6 +36,7 @@ import { inboxRoute } from './inbox.js';
 import { disablePin, pinStatus, resetPin, sendResetCode, setPin, verifyPin } from './pin.js';
 import { profileRoute } from './profile.js';
 import { projectItemRoute } from './project_items.js';
+import { sendDueProjectReminders } from './project_reminders.js';
 import { projectRoomRoute } from './project_rooms.js';
 import { pushRoute, sendDuePushes } from './push.js';
 import { sync } from './sync.js';
@@ -56,7 +57,7 @@ export default {
 
   async scheduled(_event, env, ctx) {
     // 무료 요금제의 외부 호출 한도를 넘지 않도록 텔레그램 → 푸시 순서로 차례대로 보낸다
-    ctx.waitUntil(sendDueReminders(env).finally(() => sendDuePushes(env)));
+    ctx.waitUntil(sendDueReminders(env).finally(() => sendDuePushes(env)).finally(() => sendDueProjectReminders(env)));
   },
 };
 

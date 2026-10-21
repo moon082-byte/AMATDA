@@ -13,10 +13,7 @@ import 'project_task_row.dart';
 class ProjectCard extends StatefulWidget {
   final Project project;
   final ProjectRoom room;
-  final void Function(ProjectTask task) onComplete;
-  final void Function(ProjectTask task) onReminder;
-  final int Function(ProjectTask task) reminderCount;
-  final void Function(ProjectTask task) onEditTask;
+  final TaskRowActions actions;
   final VoidCallback onAddTask;
   final VoidCallback onEdit;
 
@@ -24,10 +21,7 @@ class ProjectCard extends StatefulWidget {
     super.key,
     required this.project,
     required this.room,
-    required this.onComplete,
-    required this.onReminder,
-    required this.reminderCount,
-    required this.onEditTask,
+    required this.actions,
     required this.onAddTask,
     required this.onEdit,
   });
@@ -60,6 +54,12 @@ class _ProjectCardState extends State<ProjectCard> {
               child: Row(
                 children: [
                   Expanded(child: Text(p.name, style: text.title)),
+                  if (p.remindAt.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(Icons.notifications_active_rounded, size: 16, color: palette.accent,
+                          semanticLabel: '리마인더 ${p.remindAt.length}개'),
+                    ),
                   if (p.dueAt != null) DueBadge(dueDate: p.dueAt, dDay: true, isDone: p.progress == 1),
                   if (room.isLeader)
                     IconButton(
@@ -87,20 +87,7 @@ class _ProjectCardState extends State<ProjectCard> {
             ),
             if (_open) ...[
               const SizedBox(height: 6),
-              for (final t in p.tasks)
-                ProjectTaskRow(
-                  task: t,
-                  assignee: room.memberById(t.assigneeId)?.handle ?? '담당자 없음',
-                  mine: t.assigneeId == room.myId,
-                  onComplete: t.assigneeId == room.myId && !t.isDone && !room.invited
-                      ? () => widget.onComplete(t)
-                      : null,
-                  onReminder: t.assigneeId == room.myId && !t.isDone && !room.invited
-                      ? () => widget.onReminder(t)
-                      : null,
-                  reminderCount: widget.reminderCount(t),
-                  onEdit: room.isLeader ? () => widget.onEditTask(t) : null,
-                ),
+              for (final t in p.tasks) widget.actions.row(t),
               if (p.tasks.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),

@@ -9,14 +9,14 @@ import '../utils/confirm_dialog.dart';
 import '../utils/links.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
-import '../widgets/common/section_header.dart';
-import '../widgets/project_card.dart';
 import '../widgets/project_members_sheet.dart';
+import '../widgets/project_room_body.dart';
+import '../widgets/project_task_row.dart';
 import 'project_room_form.dart';
 import 'project_room_header.dart';
 import 'project_edit_actions.dart';
 
-/// 프로젝트방 화면: "할 일 N개가 남아있어요"·목표, 프로젝트(달성률·세부업무). 팀장은 편집·팀원 관리.
+/// 프로젝트방 화면: "할 일 N개가 남아있어요"·목표, 달력·오늘의 일정, [프로젝트][팀원] 탭. 팀장은 편집·팀원 관리.
 class ProjectRoomView extends StatefulWidget {
   final String roomId;
 
@@ -119,26 +119,19 @@ class _ProjectRoomViewState extends State<ProjectRoomView> {
               if (context.mounted) Navigator.pop(context);
             },
           ),
-          const SizedBox(height: 24),
-          SectionHeader(title: '프로젝트', count: room.projects.length),
-          if (room.projects.isEmpty)
-            EmptyState(
-              icon: Icons.folder_open_rounded,
-              title: '아직 프로젝트가 없어요',
-              message: room.isLeader ? '[프로젝트 추가]로 시작해 보세요' : '팀장이 프로젝트를 만들면 여기에 보여요',
-            ),
-          for (final p in room.projects)
-            ProjectCard(
-              key: ValueKey(p.id),
-              project: p,
+          const SizedBox(height: 20),
+          ProjectRoomBody(
+            room: room,
+            actions: TaskRowActions(
               room: room,
-              onComplete: _edits.complete,
-              onReminder: _edits.remind,
+              complete: _edits.complete,
+              remind: _edits.remind,
+              edit: (t) => _edits.editTask(room, room.projectOf(t), t),
               reminderCount: (t) => rooms.taskById(ProjectEditActions.mirrorId(t))?.remindAt.length ?? 0,
-              onEditTask: (t) => _edits.editTask(room, p, t),
-              onAddTask: () => _edits.editTask(room, p),
-              onEdit: () => _edits.editProject(room, p),
             ),
+            onEditProject: (p) => _edits.editProject(room, p),
+            onAddTask: (p) => _edits.editTask(room, p),
+          ),
         ]),
       ],
     );

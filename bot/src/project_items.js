@@ -1,5 +1,5 @@
 // 프로젝트 API (로그인 필요, 팀장만)
-// - POST   /api/project-rooms/:id/projects   프로젝트 추가 {name, dueAt}
+// - POST   /api/project-rooms/:id/projects   프로젝트 추가 {name, dueAt, remindAt: [ms...]}
 // - PUT    /api/projects/:id                  프로젝트 수정 (담당자 개인 할일의 프로젝트 이름도 맞춘다)
 // - DELETE /api/projects/:id                  프로젝트와 세부업무 삭제 (진행 중 업무 담당자에게 알림, 개인 할일에서 지움)
 // 세부업무는 project_tasks.js
@@ -8,6 +8,7 @@ import { readJson } from './http.js';
 import { notifyUsers } from './notify.js';
 import { dueAt, newId, requireProject, requireRoom, roomDetail, roomRow, text, touchRoom } from './project_db.js';
 import { refreshMirrors, removeOpenMirrors } from './project_mirror.js';
+import { cleanRemindAt, replaceProjectReminders } from './project_reminders.js';
 import { projectTaskRoute } from './project_tasks.js';
 
 export const leaderView = (env, roomId, user) =>
@@ -23,9 +24,11 @@ export async function projectItemRoute(path, method, user, request, env, ctx) {
   if (m && method === 'POST') {
     await requireRoom(env, m[1], user, { leader: true });
     const raw = await readJson(request);
+    const id = newId('prj');
     await env.DB.batch([
       env.DB.prepare('INSERT INTO projects (id, room_id, name, due_at, position, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .bind(newId('prj'), m[1], text(raw?.name, 40, '프로젝트 이름'), dueAt(raw?.dueAt), Date.now(), Date.now()),
+        .bind(id, m[1], text(raw?.name, 40, '프로젝트 이름'), dueAt(raw?.dueAt), Date.now(), Date.now()),
+      ...replaceProjectReminders(env, id, m[1], cleanRemindAt(raw?.remindAt)),
       touchRoom(env, m[1]),
     ]);
     return [await leaderView(env, m[1], user)];
@@ -40,6 +43,7 @@ export async function projectItemRoute(path, method, user, request, env, ctx) {
     await env.DB.batch([
       env.DB.prepare('UPDATE projects SET name = ?, due_at = ? WHERE id = ?')
         .bind(text(raw?.name, 40, '프로젝트 이름'), dueAt(raw?.dueAt), project.id),
+      ...(raw?.remindAt === undefined ? [] : replaceProjectReminders(env, project.id, roomId, cleanRemindAt(raw.remindAt))),
       touchRoom(env, roomId),
     ]);
     await refreshMirrors(env, 't.project_id = ?', project.id);
@@ -53,6 +57,7 @@ export async function projectItemRoute(path, method, user, request, env, ctx) {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM project_tasks WHERE project_id = ?').bind(project.id),
       env.DB.prepare('DELETE FROM projects WHERE id = ?').bind(project.id),
+      env.DB.prepare('DELETE FROM project_reminders WHERE project_id = ?').bind(project.id),
       touchRoom(env, roomId),
     ]);
     const room = await roomRow(env, roomId);

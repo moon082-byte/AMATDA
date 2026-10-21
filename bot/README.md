@@ -126,6 +126,7 @@ npm run db:migrate:allowed   # migrations/0006_allowed_emails.sql: 관리자 화
 npm run db:migrate:push      # migrations/0007_push.sql: 시스템 알림(Web Push) 구독 표 (위 8단계의 키도 등록)
 npm run db:migrate:profile   # migrations/0008_profile.sql: 프로필(닉네임#태그·사진·자기소개) 칸, 앱 알림함 표
 npm run db:migrate:projects  # migrations/0009_projects.sql: 프로젝트방·팀원·프로젝트·세부업무 표 (팀 공유 데이터)
+npm run db:migrate:projectreminders  # migrations/0010_project_reminders.sql: 프로젝트 리마인더 (팀장이 건 알림 시각)
 npm run deploy
 ```
 
@@ -154,7 +155,7 @@ npm run deploy
 | `GET /api/users/lookup?handle=닉네임#1234` | 초대할 사람 찾기 🔒 |
 | `POST /api/project-rooms/:id/invites`, `.../accept`, `.../decline` | 초대(팀장) / 수락·거절(초대받은 사람) 🔒 |
 | `DELETE /api/project-rooms/:id/members/:userId` | 팀원 내보내기·초대 취소(팀장, 진행 중 업무는 담당자 없음으로) 🔒 |
-| `POST /api/project-rooms/:id/projects`, `PUT`·`DELETE /api/projects/:id` | 프로젝트 추가·수정·삭제(팀장) 🔒 |
+| `POST /api/project-rooms/:id/projects`, `PUT`·`DELETE /api/projects/:id` | 프로젝트 추가·수정·삭제(팀장, `remindAt`: 리마인더 시각 최대 5개 → 팀장·진행 중 담당자에게 알림) 🔒 |
 | `POST /api/projects/:id/tasks`, `PUT`·`DELETE /api/project-tasks/:id` | 세부업무 추가·수정·삭제(팀장, 담당자에게 알림) 🔒 |
 | `POST /api/project-tasks/:id/complete` | 내 업무 완료 보고(담당자 본인, 팀장에게 알림) 🔒 |
 | `GET /api/push/key` | 푸시 구독용 서버 공개키 (`{"key": null}`이면 서버에 키가 없음) 🔒 |

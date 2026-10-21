@@ -56,14 +56,16 @@ class ProjectService {
   Future<ProjectRoom> removeMember(String roomId, String userId) =>
       _room(_api.delete('/api/project-rooms/$roomId/members/$userId'));
 
+  Map<String, Object?> _projectBody(String name, DateTime? dueAt, List<DateTime> remindAt) =>
+      {'name': name, 'dueAt': _ms(dueAt), 'remindAt': [for (final t in remindAt) _ms(t)]};
+
   Future<ProjectRoom> addProject(String roomId,
-          {required String name, DateTime? dueAt}) =>
-      _room(_api.post('/api/project-rooms/$roomId/projects',
-          {'name': name, 'dueAt': _ms(dueAt)}));
+          {required String name, DateTime? dueAt, List<DateTime> remindAt = const []}) =>
+      _room(_api.post('/api/project-rooms/$roomId/projects', _projectBody(name, dueAt, remindAt)));
 
   Future<ProjectRoom> updateProject(String id,
-          {required String name, DateTime? dueAt}) =>
-      _room(_api.put('/api/projects/$id', {'name': name, 'dueAt': _ms(dueAt)}));
+          {required String name, DateTime? dueAt, List<DateTime> remindAt = const []}) =>
+      _room(_api.put('/api/projects/$id', _projectBody(name, dueAt, remindAt)));
 
   Future<ProjectRoom> deleteProject(String id) =>
       _room(_api.delete('/api/projects/$id'));

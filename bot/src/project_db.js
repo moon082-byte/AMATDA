@@ -2,6 +2,7 @@
 
 import { randomToken } from './crypto.js';
 import { HttpError } from './http.js';
+import { remindersByProject } from './project_reminders.js';
 
 export const ROOM_PAGE_SIZE = 10;
 
@@ -73,7 +74,7 @@ const taskView = (t) => ({
 
 /** 방 상세: 방 정보, 내 역할, 팀원(초대 중 포함), 프로젝트와 세부업무 */
 export async function roomDetail(env, roomId, me) {
-  const [room, { results: members }, { results: projects }, { results: tasks }] = await Promise.all([
+  const [room, { results: members }, { results: projects }, { results: tasks }, reminders] = await Promise.all([
     roomRow(env, roomId),
     env.DB.prepare(
       `SELECT m.user_id, m.role, m.status, u.nickname, u.tag, u.name FROM project_members m
@@ -81,6 +82,7 @@ export async function roomDetail(env, roomId, me) {
     ).bind(roomId).all(),
     env.DB.prepare('SELECT * FROM projects WHERE room_id = ? ORDER BY position, created_at').bind(roomId).all(),
     env.DB.prepare('SELECT * FROM project_tasks WHERE room_id = ? ORDER BY position, created_at').bind(roomId).all(),
+    remindersByProject(env, roomId),
   ]);
   return {
     room: { id: room.id, name: room.name, goal: room.goal, telegramUrl: room.telegram_url, leaderId: room.leader_id },
@@ -90,7 +92,7 @@ export async function roomDetail(env, roomId, me) {
       handle: handleOf(m),
     })),
     projects: projects.map((p) => ({
-      id: p.id, name: p.name, dueAt: p.due_at,
+      id: p.id, name: p.name, dueAt: p.due_at, remindAt: reminders[p.id] ?? [],
       tasks: tasks.filter((t) => t.project_id === p.id).map(taskView),
     })),
   };
