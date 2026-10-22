@@ -42,3 +42,20 @@ Future<T?> runWithMessage<T>(BuildContext context, Future<T> Function() request)
     return null;
   }
 }
+
+/// 팀장의 검토 창: "최종완료 하시겠습니까?" [반려][최종완료]. 고르면 true(최종완료)·false(반려), 닫으면 null.
+Future<bool?> chooseReviewResult(BuildContext context, String taskTitle) => showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('최종완료 하시겠습니까?', style: ctx.text.h2),
+        content: Text('"$taskTitle" 완료 보고를 확인해 주세요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(ctx).colorScheme.error),
+            child: const Text('반려'),
+          ),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('최종완료')),
+        ],
+      ),
+    );

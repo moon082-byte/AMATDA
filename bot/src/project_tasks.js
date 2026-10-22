@@ -2,7 +2,10 @@
 // - POST   /api/projects/:id/tasks            세부업무 추가 {title, assigneeId, dueAt} (팀장) → 담당자 개인 할일·알림
 // - PUT    /api/project-tasks/:id             세부업무 수정 (팀장) → 담당자 개인 할일 맞춤·알림
 // - DELETE /api/project-tasks/:id             세부업무 삭제 (팀장) → 담당자 개인 할일에서 지움·알림
-// - POST   /api/project-tasks/:id/complete    완료 보고 (담당자 본인) → 팀장에게 알림
+// - POST   /api/project-tasks/:id/complete        완료 보고 = 검토 요청 (담당자 본인, 팀장 본인 업무면 바로 최종완료)
+// - POST   /api/project-tasks/:id/cancel-review   검토 요청 취소 (담당자 본인)
+// - POST   /api/project-tasks/:id/approve         최종완료 (팀장) → 담당자 개인 할일에서 지움·알림
+// - POST   /api/project-tasks/:id/reject          반려 (팀장) → 진행중, 담당자에게 알림
 
 import { HttpError, readJson } from './http.js';
 import { notifyUsers } from './notify.js';
@@ -10,7 +13,8 @@ import {
   dueAt, membership, newId, requireProject, requireTask, roomDetail, roomRow, text, touchRoom,
 } from './project_db.js';
 import { leaderView, taskNote } from './project_items.js';
-import { completeProjectTask, refreshMirrors, removeMirror } from './project_mirror.js';
+import { refreshMirrors, removeMirror } from './project_mirror.js';
+import { approveTask, cancelReview, rejectTask, requestReview } from './project_review.js';
 
 /** 담당자는 그 방에 참여 중인 사람이어야 한다 (비우면 미배정) */
 async function assignee(env, roomId, value) {
@@ -43,12 +47,19 @@ export async function projectTaskRoute(path, method, user, request, env, ctx) {
     return [await leaderView(env, roomId, user)];
   }
 
-  m = /^\/api\/project-tasks\/([A-Za-z0-9_-]+)(\/complete)?$/.exec(path);
+  m = /^\/api\/project-tasks\/([A-Za-z0-9_-]+)(?:\/(complete|cancel-review|approve|reject))?$/.exec(path);
   if (!m) return null;
   if (m[2] && method === 'POST') {
-    const { task, member } = await requireTask(env, m[1], user);
-    if (task.assignee_id !== user.id) throw new HttpError(403, '내가 맡은 업무만 완료할 수 있어요');
-    await completeProjectTask(env, ctx, task, user);
+    const leaderOnly = m[2] === 'approve' || m[2] === 'reject';
+    const { task, member } = await requireTask(env, m[1], user, { leader: leaderOnly });
+    if (!leaderOnly && task.assignee_id !== user.id) throw new HttpError(403, '내가 맡은 업무만 보고할 수 있어요');
+    if (m[2] === 'complete') await requestReview(env, ctx, task, user);
+    if (m[2] === 'cancel-review') await cancelReview(env, task);
+    if (m[2] === 'approve') {
+      if (!task.review_at) throw new HttpError(409, '검토 요청된 업무가 아니에요');
+      await approveTask(env, ctx, task, user);
+    }
+    if (m[2] === 'reject') await rejectTask(env, ctx, task, user);
     return [await roomDetail(env, task.room_id, { id: user.id, ...member })];
   }
   if (m[2]) return null;
@@ -63,8 +74,10 @@ export async function projectTaskRoute(path, method, user, request, env, ctx) {
       dueAt: raw?.dueAt === undefined ? task.due_at : dueAt(raw.dueAt),
     };
     await env.DB.batch([
-      env.DB.prepare('UPDATE project_tasks SET title = ?, assignee_id = ?, due_at = ?, updated_at = ? WHERE id = ?')
-        .bind(next.title, next.assigneeId, next.dueAt, Date.now(), task.id),
+      // 담당자가 바뀌면 검토 요청은 처음부터 다시
+      env.DB.prepare(`UPDATE project_tasks SET title = ?, assignee_id = ?, due_at = ?, updated_at = ?,
+          review_at = CASE WHEN ? THEN NULL ELSE review_at END WHERE id = ?`)
+        .bind(next.title, next.assigneeId, next.dueAt, Date.now(), next.assigneeId !== task.assignee_id ? 1 : 0, task.id),
       touchRoom(env, task.room_id),
     ]);
     if (next.assigneeId !== task.assignee_id) await removeMirror(env, task.assignee_id, task.id);

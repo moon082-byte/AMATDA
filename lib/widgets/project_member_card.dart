@@ -4,7 +4,7 @@ import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import 'common/app_card.dart';
 import 'common/progress_bar.dart';
-import 'project_task_row.dart';
+import 'task_row_actions.dart';
 
 /// [팀원] 탭의 한 사람 카드: 진행률, [진행 중 N](기본 펼침)·[완료 N](기본 접힘) 토글
 class ProjectMemberCard extends StatefulWidget {

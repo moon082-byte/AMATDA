@@ -13,6 +13,7 @@ const FILES = [
   'migrations/0008_profile.sql',
   'migrations/0009_projects.sql',
   'migrations/0010_project_reminders.sql',
+  'migrations/0011_task_review.sql',
 ];
 
 export function fakeD1() {

@@ -88,9 +88,11 @@ test('배정·수정·재배정·삭제는 담당자에게, 완료 보고는 팀
 
   assert.equal((await call('lead', 'POST', `/api/project-tasks/${taskId}/complete`)).status, 403, '남의 업무');
   d = (await call('mem', 'POST', `/api/project-tasks/${taskId}/complete`)).body;
-  assert.ok(d.projects[0].tasks[0].doneAt);
+  assert.deepEqual([!!d.projects[0].tasks[0].reviewAt, d.projects[0].tasks[0].doneAt], [true, null]);
   const lead = await inbox('lead');
-  assert.deepEqual([lead[0].title, lead[0].body], ['업무 완료 보고', '팀원#2222님이 신제품방 - 시안 v2 완료를 보고했어요']);
+  assert.deepEqual([lead[0].title, lead[0].body], ['검토 요청', '팀원#2222님이 신제품방 - 시안 v2 완료를 보고했어요']);
+  await call('lead', 'POST', `/api/project-tasks/${taskId}/approve`);
+  assert.equal((await inbox('mem'))[0].title, '최종완료');
   const list = (await call('lead', 'GET', '/api/project-rooms')).body.rooms[0];
   assert.deepEqual([list.done, list.total, list.members], [1, 1, 2]);
 

@@ -31,6 +31,9 @@ class ProjectMember {
       );
 }
 
+/// 세부업무 상태: 진행중 → (담당자 완료 보고) 검토중 → (팀장) 최종완료. 반려하면 진행중.
+enum TaskStatus { open, review, done }
+
 class ProjectTask {
   final String id;
   final String projectId;
@@ -39,6 +42,9 @@ class ProjectTask {
   final DateTime? dueAt;
   final DateTime? doneAt;
 
+  /// 담당자가 완료 보고(검토 요청)한 시각
+  final DateTime? reviewAt;
+
   const ProjectTask({
     required this.id,
     required this.projectId,
@@ -46,9 +52,17 @@ class ProjectTask {
     this.assigneeId,
     this.dueAt,
     this.doneAt,
+    this.reviewAt,
   });
 
+  /// 최종완료
   bool get isDone => doneAt != null;
+
+  TaskStatus get status => isDone
+      ? TaskStatus.done
+      : reviewAt != null
+          ? TaskStatus.review
+          : TaskStatus.open;
 
   factory ProjectTask.fromJson(Map<String, dynamic> j) => ProjectTask(
         id: j['id'] as String,
@@ -57,6 +71,7 @@ class ProjectTask {
         assigneeId: j['assigneeId'] as String?,
         dueAt: _ms(j['dueAt']),
         doneAt: _ms(j['doneAt']),
+        reviewAt: _ms(j['reviewAt']),
       );
 }
 

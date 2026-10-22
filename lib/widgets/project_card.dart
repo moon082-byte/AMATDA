@@ -10,7 +10,7 @@ import 'common/progress_bar.dart';
 
 import 'package:flutter_slidable/flutter_slidable.dart';
 
-import 'project_task_row.dart';
+import 'task_row_actions.dart';
 import 'slidable_actions.dart';
 
 /// 프로젝트 한 장: 이름·마감 D-DAY·달성률 막대, 토글로 세부업무(담당자·마감)를 펼친다.
@@ -38,9 +38,11 @@ class ProjectCard extends StatefulWidget {
 }
 
 class _ProjectCardState extends State<ProjectCard> {
-  // 내 진행 중 업무가 있으면 처음부터 펼친다
+  // 내 진행 중 업무가 있거나, 팀장이 검토할 업무가 있으면 처음부터 펼친다
   late bool _open = widget.project.tasks.any(
-    (t) => t.assigneeId == widget.room.myId && !t.isDone,
+    (t) =>
+        (t.assigneeId == widget.room.myId && !t.isDone) ||
+        (widget.room.isLeader && t.status == TaskStatus.review),
   );
 
   @override

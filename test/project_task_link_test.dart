@@ -53,24 +53,34 @@ void main() {
     expect([back.project?.label, back.project?.taskId], ['신제품방 · 디자인', 't1']);
   });
 
-  testWidgets('개인 할일에서 체크하면 "신제품방 - 업무 완료입니까?"를 묻고, 확인하면 완료된다', (tester) async {
+  testWidgets('개인 할일에서 체크하면 보고(검토중), 검토중에 다시 체크하면 검토 요청 취소', (tester) async {
     final rooms = await _boot(tester);
     expect(find.descendant(of: _card(), matching: find.text('신제품방 · 디자인')), findsOneWidget);
     expect(find.descendant(of: _card(), matching: find.byIcon(Icons.lock_rounded)), findsOneWidget);
+    Future<void> check() async {
+      await tester.tap(find.descendant(of: _card(), matching: find.byType(RoundCheckButton)));
+      await tester.pumpAndSettle();
+    }
 
-    await tester.tap(find.descendant(of: _card(), matching: find.byType(RoundCheckButton)));
-    await tester.pumpAndSettle();
-    expect(find.text('신제품방 - 시안 만들기 업무 완료입니까?'), findsOneWidget);
+    await check();
+    expect(find.text('해당 업무 보고드리겠습니까?'), findsOneWidget);
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
-    expect(rooms.taskById('pt_t1')!.isDone, isFalse);
+    expect(rooms.taskById('pt_t1')!.project!.reviewRequested, isFalse);
 
-    await tester.tap(find.descendant(of: _card(), matching: find.byType(RoundCheckButton)));
+    await check();
+    await tester.tap(find.widgetWithText(FilledButton, '완료'));
     await tester.pumpAndSettle();
+    final reported = rooms.taskById('pt_t1')!;
+    expect([reported.isDone, reported.project!.reviewRequested], [false, true], reason: '완료가 아니라 검토중');
+    expect(find.descendant(of: _card(), matching: find.text('검토중')), findsOneWidget);
+    expect(find.text('실행 취소'), findsNothing);
+
+    await check();
+    expect(find.text('검토 요청을 취소하시겠습니까?'), findsOneWidget);
     await tester.tap(find.text('확인'));
     await tester.pumpAndSettle();
-    expect(rooms.taskById('pt_t1')!.isDone, isTrue);
-    expect(find.text('실행 취소'), findsNothing, reason: '완료 보고는 되돌리지 않는다');
+    expect(rooms.taskById('pt_t1')!.project!.reviewRequested, isFalse);
   });
 
   testWidgets('수정 화면: 이름·마감은 잠기고 업무방 태그만 바뀌며, 삭제 버튼이 없다', (tester) async {

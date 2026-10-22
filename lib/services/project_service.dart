@@ -83,7 +83,19 @@ class ProjectService {
   Future<ProjectRoom> deleteTask(String id) =>
       _room(_api.delete('/api/project-tasks/$id'));
 
-  /// 내 업무 완료 보고 (팀장에게 알림이 간다)
+  /// 내 업무 완료 보고 → 검토중 (팀장에게 알림, 팀장 본인 업무면 바로 최종완료)
   Future<ProjectRoom> complete(String id) =>
       _room(_api.post('/api/project-tasks/$id/complete'));
+
+  /// 검토 요청 취소 → 진행중 (담당자)
+  Future<ProjectRoom> cancelReview(String id) =>
+      _room(_api.post('/api/project-tasks/$id/cancel-review'));
+
+  /// 최종완료 (팀장, 담당자 개인 할일에서 사라짐)
+  Future<ProjectRoom> approve(String id) =>
+      _room(_api.post('/api/project-tasks/$id/approve'));
+
+  /// 반려 → 진행중 (팀장, 담당자에게 알림)
+  Future<ProjectRoom> reject(String id) =>
+      _room(_api.post('/api/project-tasks/$id/reject'));
 }

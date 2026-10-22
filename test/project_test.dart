@@ -18,15 +18,18 @@ class _Server {
   final calls = <String>[];
   final bool leader;
   final int dueInDays;
+  final String assignee;
   bool done = false;
+  bool review;
   final projects = <Map<String, Object?>>[];
 
-  _Server({this.leader = false, this.dueInDays = 3}) {
+  _Server({this.leader = false, this.dueInDays = 3, this.assignee = 'me', this.review = false}) {
     projects.add({'id': 'p1', 'name': '디자인', 'dueAt': null, 'tasks': [_task()]});
   }
 
   Map<String, Object?> _task() => {
-        'id': 't1', 'projectId': 'p1', 'title': '시안 만들기', 'assigneeId': 'me',
+        'id': 't1', 'projectId': 'p1', 'title': '시안 만들기', 'assigneeId': assignee,
+        'reviewAt': review && !done ? 1 : null,
         'dueAt': DateTime.now().add(Duration(days: dueInDays)).millisecondsSinceEpoch,
         'doneAt': done ? 1 : null,
       };
@@ -60,11 +63,13 @@ class _Server {
         };
       }
       if (key.startsWith('GET /api/project-rooms/') || key.endsWith('/accept')) body = detail;
-      if (key == 'POST /api/project-tasks/t1/complete') {
-        done = true;
+      if (key.startsWith('POST /api/project-tasks/t1/')) {
+        final action = key.split('/').last;
+        review = action == 'complete';
+        done = done || action == 'approve';
         body = detail;
       }
-      if (key.startsWith('DELETE /api/project') || key.endsWith('/invites')) body = detail;
+      if (key.startsWith('DELETE /api/project') || key.startsWith('PUT /api/project-tasks') || key.endsWith('/invites')) body = detail;
       if (key == 'GET /api/users/lookup') body = {'userId': 'u9', 'handle': '새팀원#3333'};
       if (key == 'DELETE /api/project-rooms/r0') body = {'ok': true};
       if (key == 'POST /api/project-rooms/r1/projects') {
@@ -120,7 +125,7 @@ void main() {
     expect(find.textContaining('11월 출시'), findsOneWidget);
   });
 
-  testWidgets('팀원: 내 업무 [완료] → "완료 보고 드리겠습니까?" → 완료 보고', (tester) async {
+  testWidgets('팀원: [완료] → "해당 업무 보고드리겠습니까?" → 검토중, [검토중] → 검토 요청 취소', (tester) async {
     final server = _Server();
     await _boot(tester, server);
     await _tap(tester, find.text('방 0'));
@@ -128,11 +133,44 @@ void main() {
     expect(find.text('D-3'), findsOneWidget);
     expect(find.byTooltip('방 관리'), findsNothing, reason: '팀원은 방을 고칠 수 없다');
 
-    await _tap(tester, find.widgetWithText(FilledButton, '완료'));
-    expect(find.text('완료 보고 드리겠습니까?'), findsOneWidget);
-    await _tap(tester, find.text('완료 보고'));
+    await _tap(tester, find.widgetWithText(FilledButton, '완료').first);
+    expect(find.text('해당 업무 보고드리겠습니까?'), findsOneWidget);
+    await _tap(tester, find.widgetWithText(FilledButton, '완료').last);
     expect(server.calls, contains(startsWith('POST /api/project-tasks/t1/complete')));
-    expect(find.text('내 할 일을 모두 끝냈어요'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '검토중'), findsWidgets);
+
+    await _tap(tester, find.widgetWithText(OutlinedButton, '검토중').first);
+    expect(find.text('검토 요청을 취소하시겠습니까?'), findsOneWidget);
+    await _tap(tester, find.text('확인'));
+    expect(server.calls, contains(startsWith('POST /api/project-tasks/t1/cancel-review')));
+  });
+
+  testWidgets('팀장: 검토 요청된 업무 [검토] → "최종완료 하시겠습니까?" [반려][최종완료]', (tester) async {
+    final server = _Server(leader: true, assignee: 'boss', review: true);
+    await _boot(tester, server);
+    await _tap(tester, find.text('방 0'));
+    await _tap(tester, find.widgetWithText(FilledButton, '검토').first);
+    expect(find.text('최종완료 하시겠습니까?'), findsOneWidget);
+    await _tap(tester, find.text('반려'));
+    expect(server.calls, contains(startsWith('POST /api/project-tasks/t1/reject')));
+
+    // 펼쳐 둔 카드는 그대로 열려 있고, 세부업무 줄을 밀 수 있다
+    await tester.drag(find.text('시안 만들기').last, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('수정'), findsWidgets, reason: '세부업무도 밀어서 [수정]');
+  });
+
+  testWidgets('팀장: 업무 이름을 눌러 그 자리에서 고친다 (수정 시트는 뜨지 않는다)', (tester) async {
+    final server = _Server(leader: true, assignee: 'boss');
+    await _boot(tester, server);
+    await _tap(tester, find.text('방 0'));
+    await _tap(tester, find.text('디자인').last); // 카드 펼치기
+    await _tap(tester, find.text('시안 만들기').last);
+    expect(find.text('세부업무 수정'), findsNothing);
+    await tester.enterText(find.widgetWithText(TextField, '시안 만들기'), '시안 v2');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(server.calls, contains(contains('PUT /api/project-tasks/t1  {"title":"시안 v2"')));
   });
 
   testWidgets('팀장: [프로젝트 추가] 시트로 새 프로젝트를 만든다', (tester) async {
@@ -176,7 +214,9 @@ void main() {
     await _boot(tester, _Server(dueInDays: 0));
     await _tap(tester, find.text('방 0'));
     expect(find.text('오늘의 일정'), findsOneWidget);
-    expect(find.text('📁 디자인'), findsOneWidget, reason: '오늘의 일정에는 프로젝트 이름도 붙는다');
+    // 오늘의 일정은 제목·[완료]·[🔔]만
+    expect(find.text('시안 만들기'), findsWidgets);
+    expect(find.byTooltip('리마인더 설정'), findsWidgets);
 
     await _tap(tester, find.text('팀원 2'));
     expect(find.text('팀장#1111'), findsOneWidget);

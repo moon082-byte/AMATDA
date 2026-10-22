@@ -56,7 +56,8 @@ test('배정하면 담당자 개인 할일에 프로젝트 이름과 함께 들�
   const { roomId, taskId } = await assigned();
   const m = mirror('mem', taskId);
   assert.deepEqual([m.data.title, m.data.dueDate, m.data.isDone], ['시안', '2026-11-20T09:00:00.000Z', false]);
-  assert.deepEqual(m.data.project, { roomId, roomName: '신제품', projectName: '디자인', taskId });
+  assert.deepEqual(m.data.project,
+    { roomId, roomName: '신제품', projectName: '디자인', taskId, reviewRequested: false });
   const pulled = (await call('mem', 'POST', '/api/sync', { since: 0, changes: {} })).body.changes.tasks;
   assert.ok(pulled.some((r) => r.id === `pt_${taskId}`));
 });
@@ -77,18 +78,54 @@ test('개인 할일에서는 업무방 태그·리마인더만 바뀌고, 제목
     ['시안 v2', '신제품 2', 'room_mine', 1]);
 });
 
-test('개인 할일에서 체크하면 프로젝트에 완료가 반영되고 팀장에게 알린다', async () => {
-  const { roomId, taskId } = await assigned();
-  await upload('mem', { id: `pt_${taskId}`, data: JSON.stringify({ ...mirror('mem', taskId).data, isDone: true }) });
-  const room = (await call('lead', 'GET', `/api/project-rooms/${roomId}`)).body;
-  assert.ok(room.projects[0].tasks[0].doneAt);
-  const inbox = (await call('lead', 'GET', '/api/notifications?device=dev_llllllll')).body.items;
-  assert.equal(inbox[0].title, '업무 완료 보고');
-  assert.equal(mirror('mem', taskId).data.isDone, true);
+const review = (taskId, on) => {
+  const data = mirror('mem', taskId).data;
+  return JSON.stringify({ ...data, project: { ...data.project, reviewRequested: on } });
+};
+const task0 = async (roomId) => (await call('lead', 'GET', `/api/project-rooms/${roomId}`)).body.projects[0].tasks[0];
+const inboxOf = async (id) => (await call(id, 'GET', '/api/notifications?device=dev_llllllll')).body.items;
 
-  // 완료를 되돌려 올려도 프로젝트 기준(완료)으로 유지된다
-  await upload('mem', { id: `pt_${taskId}`, data: JSON.stringify({ ...mirror('mem', taskId).data, isDone: false }) });
-  assert.equal(mirror('mem', taskId).data.isDone, true);
+test('개인 할일에서 체크하면 검토 요청(검토중)이 되고, 다시 체크하면 취소된다', async () => {
+  const { roomId, taskId } = await assigned();
+  await upload('mem', { id: `pt_${taskId}`, data: review(taskId, true) });
+  let t = await task0(roomId);
+  assert.deepEqual([!!t.reviewAt, t.doneAt], [true, null], '완료가 아니라 검토중');
+  assert.equal((await inboxOf('lead'))[0].title, '검토 요청');
+  assert.deepEqual([mirror('mem', taskId).data.isDone, mirror('mem', taskId).data.project.reviewRequested], [false, true]);
+
+  await upload('mem', { id: `pt_${taskId}`, data: review(taskId, false) });
+  t = await task0(roomId);
+  assert.equal(t.reviewAt, null, '검토 요청 취소 → 진행중');
+
+  // 예전 앱처럼 isDone으로 체크해 올려도 검토 요청으로 처리한다
+  await upload('mem', { id: `pt_${taskId}`, data: JSON.stringify({ ...mirror('mem', taskId).data, isDone: true }) });
+  assert.ok((await task0(roomId)).reviewAt);
+});
+
+test('팀장이 최종완료하면 담당자 개인 할일에서 사라지고, 반려하면 진행중으로 돌아간다', async () => {
+  const { roomId, taskId } = await assigned();
+  await call('mem', 'POST', `/api/project-tasks/${taskId}/complete`);
+  assert.equal((await call('mem', 'POST', `/api/project-tasks/${taskId}/approve`)).status, 403, '팀원은 최종완료 불가');
+
+  await call('lead', 'POST', `/api/project-tasks/${taskId}/reject`);
+  assert.equal((await task0(roomId)).reviewAt, null);
+  assert.deepEqual([(await inboxOf('mem'))[0].title, mirror('mem', taskId).deleted], ['반려', 0]);
+  assert.equal((await call('lead', 'POST', `/api/project-tasks/${taskId}/approve`)).status, 409, '검토 요청 전');
+
+  await call('mem', 'POST', `/api/project-tasks/${taskId}/complete`);
+  await call('lead', 'POST', `/api/project-tasks/${taskId}/approve`);
+  assert.ok((await task0(roomId)).doneAt);
+  assert.deepEqual([(await inboxOf('mem'))[0].title, mirror('mem', taskId).deleted], ['최종완료', 1]);
+});
+
+test('팀장 본인 업무는 [완료]하면 바로 최종완료된다', async () => {
+  const { roomId, projectId } = await assigned();
+  const d = (await call('lead', 'POST', `/api/projects/${projectId}/tasks`, { title: '내 업무', assigneeId: 'lead' })).body;
+  const mine = d.projects[0].tasks.find((t) => t.title === '내 업무');
+  await call('lead', 'POST', `/api/project-tasks/${mine.id}/complete`);
+  const after = (await call('lead', 'GET', `/api/project-rooms/${roomId}`)).body.projects[0].tasks.find((t) => t.id === mine.id);
+  assert.ok(after.doneAt);
+  assert.equal(mirror('lead', mine.id).deleted, 1);
 });
 
 test('진행 중 업무는 개인 할일에서 지워도 다시 내려오고, 남의 업무는 올려도 무시한다', async () => {
