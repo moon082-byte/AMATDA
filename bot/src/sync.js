@@ -8,7 +8,8 @@
 // - 무료 요금제의 요청당 쿼리 수 제한에 맞게 표마다 JSON 한 번으로 넣는다
 
 import { cleanDevice, recordTaskChanges } from './inbox.js';
-import { guardMirrors, resendMirrors } from './project_mirror.js';
+import { resendMirrors } from './project_mirror.js';
+import { guardMirrors } from './project_review.js';
 import { MAX_PULL_ROWS, SYNC_TABLES, sanitizeSyncChanges } from './logic.js';
 import { validate } from './http.js';
 

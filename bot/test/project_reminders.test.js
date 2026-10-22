@@ -52,6 +52,7 @@ test('프로젝트 리마인더는 팀장과 진행 중 업무 담당자에게 �
   const done = (await call('lead', 'POST', `/api/projects/${project.id}/tasks`, { title: '문구', assigneeId: 'b' }))
     .body.projects[0].tasks.find((t) => t.title === '문구');
   await call('b', 'POST', `/api/project-tasks/${done.id}/complete`);
+  await call('lead', 'POST', `/api/project-tasks/${done.id}/approve`);
 
   await sendDueProjectReminders(env);
   await sendDueProjectReminders(env);

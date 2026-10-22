@@ -26,14 +26,31 @@ class ProjectEditActions {
 
   void _syncSoon() => maybeProvider<SyncService>(context, listen: false)?.syncNow();
 
-  /// "완료 보고 드리겠습니까?" → 완료 보고 (개인 할일도 곧 완료로 바뀐다)
-  Future<void> complete(ProjectTask task) async {
-    final ok = await confirmAction(context,
-        title: '완료 보고 드리겠습니까?', message: '"${task.title}" 완료를 팀장에게 알려요.', confirmLabel: '완료 보고');
-    if (!ok) return;
-    await apply(() => service.complete(task.id));
+  /// 상태 버튼: 진행중 [완료] → 보고(팀장 본인 업무는 바로 최종완료),
+  /// 내 업무 [검토중] → 검토 요청 취소, 팀장 [검토] → 최종완료·반려
+  Future<void> status(ProjectRoom room, ProjectTask t) async {
+    final mine = t.assigneeId == room.myId;
+    Future<ProjectRoom> Function()? request;
+    if (t.status == TaskStatus.open && mine) {
+      final ok = room.isLeader
+          ? await confirmAction(context, title: '최종완료 하시겠습니까?', message: '"${t.title}"', confirmLabel: '최종완료')
+          : await confirmAction(context, title: '해당 업무 보고드리겠습니까?', message: '"${t.title}" 완료를 팀장에게 보고해요.', confirmLabel: '완료');
+      if (ok) request = () => service.complete(t.id);
+    } else if (t.status == TaskStatus.review && mine) {
+      final ok = await confirmAction(context, title: '검토 요청을 취소하시겠습니까?', confirmLabel: '확인');
+      if (ok) request = () => service.cancelReview(t.id);
+    } else if (t.status == TaskStatus.review && room.isLeader) {
+      final approve = await chooseReviewResult(context, t.title);
+      if (approve != null) request = () => approve ? service.approve(t.id) : service.reject(t.id);
+    }
+    if (request == null) return;
+    await apply(request);
     _syncSoon();
   }
+
+  /// 팀장: 업무 이름만 그 자리에서 고친다 (담당자·마감은 그대로)
+  Future<void> rename(ProjectTask t, String title) =>
+      apply(() => service.updateTask(t.id, title: title, assigneeId: t.assigneeId, dueAt: t.dueAt));
 
   /// 내 업무의 리마인더 (개인 할일과 같은 날짜·시간 방식)
   Future<void> remind(ProjectTask task) async {

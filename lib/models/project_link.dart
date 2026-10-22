@@ -8,12 +8,19 @@ class ProjectLink {
   /// 프로젝트 세부업무 id
   final String taskId;
 
+  /// 검토중 (담당자가 완료 보고함). 담당자가 바꾸면 동기화로 서버에 보고·취소된다.
+  final bool reviewRequested;
+
   const ProjectLink({
     required this.roomId,
     required this.roomName,
     required this.projectName,
     required this.taskId,
+    this.reviewRequested = false,
   });
+
+  ProjectLink withReview(bool on) => ProjectLink(
+      roomId: roomId, roomName: roomName, projectName: projectName, taskId: taskId, reviewRequested: on);
 
   /// "신제품방 · 디자인"
   String get label => '$roomName방 · $projectName';
@@ -28,6 +35,7 @@ class ProjectLink {
       roomName: j['roomName'] as String? ?? '',
       projectName: j['projectName'] as String? ?? '',
       taskId: taskId,
+      reviewRequested: j['reviewRequested'] == true,
     );
   }
 
@@ -36,5 +44,6 @@ class ProjectLink {
         'roomName': roomName,
         'projectName': projectName,
         'taskId': taskId,
+        'reviewRequested': reviewRequested,
       };
 }

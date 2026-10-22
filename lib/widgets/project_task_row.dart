@@ -1,62 +1,31 @@
 import 'package:flutter/material.dart';
 import '../models/project.dart';
-import '../models/project_room.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import 'common/due_badge.dart';
+import 'project_status_button.dart';
 import 'reminder_bell_button.dart';
 
-/// 방 화면 어디서나(프로젝트 탭·오늘의 일정·팀원 탭) 같은 업무 줄을 만들기 위한 동작 묶음
-class TaskRowActions {
-  final ProjectRoom room;
-  final void Function(ProjectTask) complete;
-  final void Function(ProjectTask) remind;
-  final void Function(ProjectTask) edit;
-  final void Function(ProjectTask) delete;
-  final int Function(ProjectTask) reminderCount;
-
-  const TaskRowActions({
-    required this.room,
-    required this.complete,
-    required this.remind,
-    required this.edit,
-    required this.delete,
-    required this.reminderCount,
-  });
-
-  /// [t] 한 줄: 내 진행 중 업무면 [🔔][완료], 팀장이면 눌러 수정. [withProject]면 프로젝트 이름도.
-  Widget row(ProjectTask t, {bool withProject = false}) {
-    final mineOpen = t.assigneeId == room.myId && !t.isDone && !room.invited;
-    return ProjectTaskRow(
-      key: ValueKey(t.id),
-      task: t,
-      assignee: room.memberById(t.assigneeId)?.handle ?? '담당자 없음',
-      projectName: withProject ? room.projectOf(t).name : null,
-      mine: t.assigneeId == room.myId,
-      onComplete: mineOpen ? () => complete(t) : null,
-      onReminder: mineOpen ? () => remind(t) : null,
-      reminderCount: reminderCount(t),
-      onEdit: room.isLeader ? () => edit(t) : null,
-      onDelete: room.isLeader ? () => delete(t) : null,
-    );
-  }
-}
-
-/// 세부업무 한 줄: 완료 표시, 업무 이름, 담당자, 마감 D-DAY.
-/// 내 진행 중 업무면 [완료] 버튼, 팀장이면 줄을 눌러 수정.
-class ProjectTaskRow extends StatelessWidget {
+/// 세부업무 한 줄: 업무 이름(최종완료면 취소선), 담당자·마감 D-DAY, 오른쪽에 [🔔][✕][상태 버튼].
+/// [onRename]이 있으면(팀장) 이름을 눌러 그 자리에서 고친다. [compact]면 이름과 버튼만.
+class ProjectTaskRow extends StatefulWidget {
   final ProjectTask task;
   final String assignee;
 
-  /// 여러 프로젝트가 섞인 목록(오늘의 일정)에서 보여줄 프로젝트 이름
+  /// 여러 프로젝트가 섞인 목록에서 보여줄 프로젝트 이름
   final String? projectName;
   final bool mine;
-  final VoidCallback? onComplete;
+  final bool compact;
+
+  /// 상태 버튼: [완료]·[검토중]·[검토] (없으면 null)
+  final String? statusLabel;
+  final bool statusFilled;
+  final VoidCallback? onStatus;
 
   /// 내 업무의 🔔 (개인 할일 리마인더)
   final VoidCallback? onReminder;
   final int reminderCount;
-  final VoidCallback? onEdit;
+  final ValueChanged<String>? onRename;
 
   /// 팀장의 ✕ (삭제 전 확인 창)
   final VoidCallback? onDelete;
@@ -67,79 +36,113 @@ class ProjectTaskRow extends StatelessWidget {
     required this.assignee,
     this.projectName,
     this.mine = false,
-    this.onComplete,
+    this.compact = false,
+    this.statusLabel,
+    this.statusFilled = true,
+    this.onStatus,
     this.onReminder,
     this.reminderCount = 0,
-    this.onEdit,
+    this.onRename,
     this.onDelete,
   });
+
+  @override
+  State<ProjectTaskRow> createState() => _ProjectTaskRowState();
+}
+
+class _ProjectTaskRowState extends State<ProjectTaskRow> {
+  final _controller = TextEditingController();
+  bool _editing = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _startEdit() {
+    _controller.text = widget.task.title;
+    setState(() => _editing = true);
+  }
+
+  void _finish() {
+    if (!_editing) return;
+    final value = _controller.text.trim();
+    setState(() => _editing = false);
+    if (value.isNotEmpty && value != widget.task.title) widget.onRename?.call(value);
+  }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final text = context.text;
-    final done = task.isDone;
+    final t = widget.task;
+    final done = t.isDone;
+    final style = text.body.copyWith(
+      color: done ? palette.subText : palette.titleText,
+      decoration: done ? TextDecoration.lineThrough : null,
+      fontWeight: widget.mine && !done ? FontWeight.w700 : null,
+    );
+    final title = _editing
+        ? TextField(
+            controller: _controller,
+            autofocus: true,
+            style: style,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _finish(),
+            onTapOutside: (_) => _finish(),
+            decoration: const InputDecoration(
+                isDense: true, contentPadding: EdgeInsets.all(8)),
+          )
+        : GestureDetector(
+            onTap: widget.onRename == null ? null : _startEdit,
+            behavior: HitTestBehavior.opaque,
+            child: Text(t.title, style: style),
+          );
 
-    return InkWell(
-      onTap: onEdit,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        child: Row(
-          children: [
-            Icon(
-              done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-              size: 20,
-              color: done ? palette.success : palette.checkboxIdle,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: text.body.copyWith(
-                      color: done ? palette.subText : palette.titleText,
-                      decoration: done ? TextDecoration.lineThrough : null,
-                      fontWeight: mine && !done ? FontWeight.w700 : null,
-                    ),
-                  ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                title,
+                if (!widget.compact) ...[
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 6,
                     runSpacing: 4,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      if (projectName != null) Text('📁 $projectName', style: text.caption),
-                      Text(mine ? '나 · $assignee' : assignee,
-                          style: text.caption.copyWith(color: mine ? palette.accent : null)),
-                      if (!done && task.dueAt != null) DueBadge(dueDate: task.dueAt, dDay: true),
+                      if (widget.projectName != null)
+                        Text('📁 ${widget.projectName}', style: text.caption),
+                      Text(widget.mine ? '나 · ${widget.assignee}' : widget.assignee,
+                          style: text.caption
+                              .copyWith(color: widget.mine ? palette.accent : null)),
+                      if (done)
+                        Text('완료', style: text.caption.copyWith(color: palette.success)),
+                      if (!done && t.dueAt != null) DueBadge(dueDate: t.dueAt, dDay: true),
                     ],
                   ),
                 ],
-              ),
+              ],
             ),
-            if (onReminder != null)
-              ReminderBellButton(count: reminderCount, compact: true, onTap: onReminder!),
-            if (onDelete != null)
-              IconButton(
-                onPressed: onDelete,
-                tooltip: '업무 삭제',
-                visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.close_rounded, size: 18, color: palette.subText),
-              ),
-            if (onComplete != null)
-              FilledButton(
-                onPressed: onComplete,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(56, 34),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                child: const Text('완료', style: TextStyle(fontSize: 13)),
-              ),
-          ],
-        ),
+          ),
+          if (widget.onReminder != null)
+            ReminderBellButton(
+                count: widget.reminderCount, compact: true, onTap: widget.onReminder!),
+          if (widget.onDelete != null)
+            IconButton(
+              onPressed: widget.onDelete,
+              tooltip: '업무 삭제',
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close_rounded, size: 18, color: palette.subText),
+            ),
+          if (widget.statusLabel case final label?)
+            ProjectStatusButton(label, filled: widget.statusFilled, onTap: widget.onStatus),
+        ],
       ),
     );
   }

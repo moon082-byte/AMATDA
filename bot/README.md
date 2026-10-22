@@ -127,6 +127,7 @@ npm run db:migrate:push      # migrations/0007_push.sql: 시스템 알림(Web Pu
 npm run db:migrate:profile   # migrations/0008_profile.sql: 프로필(닉네임#태그·사진·자기소개) 칸, 앱 알림함 표
 npm run db:migrate:projects  # migrations/0009_projects.sql: 프로젝트방·팀원·프로젝트·세부업무 표 (팀 공유 데이터)
 npm run db:migrate:projectreminders  # migrations/0010_project_reminders.sql: 프로젝트 리마인더 (팀장이 건 알림 시각)
+npm run db:migrate:taskreview  # migrations/0011_task_review.sql: 세부업무 검토 단계 (진행중 → 검토중 → 최종완료)
 npm run deploy
 ```
 
@@ -157,7 +158,9 @@ npm run deploy
 | `DELETE /api/project-rooms/:id/members/:userId` | 팀원 내보내기·초대 취소(팀장, 진행 중 업무는 담당자 없음으로) 🔒 |
 | `POST /api/project-rooms/:id/projects`, `PUT`·`DELETE /api/projects/:id` | 프로젝트 추가·수정·삭제(팀장, `remindAt`: 리마인더 시각 최대 5개 → 팀장·진행 중 담당자에게 알림) 🔒 |
 | `POST /api/projects/:id/tasks`, `PUT`·`DELETE /api/project-tasks/:id` | 세부업무 추가·수정·삭제(팀장, 담당자에게 알림) 🔒 |
-| `POST /api/project-tasks/:id/complete` | 내 업무 완료 보고(담당자 본인, 팀장에게 알림) 🔒 |
+| `POST /api/project-tasks/:id/complete` | 완료 보고 = 검토 요청(담당자 본인, 팀장에게 알림 / 팀장 본인 업무면 바로 최종완료) 🔒 |
+| `POST /api/project-tasks/:id/cancel-review` | 검토 요청 취소 → 진행중 (담당자 본인) 🔒 |
+| `POST /api/project-tasks/:id/approve`, `.../reject` | 최종완료(담당자 개인 할일에서 지움) / 반려(진행중으로), 담당자에게 알림 (팀장) 🔒 |
 | `GET /api/push/key` | 푸시 구독용 서버 공개키 (`{"key": null}`이면 서버에 키가 없음) 🔒 |
 | `POST` / `DELETE /api/push/subscribe` | 이 기기의 푸시 구독 저장(`{endpoint, keys: {p256dh, auth}}`) / 삭제(`{endpoint}`) 🔒 |
 | `POST /api/reminders/ack` | 끈질긴 알림 끄기 (`{"ack": "<확인값>"}`, 앱의 [앱에서 보기]로 연 경우) 🔒 |

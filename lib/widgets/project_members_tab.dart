@@ -7,7 +7,7 @@ import '../theme/app_typography.dart';
 import 'handle_invite_field.dart';
 import 'profile_avatar.dart';
 import 'project_member_card.dart';
-import 'project_task_row.dart';
+import 'task_row_actions.dart';
 import 'slidable_actions.dart';
 
 /// 방 화면 [팀원] 탭: 팀원별 [진행 중](기본 펼침)·[완료](기본 접힘) 업무.

@@ -10,7 +10,7 @@ import '../utils/links.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/project_room_body.dart';
-import '../widgets/project_task_row.dart';
+import '../widgets/task_row_actions.dart';
 import 'project_room_form.dart';
 import 'project_room_header.dart';
 import 'project_edit_actions.dart';
@@ -118,8 +118,9 @@ class _ProjectRoomViewState extends State<ProjectRoomView> {
             room: room,
             actions: TaskRowActions(
               room: room,
-              complete: _edits.complete,
+              status: (t) => _edits.status(room, t),
               remind: _edits.remind,
+              rename: _edits.rename,
               edit: (t) => _edits.editTask(room, room.projectOf(t), t),
               delete: _edits.deleteTask,
               reminderCount: (t) => rooms.taskById(ProjectEditActions.mirrorId(t))?.remindAt.length ?? 0,

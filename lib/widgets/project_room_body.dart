@@ -9,7 +9,7 @@ import 'common/empty_state.dart';
 import 'common/section_header.dart';
 import 'project_card.dart';
 import 'project_members_tab.dart';
-import 'project_task_row.dart';
+import 'task_row_actions.dart';
 import 'segment_tabs.dart';
 
 /// 방 화면 본문: 달력(마감 있는 날 표시) + 고른 날의 일정, [프로젝트][팀원] 탭
@@ -68,7 +68,7 @@ class _ProjectRoomBodyState extends State<ProjectRoomBody> {
             padding: const EdgeInsets.only(left: 4, bottom: 8),
             child: Text('이 날 마감인 업무가 없어요', style: text.caption),
           ),
-        for (final t in dayTasks) widget.actions.row(t, withProject: true),
+        for (final t in dayTasks) widget.actions.row(t, compact: true),
         const SizedBox(height: 24),
         SegmentTabs(
           labels: ['프로젝트 ${room.projects.length}', '팀원 ${room.activeMembers.length}'],

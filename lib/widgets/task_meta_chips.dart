@@ -26,6 +26,8 @@ class TaskMetaChips extends StatelessWidget {
       children: [
         if (task.project case final p?)
           TagChip.routine(context, p.label, icon: Icons.folder_rounded),
+        if (task.project?.reviewRequested ?? false)
+          TagChip.accent(context, '검토중', icon: Icons.hourglass_top_rounded),
         DueBadge(dueDate: task.dueDate, isDone: task.isDone),
         // 프로젝트 업무의 마감은 팀장만 바꿀 수 있다
         if (task.isProjectTask)
