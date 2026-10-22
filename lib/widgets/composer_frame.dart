@@ -5,6 +5,7 @@ import 'sheet_drag_handle.dart';
 
 /// 할 일·루틴 입력 블록의 공통 틀 (아래에서 올라오는 시트, 키보드 바로 위에 붙는다).
 /// 한 줄 구성: [이름 입력칸][📅 [schedule]][🔔 [bell]]
+/// [linkField]가 있으면 두 줄: [이름][📅] / [링크 입력칸][🔔]
 class ComposerFrame extends StatelessWidget {
   final String title;
   final TextEditingController controller;
@@ -15,6 +16,9 @@ class ComposerFrame extends StatelessWidget {
   final bool readOnly;
   final Widget schedule;
   final Widget bell;
+
+  /// 둘째 줄 왼쪽 입력칸 (할 일의 텔레그램 메시지 링크)
+  final Widget? linkField;
 
   /// 입력 줄 아래에 덧붙일 칸 (예: 업무방 선택)
   final List<Widget> extra;
@@ -32,6 +36,7 @@ class ComposerFrame extends StatelessWidget {
     required this.onSubmit,
     this.autofocus = false,
     this.readOnly = false,
+    this.linkField,
     this.extra = const [],
   });
 
@@ -74,10 +79,20 @@ class ComposerFrame extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 schedule,
-                const SizedBox(width: 6),
-                bell,
+                if (linkField == null) ...[const SizedBox(width: 6), bell],
               ],
             ),
+            if (linkField case final link?) ...[
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: link),
+                  const SizedBox(width: 6),
+                  bell,
+                ],
+              ),
+            ],
             for (final w in extra) ...[const SizedBox(height: 20), w],
             const SizedBox(height: 20),
             FilledButton(onPressed: onSubmit, child: Text(submitLabel)),

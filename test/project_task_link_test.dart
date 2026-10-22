@@ -83,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = tester.widget<TextField>(
-        find.descendant(of: find.byType(ComposerFrame), matching: find.byType(TextField)));
+        find.descendant(of: find.byType(ComposerFrame), matching: find.byType(TextField)).first);
     expect(field.readOnly, isTrue);
     expect(find.byTooltip('마감은 팀장만 바꿀 수 있어요'), findsOneWidget);
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/inbox_service.dart';
 import '../services/profile_service.dart';
 import '../theme/app_palette.dart';
@@ -28,36 +29,39 @@ class DashboardHeader extends StatelessWidget {
 
     return Row(
       children: [
-        if (profile != null && profile.available)
-          Flexible(
-            child: Semantics(
-              button: true,
-              label: '내 프로필',
-              child: InkWell(
-                onTap: onOpenProfile,
-                borderRadius: BorderRadius.circular(24),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 2, 10, 2),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ProfileAvatar(profile: profile.profile, size: 36),
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          profile.profile.nickname,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.text.title,
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: profile == null || !profile.available
+                ? const SizedBox.shrink()
+                : Semantics(
+                    button: true,
+                    label: '내 프로필',
+                    child: InkWell(
+                      onTap: onOpenProfile,
+                      borderRadius: BorderRadius.circular(24),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(2, 2, 10, 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ProfileAvatar(profile: profile.profile, size: 36),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(
+                                profile.profile.nickname,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.text.title,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
           ),
-        const Spacer(),
+        ),
         if (inbox != null && inbox.available)
           IconButton(
             onPressed: onOpenInbox,

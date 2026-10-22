@@ -12,7 +12,7 @@ import '../widgets/remind_at_popup.dart';
 import 'project_sheets.dart';
 
 /// 방 화면의 업무 동작 (시트·확인 창 → 서버 요청 → [apply]로 방 화면 갱신)
-/// - 팀장: 프로젝트·세부업무 추가·수정·삭제
+/// - 팀장: 프로젝트·세부업무 추가·수정·삭제(확인 창), 팀원 초대·내보내기
 /// - 담당자: 내 업무 완료 보고, 리마인더(내 개인 할일에 연결된 할 일의 리마인더를 바꾼다)
 class ProjectEditActions {
   final BuildContext context;
@@ -63,10 +63,35 @@ class ProjectEditActions {
       return apply(() => service.updateProject(p.id,
           name: input.name, dueAt: input.due, remindAt: input.remindAt));
     }
+    await deleteProject(p);
+  }
+
+  Future<void> deleteProject(Project p) async {
     if (!context.mounted) return;
     if (await confirmDelete(context, '"${p.name}" 프로젝트와 세부업무를 모두 삭제할까요?')) {
       await apply(() => service.deleteProject(p.id));
     }
+  }
+
+  Future<void> deleteTask(ProjectTask t) async {
+    if (!context.mounted) return;
+    if (await confirmDelete(context, '"${t.title}" 업무를 삭제할까요? 담당자에게 알림이 가요.')) {
+      await apply(() => service.deleteTask(t.id));
+    }
+  }
+
+  Future<void> invite(ProjectRoom room, String userId) =>
+      apply(() => service.invite(room.id, userId));
+
+  /// 팀원 내보내기 또는 초대 취소 (확인 창)
+  Future<void> removeMember(ProjectRoom room, ProjectMember m) async {
+    final ok = await confirmAction(
+      context,
+      title: m.invited ? '초대를 취소할까요?' : '${m.handle}님을 내보낼까요?',
+      message: m.invited ? null : '맡고 있던 진행 중 업무는 담당자 없음으로 바뀌어요.',
+      confirmLabel: m.invited ? '초대 취소' : '내보내기',
+    );
+    if (ok) await apply(() => service.removeMember(room.id, m.userId));
   }
 
   /// [t]가 없으면 [p]에 새 세부업무 추가. 담당자는 참여 중인 팀원 중에서 고른다.
@@ -81,9 +106,6 @@ class ProjectEditActions {
       return apply(() => service.updateTask(t.id,
           title: input.title, assigneeId: input.assigneeId, dueAt: input.due));
     }
-    if (!context.mounted) return;
-    if (await confirmDelete(context, '"${t.title}" 업무를 삭제할까요? 담당자에게 알림이 가요.')) {
-      await apply(() => service.deleteTask(t.id));
-    }
+    await deleteTask(t);
   }
 }

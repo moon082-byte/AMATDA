@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/project.dart';
+import '../theme/app_palette.dart';
 import '../widgets/project_edit_sheet.dart';
 
 /// 팀장이 프로젝트·세부업무를 추가·수정하는 아래 시트들.
@@ -7,13 +8,22 @@ import '../widgets/project_edit_sheet.dart';
 typedef TaskInput = ({String title, String? assigneeId, DateTime? due, bool delete});
 typedef ProjectInput = ({String name, DateTime? due, List<DateTime> remindAt, bool delete});
 
+/// 할 일 추가 블록과 같은 모양: 어두운 배경막 위에 위쪽이 둥근 불투명 카드
 Future<T?> _sheet<T>(BuildContext context, Widget child) => showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
-        child: SingleChildScrollView(child: child),
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: ctx.palette.card,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: child,
+        ),
       ),
     );
 

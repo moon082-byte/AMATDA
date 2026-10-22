@@ -26,6 +26,9 @@ class TaskItem {
   /// 프로젝트에서 배정된 업무면 그 연결 (제목·마감 잠금, 체크하면 완료 보고)
   final ProjectLink? project;
 
+  /// 텔레그램 메시지 링크 (https://t.me/...). 상세에서 [텔레그램 열기]로 연다.
+  final String? link;
+
   const TaskItem({
     required this.id,
     required this.title,
@@ -40,6 +43,7 @@ class TaskItem {
     this.notes = const [],
     this.remindAt = const [],
     this.project,
+    this.link,
   });
 
   bool get isProjectTask => project != null;
@@ -53,6 +57,7 @@ class TaskItem {
     List<Note>? notes,
     List<DateTime>? remindAt,
     String? Function()? roomId,
+    String? Function()? link,
   }) {
     return TaskItem(
       id: id,
@@ -68,6 +73,7 @@ class TaskItem {
       notes: notes ?? this.notes,
       remindAt: remindAt ?? this.remindAt,
       project: project,
+      link: link != null ? link() : this.link,
     );
   }
 
@@ -91,4 +97,7 @@ class TaskItem {
 
   /// 업무방 태그만 바꾼다 (프로젝트 업무도 바꿀 수 있다)
   TaskItem withRoom(String? roomId) => _copy(roomId: () => roomId);
+
+  /// 텔레그램 메시지 링크만 바꾼다 (null이면 지움)
+  TaskItem withLink(String? link) => _copy(link: () => link);
 }

@@ -12,6 +12,7 @@ class TaskRowActions {
   final void Function(ProjectTask) complete;
   final void Function(ProjectTask) remind;
   final void Function(ProjectTask) edit;
+  final void Function(ProjectTask) delete;
   final int Function(ProjectTask) reminderCount;
 
   const TaskRowActions({
@@ -19,6 +20,7 @@ class TaskRowActions {
     required this.complete,
     required this.remind,
     required this.edit,
+    required this.delete,
     required this.reminderCount,
   });
 
@@ -35,6 +37,7 @@ class TaskRowActions {
       onReminder: mineOpen ? () => remind(t) : null,
       reminderCount: reminderCount(t),
       onEdit: room.isLeader ? () => edit(t) : null,
+      onDelete: room.isLeader ? () => delete(t) : null,
     );
   }
 }
@@ -55,6 +58,9 @@ class ProjectTaskRow extends StatelessWidget {
   final int reminderCount;
   final VoidCallback? onEdit;
 
+  /// 팀장의 ✕ (삭제 전 확인 창)
+  final VoidCallback? onDelete;
+
   const ProjectTaskRow({
     super.key,
     required this.task,
@@ -65,6 +71,7 @@ class ProjectTaskRow extends StatelessWidget {
     this.onReminder,
     this.reminderCount = 0,
     this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -115,6 +122,13 @@ class ProjectTaskRow extends StatelessWidget {
             ),
             if (onReminder != null)
               ReminderBellButton(count: reminderCount, compact: true, onTap: onReminder!),
+            if (onDelete != null)
+              IconButton(
+                onPressed: onDelete,
+                tooltip: '업무 삭제',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close_rounded, size: 18, color: palette.subText),
+              ),
             if (onComplete != null)
               FilledButton(
                 onPressed: onComplete,
