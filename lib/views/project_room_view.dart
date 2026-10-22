@@ -9,7 +9,6 @@ import '../utils/confirm_dialog.dart';
 import '../utils/links.dart';
 import '../widgets/common/app_page.dart';
 import '../widgets/common/empty_state.dart';
-import '../widgets/project_members_sheet.dart';
 import '../widgets/project_room_body.dart';
 import '../widgets/project_task_row.dart';
 import 'project_room_form.dart';
@@ -81,11 +80,6 @@ class _ProjectRoomViewState extends State<ProjectRoomView> {
     return AppPage(
       title: room.name,
       actions: [
-        IconButton(
-          onPressed: () => showMembersSheet(context, room, (r) => setState(() => _room = r)),
-          tooltip: '팀원',
-          icon: Icon(Icons.group_rounded, color: palette.bodyText),
-        ),
         if (room.telegramUrl.isNotEmpty)
           IconButton(
             onPressed: () => openExternalLink(context, room.telegramUrl),
@@ -127,9 +121,13 @@ class _ProjectRoomViewState extends State<ProjectRoomView> {
               complete: _edits.complete,
               remind: _edits.remind,
               edit: (t) => _edits.editTask(room, room.projectOf(t), t),
+              delete: _edits.deleteTask,
               reminderCount: (t) => rooms.taskById(ProjectEditActions.mirrorId(t))?.remindAt.length ?? 0,
             ),
             onEditProject: (p) => _edits.editProject(room, p),
+            onDeleteProject: _edits.deleteProject,
+            onInvite: (userId) => _edits.invite(room, userId),
+            onRemoveMember: (m) => _edits.removeMember(room, m),
             onAddTask: (p) => _edits.editTask(room, p),
           ),
         ]),

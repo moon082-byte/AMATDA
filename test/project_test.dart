@@ -55,7 +55,7 @@ class _Server {
         final page = int.parse(req.url.queryParameters['page'] ?? '1');
         body = {
           'page': page, 'pageSize': 10, 'total': 12,
-          'rooms': [for (var i = 0; i < (page == 1 ? 10 : 2); i++) {'id': 'r$i', 'name': '방 ${(page - 1) * 10 + i}', 'role': 'member', 'members': 2, 'total': 4, 'done': 1, 'myOpen': 1}],
+          'rooms': [for (var i = 0; i < (page == 1 ? 10 : 2); i++) {'id': 'r$i', 'name': '방 ${(page - 1) * 10 + i}', 'role': leader ? 'leader' : 'member', 'members': 2, 'total': 4, 'done': 1, 'myOpen': 1}],
           'invites': [{'roomId': 'r1', 'roomName': '신제품', 'invitedBy': '팀장#1111'}],
         };
       }
@@ -64,6 +64,9 @@ class _Server {
         done = true;
         body = detail;
       }
+      if (key.startsWith('DELETE /api/project') || key.endsWith('/invites')) body = detail;
+      if (key == 'GET /api/users/lookup') body = {'userId': 'u9', 'handle': '새팀원#3333'};
+      if (key == 'DELETE /api/project-rooms/r0') body = {'ok': true};
       if (key == 'POST /api/project-rooms/r1/projects') {
         projects.add({'id': 'p2', 'name': (jsonDecode(req.body) as Map)['name'], 'dueAt': null, 'tasks': []});
         body = detail;
@@ -177,7 +180,8 @@ void main() {
 
     await _tap(tester, find.text('팀원 2'));
     expect(find.text('팀장#1111'), findsOneWidget);
-    expect(find.text('진행 1 · 완료 0'), findsOneWidget); // 나#2222
+    expect(find.text('진행 중 1'), findsOneWidget); // 나#2222 (기본 펼침)
+    expect(find.text('완료 0'), findsOneWidget);
     expect(find.text('배정된 업무가 없어요'), findsOneWidget); // 팀장
   });
 
@@ -193,5 +197,70 @@ void main() {
     await _tap(tester, find.text('저장하기'));
     final body = server.calls.firstWhere((c) => c.startsWith('POST /api/project-rooms/r1/projects'));
     expect(RegExp(r'"remindAt":\[\d+\]').hasMatch(body), isTrue, reason: body);
+  });
+
+  testWidgets('팀장: 프로젝트 카드를 밀어 삭제, 업무 ✕ 삭제는 확인 창을 거친다 ([팀원] 버튼은 없다)', (tester) async {
+    final server = _Server(leader: true);
+    await _boot(tester, server);
+    await _tap(tester, find.text('방 0'));
+    expect(find.byTooltip('팀원'), findsNothing);
+
+    await _tap(tester, find.byTooltip('업무 삭제'));
+    expect(find.text('삭제할까요?'), findsOneWidget);
+    await _tap(tester, find.widgetWithText(FilledButton, '삭제'));
+    expect(server.calls, contains(startsWith('DELETE /api/project-tasks/t1')));
+
+    await tester.ensureVisible(find.text('디자인').last);
+    await tester.drag(find.text('디자인').last, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    await _tap(tester, find.text('삭제').last);
+    await _tap(tester, find.widgetWithText(FilledButton, '삭제'));
+    expect(server.calls, contains(startsWith('DELETE /api/projects/p1')));
+  });
+
+  testWidgets('팀원: 밀어도 수정·삭제가 없고 업무 ✕도 없다', (tester) async {
+    await _boot(tester, _Server());
+    await _tap(tester, find.text('방 0'));
+    expect(find.byTooltip('업무 삭제'), findsNothing);
+    await tester.ensureVisible(find.text('디자인').last);
+    await tester.drag(find.text('디자인').last, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('수정'), findsNothing);
+  });
+
+  testWidgets('팀장: [팀원] 탭에서 닉네임#태그로 초대하고, 카드를 밀어 내보낸다', (tester) async {
+    final server = _Server(leader: true);
+    await _boot(tester, server);
+    await _tap(tester, find.text('방 0'));
+    await _tap(tester, find.text('팀원 2'));
+    await tester.enterText(find.byType(TextField).first, '새팀원#3333');
+    await _tap(tester, find.byTooltip('팀원 찾기'));
+    expect(server.calls, contains(contains('POST /api/project-rooms/r1/invites  {"userId":"u9"}')));
+
+    await tester.drag(find.text('나#2222'), const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    await _tap(tester, find.text('내보내기').first);
+    expect(find.text('나#2222님을 내보낼까요?'), findsOneWidget);
+    await _tap(tester, find.widgetWithText(FilledButton, '내보내기'));
+    expect(server.calls, contains(startsWith('DELETE /api/project-rooms/r1/members/me')));
+  });
+
+  testWidgets('팀원인 방은 목록에서 밀어도 [삭제]가 없다', (tester) async {
+    final server = _Server();
+    await _boot(tester, server);
+    await tester.drag(find.text('방 0'), const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('삭제'), findsNothing, reason: '목록의 방은 팀원(role: member)이라 밀리지 않는다');
+  });
+
+  testWidgets('팀장인 방: 목록에서 밀어 [삭제] → 확인 창 → 삭제', (tester) async {
+    final lead = _Server(leader: true);
+    await _boot(tester, lead);
+    await tester.drag(find.text('방 0'), const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    await _tap(tester, find.text('삭제').last);
+    expect(find.text('삭제할까요?'), findsOneWidget);
+    await _tap(tester, find.widgetWithText(FilledButton, '삭제'));
+    expect(lead.calls, contains(startsWith('DELETE /api/project-rooms/r0')));
   });
 }

@@ -55,3 +55,13 @@ Future<void> openExternalLink(BuildContext context, String link) async {
     messenger.showSnackBar(const SnackBar(content: Text('링크를 열 수 없어요')));
   }
 }
+
+/// 텔레그램 메시지 링크를 검사해 `https://t.me/...` 모양으로 맞춘다.
+/// 비어 있으면 빈 문자열(링크 없음), t.me 링크가 아니면 null.
+String? normalizeTelegramLink(String input) {
+  final v = input.trim();
+  if (v.isEmpty) return '';
+  final m = RegExp(r'^(?:https?://)?(?:www\.)?(?:t\.me|telegram\.me)/(\S+)$', caseSensitive: false)
+      .firstMatch(v);
+  return m == null ? null : 'https://t.me/${m.group(1)}';
+}

@@ -120,7 +120,7 @@ void main() {
 
     final block = find.byType(ComposerFrame);
     await tester.enterText(
-        find.descendant(of: block, matching: find.byType(TextField)), '견적서 발송');
+        find.descendant(of: block, matching: find.byType(TextField)).first, '견적서 발송');
     await _tap(tester,
         find.descendant(of: block, matching: find.byTooltip('리마인더 설정')));
     await _tap(tester, find.text('리마인더 추가'));

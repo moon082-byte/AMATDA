@@ -17,14 +17,20 @@ class ProjectRoomBody extends StatefulWidget {
   final ProjectRoom room;
   final TaskRowActions actions;
   final void Function(Project p) onEditProject;
+  final void Function(Project p) onDeleteProject;
   final void Function(Project p) onAddTask;
+  final void Function(String userId) onInvite;
+  final void Function(ProjectMember m) onRemoveMember;
 
   const ProjectRoomBody({
     super.key,
     required this.room,
     required this.actions,
     required this.onEditProject,
+    required this.onDeleteProject,
     required this.onAddTask,
+    required this.onInvite,
+    required this.onRemoveMember,
   });
 
   @override
@@ -72,7 +78,12 @@ class _ProjectRoomBodyState extends State<ProjectRoomBody> {
         ),
         const SizedBox(height: 16),
         if (_tab == 1)
-          ProjectMembersTab(room: room, actions: widget.actions)
+          ProjectMembersTab(
+            room: room,
+            actions: widget.actions,
+            onInvite: widget.onInvite,
+            onRemove: widget.onRemoveMember,
+          )
         else if (room.projects.isEmpty)
           EmptyState(
             icon: Icons.folder_open_rounded,
@@ -88,6 +99,7 @@ class _ProjectRoomBodyState extends State<ProjectRoomBody> {
               actions: widget.actions,
               onAddTask: () => widget.onAddTask(p),
               onEdit: () => widget.onEditProject(p),
+              onDelete: () => widget.onDeleteProject(p),
             ),
       ],
     );

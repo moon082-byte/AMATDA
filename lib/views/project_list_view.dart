@@ -3,6 +3,7 @@ import '../models/project_room_page.dart';
 import '../services/project_service.dart';
 import '../theme/app_typography.dart';
 import '../utils/confirm_action.dart';
+import '../utils/confirm_dialog.dart';
 import '../utils/maybe_provider.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/project_invite_card.dart';
@@ -47,6 +48,21 @@ class _ProjectListViewState extends State<ProjectListView> {
   Future<void> _open(Widget page, {bool fullscreen = false}) async {
     await Navigator.push(
         context, MaterialPageRoute(fullscreenDialog: fullscreen, builder: (_) => page));
+    _load();
+  }
+
+  /// 팀장: 방 수정 (상세를 받아 수정 화면을 연다)
+  Future<void> _editRoom(ProjectRoomSummary summary) async {
+    final room = await runWithMessage(context, () => _service!.detail(summary.id));
+    if (room == null || !mounted) return;
+    await _open(ProjectRoomForm(room: room), fullscreen: true);
+  }
+
+  /// 팀장: 방 삭제 (확인 창)
+  Future<void> _deleteRoom(ProjectRoomSummary room) async {
+    if (!await confirmDelete(context, '"${room.name}"방의 프로젝트·업무가 모두 삭제돼요.')) return;
+    if (!mounted) return;
+    await runWithMessage(context, () => _service!.delete(room.id));
     _load();
   }
 
@@ -98,7 +114,12 @@ class _ProjectListViewState extends State<ProjectListView> {
                     message: '[방 만들기]로 팀원을 초대해 함께 업무를 나눠 보세요',
                   ),
                 for (final room in data.rooms)
-                  ProjectRoomTile(room: room, onTap: () => _open(ProjectRoomView(roomId: room.id))),
+                  ProjectRoomTile(
+                    room: room,
+                    onTap: () => _open(ProjectRoomView(roomId: room.id)),
+                    onEdit: () => _editRoom(room),
+                    onDelete: () => _deleteRoom(room),
+                  ),
                 if (data.pageCount > 1)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

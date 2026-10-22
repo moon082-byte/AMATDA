@@ -12,6 +12,7 @@ import 'reorder_handle.dart';
 import 'round_check.dart';
 import 'slidable_actions.dart';
 import 'sub_task_section.dart';
+import 'telegram_open_button.dart';
 import 'task_meta_chips.dart';
 import 'task_progress_bar.dart';
 
@@ -131,6 +132,7 @@ class _TaskDetailCardState extends State<TaskDetailCard> {
                           children: [
                             Divider(height: 1, color: palette.border),
                             const SizedBox(height: 16),
+                            if (task.link case final l?) TelegramOpenButton(link: l),
                             SubTaskSection(task: task),
                             const SizedBox(height: 20),
                             NoteSection(task: task),

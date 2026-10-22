@@ -29,6 +29,11 @@ List<Widget> buildRestoreDeleteActions(
   ];
 }
 
+/// 빨간 액션 하나 (예: 팀원 내보내기)
+List<Widget> buildDangerAction(BuildContext context,
+        {required IconData icon, required String label, required VoidCallback onTap}) =>
+    [_action(color: context.palette.danger, icon: icon, label: label, onTap: onTap)];
+
 /// 카드와 간격을 두고 떠 있는 둥근 액션 버튼
 Widget _action({
   required Color color,

@@ -84,6 +84,8 @@ void main() {
 
     // 메인 헤더: 좌상단 프로필, 우상단 알림함(안 읽은 1개)
     expect(find.text('문다니엘'), findsOneWidget);
+    // 프로필이 있어도 알림함·설정은 오른쪽 끝에 붙는다
+    expect(tester.getTopRight(find.byTooltip('설정')).dx, greaterThanOrEqualTo(390 - 20 - 4));
     expect(find.descendant(of: find.byTooltip('알림함'), matching: find.text('1')), findsOneWidget);
 
     await _tap(tester, find.text('문다니엘'));

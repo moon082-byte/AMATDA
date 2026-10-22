@@ -4,6 +4,7 @@ import '../models/task_item.dart';
 import '../providers/room_provider.dart';
 import '../utils/date_format.dart';
 import '../utils/ids.dart';
+import '../utils/links.dart';
 import '../utils/pick_date_time.dart';
 import '../widgets/composer_frame.dart';
 import '../widgets/reminder_bell_button.dart';
@@ -28,6 +29,10 @@ class _TaskComposerState extends State<TaskComposer> {
   late DateTime? _due = widget.task?.dueDate;
   late List<DateTime> _remindAt = widget.task?.remindAt ?? const [];
   late String? _roomId = widget.task?.roomId ?? widget.roomId;
+  late final _link = TextEditingController(text: widget.task?.link ?? '');
+
+  /// 입력한 링크를 https://t.me/... 로 맞춘 값 ('' = 없음, null = t.me 링크가 아님)
+  String? get _cleanLink => normalizeTelegramLink(_link.text);
 
   /// 프로젝트에서 배정된 업무: 이름·마감은 잠그고 업무방 태그·리마인더만 바꾼다
   bool get _locked => widget.task?.isProjectTask ?? false;
@@ -35,17 +40,19 @@ class _TaskComposerState extends State<TaskComposer> {
   /// 업무방 밖(오늘 할일 화면)에서 새로 추가할 때, 그리고 프로젝트 업무를 고칠 때 업무방을 고른다
   bool get _pickRoom => (widget.task == null && widget.roomId == null) || _locked;
   bool get _isEdit => widget.task != null;
-  bool get _canSubmit => _title.text.trim().isNotEmpty;
+  bool get _canSubmit => _title.text.trim().isNotEmpty && _cleanLink != null;
 
   @override
   void initState() {
     super.initState();
     _title.addListener(() => setState(() {}));
+    _link.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _title.dispose();
+    _link.dispose();
     super.dispose();
   }
 
@@ -67,11 +74,12 @@ class _TaskComposerState extends State<TaskComposer> {
     if (!_canSubmit) return;
     final title = _title.text.trim();
     final provider = context.read<RoomProvider>();
+    final link = _cleanLink!.isEmpty ? null : _cleanLink;
 
     final task = widget.task;
     if (task != null) {
       final edited = task.copyWithEdits(title: title, dueDate: _due, remindAt: _remindAt);
-      provider.updateTask(_locked ? edited.withRoom(_roomId) : edited);
+      provider.updateTask((_locked ? edited.withRoom(_roomId) : edited).withLink(link));
     } else {
       provider.addTask(TaskItem(
         id: newId('task'),
@@ -79,6 +87,7 @@ class _TaskComposerState extends State<TaskComposer> {
         dueDate: _due,
         remindAt: _remindAt,
         roomId: _roomId,
+        link: link,
         createdAt: DateTime.now(),
       ));
     }
@@ -107,6 +116,16 @@ class _TaskComposerState extends State<TaskComposer> {
               onTap: _pickDue,
               onClear: () => setState(() => _due = null),
             ),
+      linkField: TextField(
+        controller: _link,
+        keyboardType: TextInputType.url,
+        scrollPadding: const EdgeInsets.only(bottom: 160),
+        decoration: InputDecoration(
+          hintText: '텔레그램 메시지 링크 (선택)',
+          prefixIcon: const Icon(Icons.send_rounded, size: 18),
+          errorText: _cleanLink == null ? 't.me 링크만 넣을 수 있어요 (예: https://t.me/c/123/45)' : null,
+        ),
+      ),
       bell: ReminderBellButton(
         count: _remindAt.length,
         onTap: _editReminders,
