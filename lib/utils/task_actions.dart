@@ -63,7 +63,11 @@ void _toast(BuildContext context, String message) => ScaffoldMessenger.of(contex
 
 /// 완료된 할 일을 진행 중 목록으로 되돌린다 (프로젝트 업무는 되돌릴 수 없다)
 void restoreTask(BuildContext context, TaskItem task) {
-  if (task.isProjectTask) return _toast(context, '프로젝트 업무는 완료를 되돌릴 수 없어요');
+  if (task.isProjectTask) return _toast(context, '프로젝트 업무는 되돌릴 수 없어요');
+  if (task.isMissed) {
+    context.read<RoomProvider>().updateTask(task.markMissed(false));
+    return _toast(context, '"${task.title}"을(를) 다시 할 일로 되돌렸어요');
+  }
   context.read<RoomProvider>().toggleTask(task.id);
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()

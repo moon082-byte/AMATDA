@@ -56,16 +56,14 @@ class RoomProvider extends ChangeNotifier {
   List<TelegramRoom> get rooms => List.unmodifiable(_rooms);
   List<TaskItem> get tasks => List.unmodifiable(_tasks);
 
-  /// 완료되지 않은(진행 중인) 할 일만
-  List<TaskItem> get activeTasks => _tasks.where((t) => !t.isDone).toList();
+  /// 할일 목록에 보이는 진행 중인 할 일 (완료·미완료 처리·기한 지남은 빠진다)
+  List<TaskItem> get activeTasks => _tasks.where((t) => t.isActive).toList();
 
-  /// 완료된 할 일을 완료 시각 최신순으로 정렬한 아카이브 목록
+  /// 완료·미완료 처리한 할 일을 처리 시각 최신순으로 정렬한 아카이브 목록
   List<TaskItem> get archivedTasks {
-    final done = _tasks.where((t) => t.isDone).toList();
-    done.sort(
-      (a, b) =>
-          (b.completedAt ?? b.createdAt).compareTo(a.completedAt ?? a.createdAt),
-    );
+    DateTime at(TaskItem t) => t.completedAt ?? t.missedAt ?? t.createdAt;
+    final done = _tasks.where((t) => t.isDone || t.isMissed).toList();
+    done.sort((a, b) => at(b).compareTo(at(a)));
     return done;
   }
 
@@ -80,9 +78,9 @@ class RoomProvider extends ChangeNotifier {
   List<TaskItem> tasksForRoom(String roomId) =>
       _tasks.where((t) => t.roomId == roomId).toList();
 
-  /// 방에 속한, 아직 완료되지 않은 할 일만
+  /// 방에 속한, 할일 목록에 보이는 진행 중인 할 일만
   List<TaskItem> activeTasksForRoom(String roomId) =>
-      _tasks.where((t) => t.roomId == roomId && !t.isDone).toList();
+      _tasks.where((t) => t.roomId == roomId && t.isActive).toList();
 
   int pendingCountForRoom(String roomId) => activeTasksForRoom(roomId).length;
 

@@ -42,7 +42,7 @@ class _ArchiveViewState extends State<ArchiveView> {
     final children = <Widget>[];
     String? lastGroup;
     for (final task in pageItems) {
-      final doneAt = task.completedAt ?? task.createdAt;
+      final doneAt = task.completedAt ?? task.missedAt ?? task.createdAt;
       final group = formatDayGroup(doneAt);
       if (group != lastGroup) {
         children.add(Padding(
@@ -54,7 +54,8 @@ class _ArchiveViewState extends State<ArchiveView> {
       children.add(ArchivedTaskTile(
         title: task.title,
         roomName: provider.roomById(task.roomId ?? '')?.name,
-        completedLabel: '${formatTime(doneAt)} 완료',
+        completedLabel: '${formatTime(doneAt)} ${task.isMissed ? '미완료 처리' : '완료'}',
+        missed: task.isMissed,
         onRestore: () => restoreTask(context, task),
         onDelete: () => _deletePermanently(task.id, task.title),
       ));

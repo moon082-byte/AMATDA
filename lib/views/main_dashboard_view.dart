@@ -127,14 +127,14 @@ class _MainDashboardViewState extends State<MainDashboardView> {
             DayAgenda(
               day: _selectedDay,
               onOpenList: () => _push(const TodayTasksView()),
-              // 완료한 할 일은 '오늘 할일' 목록에 없으므로 목록만 연다
+              // 완료·미완료 처리한 할 일은 목록에 없으므로 목록만 연다 (기한 지남은 그 탭에서 펼친다)
               onOpenTask: (task) => _push(TodayTasksView(
-                  focusTaskId: task.isDone ? null : task.id)),
+                  focusTaskId: task.isDone || task.isMissed ? null : task.id)),
             ),
             const SizedBox(height: 28),
             DayRoutines(
               day: _selectedDay,
-              onOpenList: () => _push(const TodayTasksView(initialTab: 1)),
+              onOpenList: () => _push(const TodayTasksView(initialTab: TodayTasksView.routineTab)),
             ),
           ],
         ),

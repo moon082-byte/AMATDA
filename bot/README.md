@@ -128,6 +128,7 @@ npm run db:migrate:profile   # migrations/0008_profile.sql: 프로필(닉네임#
 npm run db:migrate:projects  # migrations/0009_projects.sql: 프로젝트방·팀원·프로젝트·세부업무 표 (팀 공유 데이터)
 npm run db:migrate:projectreminders  # migrations/0010_project_reminders.sql: 프로젝트 리마인더 (팀장이 건 알림 시각)
 npm run db:migrate:taskreview  # migrations/0011_task_review.sql: 세부업무 검토 단계 (진행중 → 검토중 → 최종완료)
+npm run db:migrate:overdue   # migrations/0012_overdue.sql: 기한 지남 (세부업무 미완료 처리, 팀장 기한 경과 알림)
 npm run deploy
 ```
 

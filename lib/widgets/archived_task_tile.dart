@@ -14,6 +14,9 @@ class ArchivedTaskTile extends StatelessWidget {
   final String? roomName;
   final String completedLabel;
   final VoidCallback onRestore;
+
+  /// 완료가 아니라 [미완료 처리]한 할 일 (회색 '미완료' 표시)
+  final bool missed;
   final VoidCallback onDelete;
 
   const ArchivedTaskTile({
@@ -22,6 +25,7 @@ class ArchivedTaskTile extends StatelessWidget {
     required this.roomName,
     required this.completedLabel,
     required this.onRestore,
+    this.missed = false,
     required this.onDelete,
   });
 
@@ -52,9 +56,11 @@ class ArchivedTaskTile extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: onRestore,
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: RoundCheck(isDone: true),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: missed
+                        ? Icon(Icons.remove_circle_outline_rounded, size: 24, color: palette.subText)
+                        : const RoundCheck(isDone: true),
                   ),
                 ),
               ),

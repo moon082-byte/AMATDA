@@ -50,14 +50,14 @@ class _ProjectRoomBodyState extends State<ProjectRoomBody> {
     final room = widget.room;
     final dated = [for (final t in room.allTasks) if (t.dueAt != null) t];
     final dayTasks = [for (final t in dated) if (isSameDate(t.dueAt!, _day)) t]
-      ..sort((a, b) => a.isDone == b.isDone ? a.dueAt!.compareTo(b.dueAt!) : (a.isDone ? 1 : -1));
+      ..sort((a, b) => a.isClosed == b.isClosed ? a.dueAt!.compareTo(b.dueAt!) : (a.isClosed ? 1 : -1));
     final isToday = isSameDate(_day, DateTime.now());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         CalendarCard(
-          markedDates: [for (final t in dated) if (!t.isDone) t.dueAt!],
+          markedDates: [for (final t in dated) if (!t.isClosed) t.dueAt!],
           selectedDay: _day,
           onDaySelected: (d) => setState(() => _day = dateOnly(d)),
         ),

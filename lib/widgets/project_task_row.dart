@@ -79,9 +79,9 @@ class _ProjectTaskRowState extends State<ProjectTaskRow> {
     final t = widget.task;
     final done = t.isDone;
     final style = text.body.copyWith(
-      color: done ? palette.subText : palette.titleText,
+      color: t.isClosed ? palette.subText : palette.titleText,
       decoration: done ? TextDecoration.lineThrough : null,
-      fontWeight: widget.mine && !done ? FontWeight.w700 : null,
+      fontWeight: widget.mine && !t.isClosed ? FontWeight.w700 : null,
     );
     final title = _editing
         ? TextField(
@@ -121,9 +121,10 @@ class _ProjectTaskRowState extends State<ProjectTaskRow> {
                       Text(widget.mine ? '나 · ${widget.assignee}' : widget.assignee,
                           style: text.caption
                               .copyWith(color: widget.mine ? palette.accent : null)),
-                      if (done)
-                        Text('완료', style: text.caption.copyWith(color: palette.success)),
-                      if (!done && t.dueAt != null) DueBadge(dueDate: t.dueAt, dDay: true),
+                      if (t.isClosed)
+                        Text(done ? '완료' : '미완료',
+                            style: text.caption.copyWith(color: done ? palette.success : palette.subText)),
+                      if (!t.isClosed && t.dueAt != null) DueBadge(dueDate: t.dueAt, dDay: true),
                     ],
                   ),
                 ],

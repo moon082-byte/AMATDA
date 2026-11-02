@@ -79,7 +79,7 @@ List<DueReminder> collectDueReminders({
   }
 
   for (final t in tasks) {
-    if (t.isDone) continue;
+    if (t.isDone || t.isMissed) continue;
     check('task', t.id, t.title, t.remindAt, t.dueDate);
     for (final s in t.subTasks.where((s) => !s.isDone)) {
       check('sub', '${t.id}:${s.id}', '${t.title} · ${s.title}', s.remindAt,

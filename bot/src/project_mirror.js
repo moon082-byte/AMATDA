@@ -26,12 +26,13 @@ export function mirrorData(t, own = {}) {
     isDone: !!t.done_at,
     dueDate: iso(t.due_at),
     completedAt: iso(t.done_at),
+    missedAt: iso(t.missed_at), // 미완료 처리 (완료와 구분)
     priority: own.priority ?? 'medium',
     createdAt: own.createdAt ?? iso(t.created_at),
     remindAt: Array.isArray(own.remindAt) ? own.remindAt : [],
     project: {
       roomId: t.room_id, roomName: t.room_name, projectName: t.project_name, taskId: t.id,
-      reviewRequested: !!t.review_at && !t.done_at, // 검토중 (담당자가 완료 보고함)
+      reviewRequested: !!t.review_at && !t.done_at && !t.missed_at, // 검토중 (담당자가 완료 보고함)
     },
   };
 }
@@ -78,7 +79,7 @@ export async function removeMirror(env, userId, taskId) {
 /** [where]에 맞는 진행 중 배정 업무들의 개인 할일을 지운다 (업무·프로젝트·방 삭제, 내보내기) */
 export async function removeOpenMirrors(env, where, ...binds) {
   const { results } = await env.DB.prepare(
-    `SELECT id, assignee_id FROM project_tasks t WHERE t.assignee_id IS NOT NULL AND t.done_at IS NULL AND (${where})`,
+    `SELECT id, assignee_id FROM project_tasks t WHERE t.assignee_id IS NOT NULL AND t.done_at IS NULL AND t.missed_at IS NULL AND (${where})`,
   ).bind(...binds).all();
   for (const t of results) await removeMirror(env, t.assignee_id, t.id);
 }

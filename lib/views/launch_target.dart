@@ -54,7 +54,9 @@ Widget? _pageFor(BuildContext context, LaunchTarget target) {
     case 'task':
       final task = rooms.taskById(target.id);
       if (task == null) return null;
-      if (task.isDone) return const ArchiveView();
+      if (task.isDone || task.isMissed) return const ArchiveView();
+      // 기한이 지났으면 업무방 목록에 없으므로 [기한 지남] 탭에서 연다
+      if (task.isOverdueAt(DateTime.now())) return TodayTasksView(focusTaskId: task.id);
       final roomId = task.roomId;
       if (roomId != null && rooms.roomById(roomId) != null) {
         return RoomDetailView(roomId: roomId, focusTaskId: task.id);
@@ -70,7 +72,7 @@ Widget? _pageFor(BuildContext context, LaunchTarget target) {
     case 'routine':
       return context.read<RoutineProvider>().routineById(target.id) == null
           ? null
-          : const TodayTasksView(initialTab: 1);
+          : const TodayTasksView(initialTab: TodayTasksView.routineTab);
   }
   return null;
 }

@@ -35,8 +35,8 @@ class ProjectMemberCardState extends State<ProjectMemberCard> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final text = context.text;
-    final open = [for (final t in widget.tasks) if (!t.isDone) t];
-    final done = [for (final t in widget.tasks) if (t.isDone) t];
+    final open = [for (final t in widget.tasks) if (!t.isClosed) t];
+    final done = [for (final t in widget.tasks) if (t.isClosed) t];
 
     Widget toggle(String label, int count, bool shown, VoidCallback onTap) => InkWell(
           onTap: onTap,

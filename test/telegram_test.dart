@@ -42,6 +42,10 @@ class _FakeBot {
   ApiClient get api => ApiClient(baseUrl: _api, token: () => 'tok', client: client);
 }
 
+/// 기한 지남('due:') 알림을 뺀 나머지 알림 일정
+List<Map<String, Object>> _noDue(List<Map<String, Object>> items) =>
+    [for (final i in items) if (!'${i['key']}'.startsWith('due:')) i];
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -53,13 +57,13 @@ void main() {
             .markDone(done);
 
     test('앞으로 울릴 알림은 모두, 지난 알림은 가장 최근 하나만', () {
-      final items = buildTelegramReminders(now: now, rooms: const [], tasks: [
+      final items = _noDue(buildTelegramReminders(now: now, rooms: const [], tasks: [
         task('a', DateTime(2026, 10, 6, 13), [
           DateTime(2026, 10, 5, 13), // 지남
           DateTime(2026, 10, 6, 11), // 지남(더 최근)
           DateTime(2026, 10, 6, 12, 30), // 앞으로
         ]),
-      ]);
+      ]));
       expect(items, hasLength(2));
       expect(items.first['text'], contains('[알림시각] 10월 6일 (화) 11:00'));
       expect(items.last['text'], contains('[알림시각] 10월 6일 (화) 12:30'));
@@ -67,10 +71,10 @@ void main() {
     });
 
     test('마감이 없어도 직접 고른 시각에 보낸다 (마감 줄은 뺀다)', () {
-      final items = buildTelegramReminders(now: now, rooms: const [], tasks: [
+      final items = _noDue(buildTelegramReminders(now: now, rooms: const [], tasks: [
         task('free', null, [DateTime(2026, 10, 7, 9)]),
         task('old', null, [DateTime(2026, 10, 5, 9)]), // 12시간 넘게 지남
-      ]);
+      ]));
       expect(items.single['key'], startsWith('task:free:'));
       expect(items.single['dueAt'], DateTime(2026, 10, 7, 9).millisecondsSinceEpoch);
       expect(items.single['text'], isNot(contains('[마감기한]')));
@@ -84,12 +88,28 @@ void main() {
         lastActivityAt: now, dueDate: DateTime(2026, 10, 7),
         reminders: const [TaskReminder(amount: 1, unit: ReminderUnit.hour)],
       );
-      final items = buildTelegramReminders(now: now, rooms: [room], tasks: [
+      final items = _noDue(buildTelegramReminders(now: now, rooms: [room], tasks: [
         task('done', DateTime(2026, 10, 7), r, done: true),
         task('stale', DateTime(2026, 10, 5), [DateTime(2026, 10, 4, 23)]),
         task('none', DateTime(2026, 10, 7), const []),
-      ]);
+      ]));
       expect(items, isEmpty);
+    });
+
+    test('마감이 지나면 기한 지남 알림 (날짜만 정한 마감은 그날이 끝날 때, 완료·미완료 처리·오래된 것 제외)', () {
+      final items = buildTelegramReminders(now: now, rooms: const [], tasks: [
+        task('timed', DateTime(2026, 10, 6, 18), const []),
+        task('dateOnly', DateTime(2026, 10, 6), const []),
+        task('passed', DateTime(2026, 10, 6, 9), const []),
+        task('old', DateTime(2026, 10, 5, 9), const []), // 12시간 넘게 지남
+        task('done', DateTime(2026, 10, 6, 18), const [], done: true),
+        task('missed', DateTime(2026, 10, 6, 18), const []).markMissed(true),
+      ]).where((i) => '${i['key']}'.startsWith('due:')).toList();
+      expect([for (final i in items) '${i['key']}'.split(':')[1]], ['passed', 'timed', 'dateOnly']);
+      expect(items[1]['fireAt'], DateTime(2026, 10, 6, 18).millisecondsSinceEpoch);
+      expect(items[2]['fireAt'], DateTime(2026, 10, 7).millisecondsSinceEpoch);
+      expect((items[1]['text'] as String).split('\n'),
+          ['[기한 지남] timed', '[마감기한] 10월 6일 (화) 18:00']);
     });
   });
 

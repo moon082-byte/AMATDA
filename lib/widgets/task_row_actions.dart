@@ -44,7 +44,7 @@ class TaskRowActions {
 
   /// [t] 한 줄. [withProject]면 프로젝트 이름도, [compact]면 제목·버튼만 (오늘의 일정).
   Widget row(ProjectTask t, {bool withProject = false, bool compact = false}) {
-    final mineOpen = t.assigneeId == room.myId && !t.isDone && !room.invited;
+    final mineOpen = t.assigneeId == room.myId && !t.isClosed && !room.invited;
     final button = _button(t);
     final leader = room.isLeader;
     final child = ProjectTaskRow(

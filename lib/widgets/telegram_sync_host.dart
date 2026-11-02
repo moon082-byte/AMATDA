@@ -67,7 +67,8 @@ class _TelegramSyncHostState extends State<TelegramSyncHost>
   }
 
   void _schedule() {
-    if (!_link.linked && !(_push?.on ?? false)) return;
+    // 로그인하면 항상 올린다 (기한 지남 알림을 알림함에 남기려고, 텔레그램·푸시는 서버가 켠 경우에만 보낸다)
+    if (!_link.available) return;
     _debounce?.cancel();
     _debounce = Timer(const Duration(seconds: 2), () {
       _link.sync(buildTelegramReminders(

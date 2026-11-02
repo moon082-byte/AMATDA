@@ -74,10 +74,13 @@ export async function projectTaskRoute(path, method, user, request, env, ctx) {
       dueAt: raw?.dueAt === undefined ? task.due_at : dueAt(raw.dueAt),
     };
     await env.DB.batch([
-      // 담당자가 바뀌면 검토 요청은 처음부터 다시
-      env.DB.prepare(`UPDATE project_tasks SET title = ?, assignee_id = ?, due_at = ?, updated_at = ?,
-          review_at = CASE WHEN ? THEN NULL ELSE review_at END WHERE id = ?`)
-        .bind(next.title, next.assigneeId, next.dueAt, Date.now(), next.assigneeId !== task.assignee_id ? 1 : 0, task.id),
+      // 담당자가 바뀌면 검토 요청은 처음부터 다시, 마감을 바꾸면 미완료·기한 지남 알림을 풀어 다시 진행중으로
+      env.DB.prepare(`UPDATE project_tasks SET title = ?1, assignee_id = ?2, due_at = ?3, updated_at = ?4,
+          review_at = CASE WHEN ?5 THEN NULL ELSE review_at END,
+          missed_at = CASE WHEN ?6 THEN NULL ELSE missed_at END,
+          overdue_notified_at = CASE WHEN ?6 THEN NULL ELSE overdue_notified_at END WHERE id = ?7`)
+        .bind(next.title, next.assigneeId, next.dueAt, Date.now(),
+          next.assigneeId !== task.assignee_id ? 1 : 0, next.dueAt !== task.due_at ? 1 : 0, task.id),
       touchRoom(env, task.room_id),
     ]);
     if (next.assigneeId !== task.assignee_id) await removeMirror(env, task.assignee_id, task.id);

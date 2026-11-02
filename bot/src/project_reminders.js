@@ -55,7 +55,7 @@ export async function sendDueProjectReminders(env) {
       .bind(row.project_id, row.fire_at).run();
     if (row.fire_at < now - STALE_MS) continue;
     const { results: open } = await env.DB.prepare(
-      'SELECT assignee_id FROM project_tasks WHERE project_id = ? AND done_at IS NULL',
+      'SELECT assignee_id FROM project_tasks WHERE project_id = ? AND done_at IS NULL AND missed_at IS NULL',
     ).bind(row.project_id).all();
     await notifyUsers(env, null, [row.leader_id, ...open.map((t) => t.assignee_id)], {
       kind: 'project_reminder',
