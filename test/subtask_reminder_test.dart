@@ -41,13 +41,17 @@ Future<void> _tap(WidgetTester tester, Finder f) async {
 RoomProvider _rooms(WidgetTester tester) =>
     tester.element(find.byType(Scaffold).first).read<RoomProvider>();
 
+/// 기한 지남('due:') 알림을 뺀 나머지 알림 일정
+List<Map<String, Object>> _noDue(List<Map<String, Object>> items) =>
+    [for (final i in items) if (!'${i['key']}'.startsWith('due:')) i];
+
 void main() {
   final now = DateTime(2026, 10, 6, 12);
   final due = DateTime(2026, 10, 6, 18);
 
   test('텔레그램 알림에 할일명과 세부항목명이 함께 들어간다 (완료한 항목 제외)', () {
-    final items = buildTelegramReminders(
-        now: now, rooms: const [], tasks: [_task(due: due)]);
+    final items = _noDue(buildTelegramReminders(
+        now: now, rooms: const [], tasks: [_task(due: due)]));
     expect(items, hasLength(1));
     expect(items.single['key'], startsWith('sub:t1:s1:'));
     expect(items.single['fireAt'], _at.millisecondsSinceEpoch);

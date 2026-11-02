@@ -114,7 +114,7 @@ export async function projectRoomRoute(path, method, user, request, env, url, ct
     await removeOpenMirrors(env, 't.room_id = ? AND t.assignee_id = ?', roomId, targetId);
     await env.DB.batch([
       env.DB.prepare('DELETE FROM project_members WHERE room_id = ? AND user_id = ?').bind(roomId, targetId),
-      env.DB.prepare('UPDATE project_tasks SET assignee_id = NULL WHERE room_id = ? AND assignee_id = ? AND done_at IS NULL')
+      env.DB.prepare('UPDATE project_tasks SET assignee_id = NULL WHERE room_id = ? AND assignee_id = ? AND done_at IS NULL AND missed_at IS NULL')
         .bind(roomId, targetId),
       touchRoom(env, roomId),
     ]);

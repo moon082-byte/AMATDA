@@ -31,6 +31,10 @@ Routine _routine({
       createdAt: DateTime(2026, 9, 1),
     );
 
+/// 기한 지남('due:') 알림을 뺀 나머지 알림 일정
+List<Map<String, Object>> _noDue(List<Map<String, Object>> items) =>
+    [for (final i in items) if (!'${i['key']}'.startsWith('due:')) i];
+
 void main() {
   test('반복 요일 요약과 다음 루틴 시각', () {
     expect(repeatLabelOf(everyDay), '매일');
@@ -133,8 +137,8 @@ void main() {
         remindAt: [_now.add(const Duration(hours: 1, minutes: 50))],
         createdAt: _now,
       );
-      final item = buildTelegramReminders(
-          tasks: [task], rooms: [room], now: _now).single;
+      final item = _noDue(buildTelegramReminders(
+          tasks: [task], rooms: [room], now: _now)).single;
       expect((item['text'] as String).split('\n'), [
         '[체크리스트 업무] 보고서',
         '[알림시각] 10월 6일 (화) 10:45',
@@ -147,8 +151,8 @@ void main() {
       expect(buttons.single['url'], endsWith('?open=task:t1'));
 
       // 링크가 없으면 그 줄은 빠진다
-      final plain = buildTelegramReminders(
-          tasks: [task], rooms: const [], now: _now).single;
+      final plain = _noDue(buildTelegramReminders(
+          tasks: [task], rooms: const [], now: _now)).single;
       expect((plain['text'] as String).split('\n'), hasLength(3));
       expect(plain['text'] as String, isNot(contains('http')), reason: '업무링크가 없으면 그 줄은 빠진다');
       expect(plain['buttons'], hasLength(1));

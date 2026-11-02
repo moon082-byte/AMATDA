@@ -74,8 +74,10 @@ export function pushMessage(row) {
   } catch {
     url = null;
   }
+  const name = first.replace(/^\[[^\]]+\]\s*/, '') || '아맞다 알림';
   return {
-    title: `🔔 ${first.replace(/^\[[^\]]+\]\s*/, '') || '아맞다 알림'}`,
+    // 기한 지남 알림은 제목에서 바로 알아보게 한다
+    title: first.startsWith('[기한 지남]') ? `⏰ 기한 지남 · ${name}` : `🔔 ${name}`,
     body: rest.filter((line) => !line.startsWith('[업무링크]')).join('\n'),
     tag: row.key,
     url,

@@ -29,6 +29,9 @@ class TaskItem {
   /// 텔레그램 메시지 링크 (https://t.me/...). 상세에서 [텔레그램 열기]로 연다.
   final String? link;
 
+  /// [미완료 처리]한 시각. 완료와 구분해 저장하고(통계용), 목록에서는 빠진다.
+  final DateTime? missedAt;
+
   const TaskItem({
     required this.id,
     required this.title,
@@ -44,7 +47,24 @@ class TaskItem {
     this.remindAt = const [],
     this.project,
     this.link,
+    this.missedAt,
   });
+
+  bool get isMissed => missedAt != null;
+
+  /// 기한 지남으로 바뀌는 시각: 시간 없이 날짜만 정했으면(00:00) 그날이 끝날 때
+  DateTime? get overdueAt {
+    final d = dueDate;
+    if (d == null) return null;
+    return d.hour == 0 && d.minute == 0 ? DateTime(d.year, d.month, d.day + 1) : d;
+  }
+
+  /// [now]에 기한이 지났는지 (완료·미완료 처리한 것, 완료 보고해 검토중인 프로젝트 업무는 제외)
+  bool isOverdueAt(DateTime now) =>
+      !isDone && !isMissed && !(project?.reviewRequested ?? false) && !(overdueAt?.isAfter(now) ?? true);
+
+  /// 할일 목록에 보이는 진행 중인 할 일 (완료·미완료 처리·기한 지남 제외)
+  bool get isActive => !isDone && !isMissed && !isOverdueAt(DateTime.now());
 
   bool get isProjectTask => project != null;
 
@@ -59,6 +79,7 @@ class TaskItem {
     String? Function()? roomId,
     String? Function()? link,
     ProjectLink? project,
+    DateTime? Function()? missedAt,
   }) {
     return TaskItem(
       id: id,
@@ -75,6 +96,7 @@ class TaskItem {
       remindAt: remindAt ?? this.remindAt,
       project: project ?? this.project,
       link: link != null ? link() : this.link,
+      missedAt: missedAt != null ? missedAt() : this.missedAt,
     );
   }
 
@@ -101,6 +123,9 @@ class TaskItem {
 
   /// 프로젝트 업무의 검토 요청(완료 보고)을 켜거나 끈다
   TaskItem withReview(bool on) => _copy(project: project?.withReview(on));
+
+  /// [미완료 처리]하거나(true) 되돌린다(false)
+  TaskItem markMissed(bool missed) => _copy(missedAt: () => missed ? DateTime.now() : null);
 
   /// 텔레그램 메시지 링크만 바꾼다 (null이면 지움)
   TaskItem withLink(String? link) => _copy(link: () => link);

@@ -53,7 +53,7 @@ List<Map<String, Object>> buildTelegramReminders({
   }
 
   for (final t in tasks) {
-    if (t.isDone) continue;
+    if (t.isDone || t.isMissed) continue;
     final workLinks =
         rooms.where((r) => r.id == t.roomId).firstOrNull?.workLinks ?? const [];
     add('task', t.id, t.dueDate, t.remindAt,
@@ -63,6 +63,20 @@ List<Map<String, Object>> buildTelegramReminders({
           (at) => _message(t.title, at, t.dueDate, workLinks, s.title),
           'task', t.id);
     }
+  }
+  // 마감 시각이 지나면 '기한 지남' 알림 (날짜만 정했으면 그날이 끝날 때)
+  for (final t in tasks) {
+    final at = t.overdueAt;
+    if (at == null || at.isBefore(staleBefore) || !t.isOverdueAt(at)) continue;
+    result.add({
+      'key': 'due:${t.id}:${at.toUtc().toIso8601String()}',
+      'fireAt': at.millisecondsSinceEpoch,
+      'dueAt': at.millisecondsSinceEpoch,
+      'text': ['[기한 지남] ${t.title}', '[마감기한] ${_dateTime(t.dueDate!)}'].join('\n'),
+      'buttons': [
+        {'text': '📱 앱에서 보기', 'url': appLinkFor('task', t.id)},
+      ],
+    });
   }
   final yesterday = DateTime(now.year, now.month, now.day - 1);
   final until = now.add(const Duration(days: kRoutineDaysAhead));

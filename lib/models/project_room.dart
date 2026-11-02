@@ -34,15 +34,15 @@ class ProjectRoom {
 
   /// 나에게 배정된 미완료 업무 수 ("할 일 N개가 남아있어요")
   int get myOpenCount =>
-      allTasks.where((t) => t.assigneeId == myId && !t.isDone).length;
+      allTasks.where((t) => t.assigneeId == myId && !t.isClosed).length;
 
   /// 세부업무가 속한 프로젝트
   Project projectOf(ProjectTask t) => projects.firstWhere((p) => p.id == t.projectId);
 
-  /// [userId]에게 배정된 업무 (진행 중 먼저)
+  /// [userId]에게 배정된 업무 (진행 중 먼저, 완료·미완료는 뒤에)
   List<ProjectTask> tasksOf(String? userId) => [
-        for (final t in allTasks) if (t.assigneeId == userId && !t.isDone) t,
-        for (final t in allTasks) if (t.assigneeId == userId && t.isDone) t,
+        for (final t in allTasks) if (t.assigneeId == userId && !t.isClosed) t,
+        for (final t in allTasks) if (t.assigneeId == userId && t.isClosed) t,
       ];
 
   ProjectMember? memberById(String? id) =>

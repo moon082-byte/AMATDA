@@ -51,7 +51,7 @@ export async function projectItemRoute(path, method, user, request, env, ctx) {
   }
   if (method === 'DELETE') {
     const { results } = await env.DB.prepare(
-      'SELECT title, assignee_id FROM project_tasks WHERE project_id = ? AND done_at IS NULL',
+      'SELECT title, assignee_id FROM project_tasks WHERE project_id = ? AND done_at IS NULL AND missed_at IS NULL',
     ).bind(project.id).all();
     await removeOpenMirrors(env, 't.project_id = ?', project.id);
     await env.DB.batch([

@@ -24,6 +24,7 @@ Map<String, Object?> taskToJson(TaskItem t) => {
       'remindAt': _remindAtToJson(t.remindAt),
       if (t.project case final p?) 'project': p.toJson(),
       'link': ?t.link,
+      'missedAt': ?_date(t.missedAt),
     };
 
 TaskItem taskFromJson(Map<String, dynamic> j) {
@@ -59,6 +60,7 @@ TaskItem taskFromJson(Map<String, dynamic> j) {
     remindAt: _remindAtFromJson(j, due),
     project: ProjectLink.fromJson(j['project']),
     link: j['link'] as String?,
+    missedAt: _parseDate(j['missedAt']),
   );
 }
 

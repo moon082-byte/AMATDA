@@ -82,7 +82,7 @@ List<TaskItem> buildMockTaskItems() => [
         id: 'task_003',
         title: '회의실 예약하기',
         description: '다음 주 화요일 오후 팀 회의용',
-        dueDate: _at(0, 15),
+        dueDate: _at(0), // 날짜만: 오늘이 끝날 때까지 기한 안
         priority: TaskPriority.low,
         createdAt: _at(-1, 11, 30),
       ),

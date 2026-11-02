@@ -69,7 +69,7 @@ export const roomRow = (env, roomId) =>
 
 const taskView = (t) => ({
   id: t.id, projectId: t.project_id, title: t.title, assigneeId: t.assignee_id,
-  dueAt: t.due_at, doneAt: t.done_at, reviewAt: t.review_at,
+  dueAt: t.due_at, doneAt: t.done_at, reviewAt: t.review_at, missedAt: t.missed_at,
 });
 
 /** 방 상세: 방 정보, 내 역할, 팀원(초대 중 포함), 프로젝트와 세부업무 */
@@ -107,7 +107,7 @@ export async function listRooms(env, userId, page) {
          (SELECT COUNT(*) FROM project_members x WHERE x.room_id = r.id AND x.status = 'active') AS members,
          (SELECT COUNT(*) FROM project_tasks t WHERE t.room_id = r.id) AS total,
          (SELECT COUNT(*) FROM project_tasks t WHERE t.room_id = r.id AND t.done_at IS NOT NULL) AS done,
-         (SELECT COUNT(*) FROM project_tasks t WHERE t.room_id = r.id AND t.assignee_id = ?1 AND t.done_at IS NULL) AS my_open
+         (SELECT COUNT(*) FROM project_tasks t WHERE t.room_id = r.id AND t.assignee_id = ?1 AND t.done_at IS NULL AND t.missed_at IS NULL) AS my_open
        FROM project_rooms r JOIN project_members m ON m.room_id = r.id AND m.user_id = ?1 AND m.status = 'active'
        ORDER BY r.updated_at DESC, r.id LIMIT ${ROOM_PAGE_SIZE} OFFSET ?2`,
     ).bind(userId, offset).all(),

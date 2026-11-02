@@ -2,6 +2,13 @@ part of 'room_provider.dart';
 
 /// 할 일 안의 세부 체크리스트와 업무 메모 편집
 extension RoomTaskDetails on RoomProvider {
+  /// 마감이 지났는데 끝내지 않은 할 일 ([기한 지남] 탭), 마감이 이른 것부터
+  List<TaskItem> get overdueTasks {
+    final now = DateTime.now();
+    return tasks.where((t) => t.isOverdueAt(now)).toList()
+      ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+  }
+
   void addSubTask(String taskId, SubTask subTask) =>
       _edit(taskId, (t) => t.copyWith(subTasks: [...t.subTasks, subTask]));
 

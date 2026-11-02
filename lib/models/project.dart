@@ -32,7 +32,8 @@ class ProjectMember {
 }
 
 /// 세부업무 상태: 진행중 → (담당자 완료 보고) 검토중 → (팀장) 최종완료. 반려하면 진행중.
-enum TaskStatus { open, review, done }
+/// 기한이 지나 담당자가 [미완료 처리]하면 미완료 (팀장이 마감을 바꾸면 다시 진행중).
+enum TaskStatus { open, review, done, missed }
 
 class ProjectTask {
   final String id;
@@ -45,6 +46,9 @@ class ProjectTask {
   /// 담당자가 완료 보고(검토 요청)한 시각
   final DateTime? reviewAt;
 
+  /// 담당자가 [미완료 처리]한 시각 (완료와 구분)
+  final DateTime? missedAt;
+
   const ProjectTask({
     required this.id,
     required this.projectId,
@@ -53,14 +57,22 @@ class ProjectTask {
     this.dueAt,
     this.doneAt,
     this.reviewAt,
+    this.missedAt,
   });
 
   /// 최종완료
   bool get isDone => doneAt != null;
 
+  bool get isMissed => missedAt != null && !isDone;
+
+  /// 더 진행하지 않는 업무 (최종완료 또는 미완료)
+  bool get isClosed => isDone || isMissed;
+
   TaskStatus get status => isDone
       ? TaskStatus.done
-      : reviewAt != null
+      : isMissed
+          ? TaskStatus.missed
+          : reviewAt != null
           ? TaskStatus.review
           : TaskStatus.open;
 
@@ -72,6 +84,7 @@ class ProjectTask {
         dueAt: _ms(j['dueAt']),
         doneAt: _ms(j['doneAt']),
         reviewAt: _ms(j['reviewAt']),
+        missedAt: _ms(j['missedAt']),
       );
 }
 

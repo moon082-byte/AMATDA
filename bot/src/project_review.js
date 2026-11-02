@@ -7,6 +7,7 @@ import { HttpError } from './http.js';
 import { notifyUsers } from './notify.js';
 import { handleOf, touchRoom } from './project_db.js';
 import { JOINED, mirrorData, parse, refreshMirrors, removeMirror, taskIdOf } from './project_mirror.js';
+import { markMissed } from './project_overdue.js';
 
 const roomOf = (env, roomId) =>
   env.DB.prepare('SELECT id, name, leader_id FROM project_rooms WHERE id = ?').bind(roomId).first();
@@ -71,6 +72,7 @@ export async function rejectTask(env, ctx, task, actor) {
  * - 내 업무가 아니거나 없어진 업무: 버린다
  * - 잠긴 칸(제목·마감·상태): 프로젝트 값으로 되돌린다
  * - 검토 요청(project.reviewRequested)이 바뀌면 완료 보고·검토 취소로 처리 (예전 앱의 isDone 체크도 보고로)
+ * - [미완료 처리](missedAt)하면 프로젝트에도 미완료로 기록 (되돌리기는 팀장이 마감을 바꿀 때만)
  * - 진행 중 업무를 지우면: 지우지 않고 다시 내려보낸다
  * @returns 저장 뒤 다시 내려보낼 업무 목록
  */
@@ -92,7 +94,13 @@ export async function guardMirrors(env, ctx, user, changes) {
     }
     const own = parse(row.data);
     const wantsReview = own.project?.reviewRequested === true || own.isDone === true;
-    if (wantsReview && !t.review_at && !t.done_at) {
+    if (own.missedAt && !t.missed_at && !t.done_at) {
+      await markMissed(env, ctx, t, user);
+      t.missed_at = Date.now();
+      t.review_at = null;
+    } else if (t.missed_at) {
+      // 미완료 처리된 업무는 담당자가 상태를 바꿀 수 없다
+    } else if (wantsReview && !t.review_at && !t.done_at) {
       await requestReview(env, ctx, t, user);
       if (t.leader_id === user.id) continue; // 팀장 본인 업무는 바로 최종완료되어 개인 할일에서 지워졌다
       t.review_at = Date.now();

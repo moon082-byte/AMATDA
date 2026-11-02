@@ -41,7 +41,7 @@ class _ProjectCardState extends State<ProjectCard> {
   // 내 진행 중 업무가 있거나, 팀장이 검토할 업무가 있으면 처음부터 펼친다
   late bool _open = widget.project.tasks.any(
     (t) =>
-        (t.assigneeId == widget.room.myId && !t.isDone) ||
+        (t.assigneeId == widget.room.myId && !t.isClosed) ||
         (widget.room.isLeader && t.status == TaskStatus.review),
   );
 
