@@ -53,7 +53,8 @@ export async function sync(user, body, env, ctx) {
   };
 }
 
-async function saveChanges(env, userId, changes, total) {
+/** 변경을 사용자 순번을 매겨 저장한다 ([changes]는 SYNC_TABLES 표마다 행 목록, 텔레그램 봇도 쓴다) */
+export async function saveChanges(env, userId, changes, total) {
   const bumped = await env.DB.prepare(
     'UPDATE users SET version = version + ? WHERE id = ? RETURNING version',
   ).bind(total, userId).first();

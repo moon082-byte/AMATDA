@@ -3,11 +3,12 @@ import '../models/task_item.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import '../utils/overdue_actions.dart';
+import '../utils/task_actions.dart';
 import 'common/app_card.dart';
 import 'task_meta_chips.dart';
 
-/// [기한 지남] 탭의 할 일 한 줄: 제목·마감 정보와 [기한 변경]/[미완료 처리] 버튼.
-/// 프로젝트에서 배정된 업무는 담당자가 마감을 바꿀 수 없어 [미완료 처리]만 보인다.
+/// [기한 지남] 탭의 할 일 한 줄: 제목·마감 정보와 [완료 처리]/[기한 변경]/[미완료 처리] 버튼.
+/// 프로젝트에서 배정된 업무는 담당자가 마감을 바꿀 수 없어 [기한 변경]이 없고, [완료 처리]는 완료 보고(검토중)가 된다.
 class OverdueTaskCard extends StatefulWidget {
   final TaskItem task;
   final String? roomName;
@@ -37,10 +38,27 @@ class _OverdueTaskCardState extends State<OverdueTaskCard> {
     final palette = context.palette;
     final text = context.text;
     final task = widget.task;
-    final buttonStyle = OutlinedButton.styleFrom(
-      minimumSize: const Size(0, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    final style = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 6)),
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
     );
+    // 좁은 화면에서도 세 버튼이 한 줄에 들어가도록 글자를 줄여 맞춘다
+    Widget label(String s) => FittedBox(fit: BoxFit.scaleDown, child: Text(s, maxLines: 1));
+    final buttons = <Widget>[
+      FilledButton(
+        style: style,
+        onPressed: () => toggleTaskWithUndo(context, task),
+        child: label('완료 처리'),
+      ),
+      if (!task.isProjectTask)
+        OutlinedButton(style: style, onPressed: () => changeOverdueDue(context, task), child: label('기한 변경')),
+      OutlinedButton(
+        style: style.copyWith(foregroundColor: WidgetStatePropertyAll(palette.subText)),
+        onPressed: () => markOverdueMissed(context, task),
+        child: label('미완료 처리'),
+      ),
+    ];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -56,27 +74,10 @@ class _OverdueTaskCardState extends State<OverdueTaskCard> {
             const SizedBox(height: 14),
             Row(
               children: [
-                if (!task.isProjectTask) ...[
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: buttonStyle,
-                      onPressed: () => changeOverdueDue(context, task),
-                      icon: const Icon(Icons.event_rounded, size: 18),
-                      label: const Text('기한 변경'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                for (final (i, b) in buttons.indexed) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(child: b),
                 ],
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: buttonStyle.copyWith(
-                      foregroundColor: WidgetStatePropertyAll(palette.subText),
-                    ),
-                    onPressed: () => markOverdueMissed(context, task),
-                    icon: const Icon(Icons.remove_circle_outline_rounded, size: 18),
-                    label: const Text('미완료 처리'),
-                  ),
-                ),
               ],
             ),
             if (task.isProjectTask) ...[

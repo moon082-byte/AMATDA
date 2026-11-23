@@ -1,4 +1,7 @@
-// 텔레그램 처리: 웹훅 명령어, 웹훅 등록, 1분마다 알림 발송
+// 텔레그램 처리: 웹훅 명령어, 웹훅 등록, 1분마다 알림 발송 (일정 조회·추가·수정·삭제는 bot_flow.js·bot_buttons.js)
+
+import { handleScheduleButton } from './bot_buttons.js';
+import { handleCommand, handleText } from './bot_flow.js';
 
 import { ackReminder, codesForChat, markDelivered, pendingCount, takeState, unlinkCodes } from './db.js';
 import { recordReminders } from './inbox.js';
@@ -16,7 +19,12 @@ export async function webhook(request, env) {
   }
   const msg = update.message ?? update.channel_post;
   const cmd = parseCommand(msg?.text);
-  if (!msg || !cmd) return new Response('ok');
+  if (!msg) return new Response('ok');
+  if (!cmd) {
+    // 개인 대화방에서 보낸 글은 할 일 추가(또는 수정할 내용)로 받는다
+    if (update.message) await handleText(env, msg);
+    return new Response('ok');
+  }
 
   const chatId = msg.chat.id;
   const name = msg.chat.title ?? msg.from?.first_name ?? '';
@@ -39,7 +47,7 @@ export async function webhook(request, env) {
     const codes = await codesForChat(env, chatId);
     const text = codes.length ? MESSAGES.status(await pendingCount(env, codes)) : MESSAGES.notLinked;
     await tg(env, 'sendMessage', { chat_id: chatId, text });
-  } else {
+  } else if (!(await handleCommand(env, msg, cmd))) {
     await tg(env, 'sendMessage', { chat_id: chatId, text: MESSAGES.help });
   }
   return new Response('ok');
@@ -47,6 +55,7 @@ export async function webhook(request, env) {
 
 /** 메시지 아래 [✅ 확인]을 누르면 끈질긴 알림을 끄고 버튼을 '확인함'으로 바꾼다 */
 async function onButton(env, cq) {
+  if (await handleScheduleButton(env, cq)) return;
   const ackId = /^ack:(.+)$/.exec(cq.data ?? '')?.[1];
   const ok = !!ackId && (await ackReminder(env, ackId, { chatId: cq.message?.chat?.id }));
   const text = ok ? '확인했어요. 다시 알리지 않을게요' : cq.data === 'done' ? '이미 확인했어요' : '지난 알림이에요';
@@ -59,36 +68,6 @@ async function onButton(env, cq) {
     chat_id: cq.message.chat.id, message_id: cq.message.message_id, reply_markup: { inline_keyboard },
   });
   if (!edited.ok) console.error('버튼 바꾸기 실패', edited.status, edited.description);
-}
-
-/** 봇 아이디·이름 (공개 정보). 앱 설정에 넣을 봇 아이디를 확인할 때 쓴다. */
-export async function botInfo(env) {
-  const me = await tg(env, 'getMe', {});
-  return me.ok ? { username: me.result.username, name: me.result.first_name } : { error: me.description };
-}
-
-export async function setup(url, env) {
-  const hook = await tg(env, 'setWebhook', {
-    url: `${url.origin}/telegram/webhook`,
-    secret_token: await webhookSecret(env),
-    allowed_updates: ['message', 'channel_post', 'callback_query'],
-  });
-  await tg(env, 'setMyCommands', {
-    commands: [
-      { command: 'status', description: '연결 상태와 예정된 알림 수' },
-      { command: 'stop', description: '알림 연결 끊기' },
-    ],
-  });
-  // 배포 직후에는 옛 버전이 응답할 수 있으므로, 실제로 등록된 내용을 다시 확인해 보여준다
-  const info = await tg(env, 'getWebhookInfo', {});
-  const buttons = (info.result?.allowed_updates ?? []).includes('callback_query');
-  const body = !hook.ok
-    ? `❌ 등록 실패: ${hook.description}`
-    : `✅ 텔레그램 웹훅 등록 완료\n버튼 누름 받기: ${buttons ? '켜짐' : '꺼짐 - 잠시 뒤 이 주소를 다시 열어 주세요'}`;
-  return new Response(body, {
-    status: hook.ok ? 200 : 500,
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-  });
 }
 
 /** 텔레그램이 웹훅 요청에 붙여 보낼 비밀값 (봇 토큰에서 만들어 따로 관리할 필요가 없다) */

@@ -15,6 +15,7 @@ const FILES = [
   'migrations/0010_project_reminders.sql',
   'migrations/0011_task_review.sql',
   'migrations/0012_overdue.sql',
+  'migrations/0013_bot_drafts.sql',
 ];
 
 export function fakeD1() {

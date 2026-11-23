@@ -41,7 +41,8 @@ import { sendDueProjectReminders } from './project_reminders.js';
 import { projectRoomRoute } from './project_rooms.js';
 import { pushRoute, sendDuePushes } from './push.js';
 import { sync } from './sync.js';
-import { botInfo, sendDueReminders, setup, webhook } from './telegram.js';
+import { sendDueReminders, webhook } from './telegram.js';
+import { botInfo, setup } from './tg_setup.js';
 import { telegramLogin } from './tg_login.js';
 import { telegramRoute } from './tg_routes.js';
 

@@ -104,7 +104,7 @@ void main() {
     expect(provider.overdueTasks.map((t) => t.id), contains('late'));
   });
 
-  testWidgets('프로젝트 업무는 [기한 변경] 없이 [미완료 처리]만 보인다', (tester) async {
+  testWidgets('프로젝트 업무는 [기한 변경] 없이 [완료 처리]·[미완료 처리]만, 완료 처리는 완료 보고', (tester) async {
     await _boot(tester);
     final now = DateTime.now();
     _provider(tester).addTask(TaskItem(
@@ -119,7 +119,37 @@ void main() {
     expect(find.text('배정 업무'), findsOneWidget);
     expect(find.text('기한 변경'), findsNothing);
     expect(find.text('미완료 처리'), findsOneWidget);
+    expect(find.text('완료 처리'), findsOneWidget);
     expect(find.text('프로젝트 업무의 마감은 팀장만 바꿀 수 있어요'), findsOneWidget);
+
+    // [완료 처리]는 기존 검토 흐름: 완료 보고하면 검토중이 되어 기한 지남에서 빠진다
+    await tester.tap(find.text('완료 처리'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '완료'));
+    await tester.pumpAndSettle();
+    expect(_provider(tester).taskById('pt_9')!.project!.reviewRequested, isTrue);
+    expect(find.text('배정 업무'), findsNothing);
+  });
+
+  testWidgets('[완료 처리]하면 완료로 저장돼 [완료된 일들]로 가고, 실행 취소하면 기한 지남으로 돌아온다', (tester) async {
+    await _boot(tester);
+    final now = DateTime.now();
+    final provider = _provider(tester);
+    provider.addTask(TaskItem(id: 'late', title: '어제 보고서', createdAt: now,
+        dueDate: DateTime(now.year, now.month, now.day - 1, 10)));
+    await tester.tap(find.text('오늘 할일'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('기한 지남'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('완료 처리'));
+    await tester.pump();
+    final done = provider.taskById('late')!;
+    expect([done.isDone, done.isMissed], [true, false]);
+    expect(provider.archivedTasks.first.id, 'late');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('실행 취소'));
+    await tester.pumpAndSettle();
+    expect(provider.overdueTasks.map((t) => t.id), contains('late'));
   });
 
   testWidgets('진행률 막대는 세부 체크리스트가 있는 할 일에만 보인다', (tester) async {
