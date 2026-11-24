@@ -8,6 +8,7 @@
 // - 무료 요금제의 요청당 쿼리 수 제한에 맞게 표마다 JSON 한 번으로 넣는다
 
 import { cleanDevice, recordTaskChanges } from './inbox.js';
+import { markMemosDirty, syncNotionMemos } from './notion_memos.js';
 import { resendMirrors } from './project_mirror.js';
 import { guardMirrors } from './project_review.js';
 import { MAX_PULL_ROWS, SYNC_TABLES, sanitizeSyncChanges } from './logic.js';
@@ -22,6 +23,8 @@ export async function sync(user, body, env, ctx) {
     // 저장하기 전에 이전 내용과 비교해, 다른 기기 알림함에 보일 할 일 변경을 남긴다
     await recordTaskChanges(env, user.id, cleanDevice(body?.device), changes.tasks);
     await saveChanges(env, user.id, changes, total);
+    // 노션 연동을 켠 계정은 바뀐 메모를 노션 1_Inbox에 바로 반영한다 (실패하면 1분마다 다시)
+    if (await markMemosDirty(env, user.id, changes.memos)) ctx?.waitUntil?.(syncNotionMemos(env, user.id).catch(() => {}));
   }
   await resendMirrors(env, resend);
 

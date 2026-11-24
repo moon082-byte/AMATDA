@@ -10,6 +10,7 @@ import '../utils/confirm_dialog.dart';
 import '../widgets/account_tile.dart';
 import '../widgets/admin_settings_group.dart';
 import '../widgets/common/app_page.dart';
+import '../widgets/notion_settings_group.dart';
 import '../widgets/pin_settings_tile.dart';
 import '../widgets/push_notification_tile.dart';
 import '../widgets/settings_group.dart';
@@ -64,6 +65,7 @@ class SettingsView extends StatelessWidget {
               if (notif.enabled) const TelegramNagTile(),
             ],
           ),
+          const NotionSettingsGroup(),
           const SizedBox(height: 28),
           SettingsGroup(
             title: '화면',

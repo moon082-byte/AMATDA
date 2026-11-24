@@ -130,6 +130,7 @@ npm run db:migrate:projectreminders  # migrations/0010_project_reminders.sql: �
 npm run db:migrate:taskreview  # migrations/0011_task_review.sql: 세부업무 검토 단계 (진행중 → 검토중 → 최종완료)
 npm run db:migrate:overdue   # migrations/0012_overdue.sql: 기한 지남 (세부업무 미완료 처리, 팀장 기한 경과 알림)
 npm run db:migrate:botdrafts # migrations/0013_bot_drafts.sql: 텔레그램 봇 일정 추가·수정 확인 대기 (적용 후 /setup 을 한 번 다시 열어 명령 메뉴 갱신)
+npm run db:migrate:memos     # migrations/0014_memos.sql: 메모(기기 간 동기화)와 노션 연동 설정
 npm run deploy
 ```
 

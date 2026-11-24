@@ -12,6 +12,7 @@ class LabeledTextField extends StatelessWidget {
   final bool autofocus;
   final TextInputType? keyboardType;
   final ValueChanged<String>? onSubmitted;
+  final bool obscureText;
 
   const LabeledTextField({
     super.key,
@@ -21,6 +22,7 @@ class LabeledTextField extends StatelessWidget {
     this.autofocus = false,
     this.keyboardType,
     this.onSubmitted,
+    this.obscureText = false,
   });
 
   @override
@@ -35,6 +37,7 @@ class LabeledTextField extends StatelessWidget {
           autofocus: autofocus,
           keyboardType: keyboardType,
           onSubmitted: onSubmitted,
+          obscureText: obscureText,
           style: context.text.body.copyWith(color: context.palette.titleText),
           decoration: InputDecoration(hintText: hint),
         ),

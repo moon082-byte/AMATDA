@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../data/local_store.dart';
+import '../providers/memo_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import '../services/api_client.dart';
 import '../services/inbox_service.dart';
+import '../services/notion_service.dart';
 import '../services/profile_service.dart';
 import '../services/project_service.dart';
 import '../services/push_service.dart';
@@ -14,7 +16,7 @@ import '../services/telegram_nag.dart';
 import 'reminder_host.dart';
 import 'telegram_sync_host.dart';
 
-/// 한 계정의 데이터(업무방·할 일·루틴), 동기화, 텔레그램 연결·시스템 알림(푸시)과 알림을 묶어 제공한다.
+/// 한 계정의 데이터(업무방·할 일·루틴·메모), 동기화, 노션 연동 설정, 텔레그램 연결·시스템 알림(푸시)과 알림을 묶어 제공한다.
 /// [api]가 없으면(테스트) 서버 없이 이 기기에서만 동작한다.
 class SessionScope extends StatelessWidget {
   final LocalStore? store;
@@ -31,6 +33,8 @@ class SessionScope extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => RoomProvider(store: store)),
         ChangeNotifierProvider(create: (_) => RoutineProvider(store: store)),
+        ChangeNotifierProvider(create: (_) => MemoProvider(store: store)),
+        ChangeNotifierProvider(create: (_) => NotionService(api: api)),
         ChangeNotifierProvider(
           create: (_) => TelegramLink(api: api, store: store),
         ),
@@ -48,6 +52,7 @@ class SessionScope extends StatelessWidget {
               store: store,
               rooms: context.read<RoomProvider>(),
               routines: context.read<RoutineProvider>(),
+              memos: context.read<MemoProvider>(),
             )..start(),
           ),
       ],

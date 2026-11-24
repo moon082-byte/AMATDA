@@ -41,6 +41,8 @@ import { sendDueProjectReminders } from './project_reminders.js';
 import { projectRoomRoute } from './project_rooms.js';
 import { pushRoute, sendDuePushes } from './push.js';
 import { sync } from './sync.js';
+import { notionRoute } from './notion_routes.js';
+import { syncNotionMemos } from './notion_memos.js';
 import { sendDueReminders, webhook } from './telegram.js';
 import { botInfo, setup } from './tg_setup.js';
 import { telegramLogin } from './tg_login.js';
@@ -61,7 +63,7 @@ export default {
     // 무료 요금제의 외부 호출 한도를 넘지 않도록 텔레그램 → 푸시 순서로 차례대로 보낸다
     ctx.waitUntil(sendDueReminders(env).finally(() => sendDuePushes(env))
       .finally(() => sendDueProjectReminders(env)).finally(() => sendProjectOverdue(env))
-      .finally(() => recordOverdueInbox(env)));
+      .finally(() => recordOverdueInbox(env)).finally(() => syncNotionMemos(env)));
   },
 };
 
@@ -102,6 +104,8 @@ async function route(request, env, ctx) {
   if (adminReply) return reply(adminReply);
   if (path === '/api/sync' && method === 'POST') return reply(await sync(user, await readJson(request), env, ctx));
 
+  const notionReply = await notionRoute(path, method, user, request, env, ctx);
+  if (notionReply) return reply(...notionReply);
   const tgReply = await telegramRoute(path, method, user, request, env);
   if (tgReply) return reply(...tgReply);
   const pushReply = await pushRoute(path, method, user, request, env);

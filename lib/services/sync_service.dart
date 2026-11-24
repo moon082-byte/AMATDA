@@ -3,13 +3,12 @@ import 'package:flutter/foundation.dart';
 import '../data/local_store.dart';
 import '../data/sync_records.dart';
 import '../data/sync_shadow.dart';
+import '../providers/memo_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import 'api_client.dart';
 
-/// 기기 간 데이터 동기화 (서버 쪽은 bot/src/sync.js).
-///
-/// [_shadow]는 "서버에 이렇게 저장돼 있다"고 마지막으로 확인한 행들이다.
+/// 기기 간 데이터 동기화 (서버 쪽은 bot/src/sync.js). [_shadow]는 "서버에 이렇게 저장돼 있다"고 마지막으로 확인한 행들이다.
 /// 지금 앱 데이터와 비교해 다른 행만 올리고, 다른 기기가 바꾼 행은 받아서 앱에 반영한다.
 /// 같은 항목을 두 기기에서 고치면 서버에 나중에 도착한 쪽이 이긴다.
 class SyncService extends ChangeNotifier {
@@ -19,6 +18,8 @@ class SyncService extends ChangeNotifier {
   final LocalStore _store;
   final RoomProvider _rooms;
   final RoutineProvider _routines;
+  final MemoProvider? _memos;
+  late final _changes = Listenable.merge([_rooms, _routines, ?_memos]);
 
   late int _cursor;
   late RecordSet _shadow;
@@ -31,12 +32,12 @@ class SyncService extends ChangeNotifier {
 
   DateTime? lastSyncedAt;
   String? error;
-
   SyncService({
     required this._api,
     required LocalStore store,
     required this._rooms,
     required this._routines,
+    this._memos,
   }) : _store = store {
     final saved = store.loadSyncState();
     final shadow = decodeRecordSet(saved.shadow);
@@ -49,16 +50,14 @@ class SyncService extends ChangeNotifier {
   Future<void> get firstSync => _firstSync.future;
 
   void start() {
-    _rooms.addListener(_schedule);
-    _routines.addListener(_schedule);
+    _changes.addListener(_schedule);
     _ticker = Timer.periodic(const Duration(seconds: 30), (_) => syncNow());
     syncNow();
   }
 
   @override
   void dispose() {
-    _rooms.removeListener(_schedule);
-    _routines.removeListener(_schedule);
+    _changes.removeListener(_schedule);
     _debounce?.cancel();
     _ticker?.cancel();
     super.dispose();
@@ -127,7 +126,7 @@ class SyncService extends ChangeNotifier {
   }
 
   RecordSet _currentRecords() =>
-      toRecords(_rooms.rooms, _rooms.tasks, _routines.routines);
+      toRecords(_rooms.rooms, _rooms.tasks, _routines.routines, _memos?.memos ?? const []);
 
   /// 다른 기기에서 받은 행을 지금 앱 데이터에 덮어 다시 만든다
   void _apply(RecordSet pulled) {
@@ -142,6 +141,7 @@ class SyncService extends ChangeNotifier {
     try {
       _rooms.replaceAll(data.rooms, data.tasks);
       _routines.replaceAll(data.routines);
+      _memos?.replaceAll(data.memos);
     } finally {
       _applying = false;
     }

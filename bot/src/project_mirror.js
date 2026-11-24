@@ -3,6 +3,7 @@
 //   제목·마감·완료는 프로젝트가 기준(잠금), 업무방 태그·리마인더·세부 항목·메모는 담당자가 바꿀 수 있다.
 // - 담당자 기기가 동기화로 올린 변경은 project_review.js의 guardMirrors가 검사한다.
 
+import { overdueAt } from './kst.js';
 
 export const mirrorId = (taskId) => `pt_${taskId}`;
 export const taskIdOf = (id) => (id.startsWith('pt_') ? id.slice(3) : null);
@@ -26,6 +27,7 @@ export function mirrorData(t, own = {}) {
     isDone: !!t.done_at,
     dueDate: iso(t.due_at),
     completedAt: iso(t.done_at),
+    ...(t.done_at && t.due_at != null && t.done_at > overdueAt(t.due_at) ? { completedLate: true } : {}),
     missedAt: iso(t.missed_at), // 미완료 처리 (완료와 구분)
     priority: own.priority ?? 'medium',
     createdAt: own.createdAt ?? iso(t.created_at),

@@ -78,7 +78,7 @@ export const MESSAGES = {
 // ---- 계정·동기화 ----
 
 /** 동기화하는 사용자 데이터 표 (DB 표 이름과 같다) */
-export const SYNC_TABLES = ['rooms', 'tasks', 'sub_tasks', 'notes', 'routines'];
+export const SYNC_TABLES = ['rooms', 'tasks', 'sub_tasks', 'notes', 'routines', 'memos'];
 export const MAX_SYNC_ROWS = 500; // 한 번에 올릴 수 있는 변경 수
 export const MAX_PULL_ROWS = 1000; // 한 번에 내려주는 변경 수
 export const MAX_DATA = 20000; // 항목 하나의 내용(JSON) 최대 길이

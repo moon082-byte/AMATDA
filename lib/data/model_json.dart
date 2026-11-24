@@ -1,3 +1,4 @@
+import '../models/memo.dart';
 import '../models/note.dart';
 import '../models/project_link.dart';
 import '../models/routine.dart';
@@ -6,6 +7,7 @@ import '../models/task_item.dart';
 import '../models/task_reminder.dart';
 import '../models/telegram_room.dart';
 
+part 'memo_json.dart';
 part 'routine_json.dart';
 part 'task_json.dart';
 
