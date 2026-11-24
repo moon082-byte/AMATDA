@@ -65,6 +65,15 @@ class ProjectTask {
 
   bool get isMissed => missedAt != null && !isDone;
 
+  /// 마감이 지난 뒤 최종완료함 ('기한 후 완료')
+  bool get doneLate {
+    final done = doneAt;
+    final due = dueAt;
+    if (done == null || due == null) return false;
+    final end = due.hour == 0 && due.minute == 0 ? DateTime(due.year, due.month, due.day + 1) : due;
+    return done.isAfter(end);
+  }
+
   /// 더 진행하지 않는 업무 (최종완료 또는 미완료)
   bool get isClosed => isDone || isMissed;
 

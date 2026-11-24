@@ -122,7 +122,7 @@ class _ProjectTaskRowState extends State<ProjectTaskRow> {
                           style: text.caption
                               .copyWith(color: widget.mine ? palette.accent : null)),
                       if (t.isClosed)
-                        Text(done ? '완료' : '미완료',
+                        Text(done ? (t.doneLate ? '기한 후 완료' : '완료') : '미완료',
                             style: text.caption.copyWith(color: done ? palette.success : palette.subText)),
                       if (!t.isClosed && t.dueAt != null) DueBadge(dueDate: t.dueAt, dDay: true),
                     ],

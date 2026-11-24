@@ -54,7 +54,7 @@ class _ArchiveViewState extends State<ArchiveView> {
       children.add(ArchivedTaskTile(
         title: task.title,
         roomName: provider.roomById(task.roomId ?? '')?.name,
-        completedLabel: '${formatTime(doneAt)} ${task.isMissed ? '미완료 처리' : '완료'}',
+        completedLabel: '${formatTime(doneAt)} ${task.isMissed ? '미완료 처리' : task.completedLate ? '완료 · 기한 후' : '완료'}',
         missed: task.isMissed,
         onRestore: () => restoreTask(context, task),
         onDelete: () => _deletePermanently(task.id, task.title),

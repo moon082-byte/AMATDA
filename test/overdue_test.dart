@@ -7,6 +7,7 @@ import 'package:flutter_application_amatda/models/project_link.dart';
 import 'package:flutter_application_amatda/models/task_item.dart';
 import 'package:flutter_application_amatda/providers/room_provider.dart';
 import 'package:flutter_application_amatda/views/archive_view.dart';
+import 'package:flutter_application_amatda/widgets/overdue_task_card.dart';
 import 'package:flutter_application_amatda/widgets/task_progress_bar.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +18,9 @@ Future<void> _boot(WidgetTester tester) async {
   await tester.pumpWidget(const MyApp());
   await tester.pumpAndSettle();
 }
+
+/// 기한 지남 카드 안의 [완료] 버튼 (다른 '완료' 글자와 헷갈리지 않게)
+final _doneButton = find.descendant(of: find.byType(OverdueTaskCard), matching: find.text('완료'));
 
 RoomProvider _provider(WidgetTester tester) =>
     tester.element(find.byType(Scaffold).first).read<RoomProvider>();
@@ -64,6 +68,17 @@ void main() {
       final done = ProjectTask.fromJson({'id': '2', 'title': '끝', 'doneAt': 2, 'missedAt': 1});
       expect(done.status, TaskStatus.done);
     });
+
+    test('프로젝트 세부업무: 마감 뒤 최종완료는 기한 후 완료 (날짜만 정한 마감은 그날 끝까지)', () {
+      int ms(DateTime d) => d.millisecondsSinceEpoch;
+      ProjectTask t(DateTime due, DateTime done) =>
+          ProjectTask.fromJson({'id': 'x', 'title': 't', 'dueAt': ms(due), 'doneAt': ms(done)});
+      expect(t(DateTime(2026, 11, 3, 18), DateTime(2026, 11, 3, 19)).doneLate, isTrue);
+      expect(t(DateTime(2026, 11, 3, 18), DateTime(2026, 11, 3, 17)).doneLate, isFalse);
+      expect(t(DateTime(2026, 11, 3), DateTime(2026, 11, 3, 23)).doneLate, isFalse);
+      expect(t(DateTime(2026, 11, 3), DateTime(2026, 11, 4, 1)).doneLate, isTrue);
+      expect(ProjectTask.fromJson({'id': 'y', 'title': 't'}).doneLate, isFalse);
+    });
   });
 
   testWidgets('기한 지난 할 일은 [기한 지남] 탭으로 옮겨지고, 미완료 처리하면 [완료된 일들]에 미완료로 남는다', (tester) async {
@@ -104,7 +119,7 @@ void main() {
     expect(provider.overdueTasks.map((t) => t.id), contains('late'));
   });
 
-  testWidgets('프로젝트 업무는 [기한 변경] 없이 [완료 처리]·[미완료 처리]만, 완료 처리는 완료 보고', (tester) async {
+  testWidgets('프로젝트 업무는 [기한 변경] 없이 [완료]·[미완료 처리]만, [완료]는 완료 보고', (tester) async {
     await _boot(tester);
     final now = DateTime.now();
     _provider(tester).addTask(TaskItem(
@@ -119,19 +134,20 @@ void main() {
     expect(find.text('배정 업무'), findsOneWidget);
     expect(find.text('기한 변경'), findsNothing);
     expect(find.text('미완료 처리'), findsOneWidget);
-    expect(find.text('완료 처리'), findsOneWidget);
+    expect(_doneButton, findsOneWidget);
     expect(find.text('프로젝트 업무의 마감은 팀장만 바꿀 수 있어요'), findsOneWidget);
 
-    // [완료 처리]는 기존 검토 흐름: 완료 보고하면 검토중이 되어 기한 지남에서 빠진다
-    await tester.tap(find.text('완료 처리'));
+    // [완료]는 기존 검토 흐름: 완료 보고하면 검토중이 되어 기한 지남에서 빠진다
+    await tester.tap(_doneButton);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, '완료'));
+    await tester.tap(find.descendant(
+        of: find.byType(AlertDialog), matching: find.widgetWithText(FilledButton, '완료')));
     await tester.pumpAndSettle();
     expect(_provider(tester).taskById('pt_9')!.project!.reviewRequested, isTrue);
     expect(find.text('배정 업무'), findsNothing);
   });
 
-  testWidgets('[완료 처리]하면 완료로 저장돼 [완료된 일들]로 가고, 실행 취소하면 기한 지남으로 돌아온다', (tester) async {
+  testWidgets('[완료]하면 "완료(기한 후)"로 저장돼 [완료된 일들]로 가고, 실행 취소하면 기한 지남으로 돌아온다', (tester) async {
     await _boot(tester);
     final now = DateTime.now();
     final provider = _provider(tester);
@@ -141,15 +157,37 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('기한 지남'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('완료 처리'));
+    await tester.tap(_doneButton);
     await tester.pump();
     final done = provider.taskById('late')!;
-    expect([done.isDone, done.isMissed], [true, false]);
+    expect([done.isDone, done.isMissed, done.completedLate], [true, false, true]);
     expect(provider.archivedTasks.first.id, 'late');
+    expect(taskFromJson(taskToJson(done)).completedLate, isTrue, reason: '저장했다 읽어도 기한 후 완료');
     await tester.pump(const Duration(milliseconds: 600));
     await tester.tap(find.text('실행 취소'));
     await tester.pumpAndSettle();
     expect(provider.overdueTasks.map((t) => t.id), contains('late'));
+  });
+
+  testWidgets('기한 후 완료는 [완료된 일들]에 "완료 · 기한 후", 기한 전에 끝낸 일은 "완료"로 보인다', (tester) async {
+    await _boot(tester);
+    final now = DateTime.now();
+    final provider = _provider(tester);
+    provider.addTask(TaskItem(id: 'late', title: '늦은 일', createdAt: now,
+        dueDate: DateTime(now.year, now.month, now.day - 1, 10)));
+    provider.addTask(TaskItem(id: 'ontime', title: '제때 한 일', createdAt: now,
+        dueDate: now.add(const Duration(days: 2))));
+    provider.toggleTask('late');
+    provider.toggleTask('ontime');
+    expect(provider.taskById('late')!.completedLate, isTrue);
+    expect(provider.taskById('ontime')!.completedLate, isFalse);
+    Navigator.of(tester.element(find.byType(Scaffold).first))
+        .push(MaterialPageRoute<void>(builder: (_) => const ArchiveView()));
+    await tester.pumpAndSettle();
+    expect(find.textContaining(RegExp(r'^\d+:\d+ 완료 · 기한 후$')), findsOneWidget);
+    // 되돌리면 기한 후 표시도 지워진다
+    provider.toggleTask('late');
+    expect(provider.taskById('late')!.completedLate, isFalse);
   });
 
   testWidgets('진행률 막대는 세부 체크리스트가 있는 할 일에만 보인다', (tester) async {

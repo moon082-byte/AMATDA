@@ -25,6 +25,7 @@ Map<String, Object?> taskToJson(TaskItem t) => {
       if (t.project case final p?) 'project': p.toJson(),
       'link': ?t.link,
       'missedAt': ?_date(t.missedAt),
+      if (t.completedLate) 'completedLate': true,
     };
 
 TaskItem taskFromJson(Map<String, dynamic> j) {
@@ -61,6 +62,7 @@ TaskItem taskFromJson(Map<String, dynamic> j) {
     project: ProjectLink.fromJson(j['project']),
     link: j['link'] as String?,
     missedAt: _parseDate(j['missedAt']),
+    completedLate: j['completedLate'] == true,
   );
 }
 

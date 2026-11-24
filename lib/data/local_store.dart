@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/memo.dart';
 import '../models/routine.dart';
 import '../models/task_item.dart';
 import '../models/telegram_room.dart';
@@ -19,6 +20,7 @@ class LocalStore {
   static const _roomsKey = 'rooms_v1';
   static const _tasksKey = 'tasks_v1';
   static const _routinesKey = 'routines_v1';
+  static const _memosKey = 'memos_v1';
   static const _themeKey = 'theme_mode';
   static const _notifKey = 'notifications_enabled';
   static const _firedKey = 'fired_reminders';
@@ -66,6 +68,11 @@ class LocalStore {
 
   Future<void> saveRoutines(List<Routine> routines) => _prefs.setString(
       _key(_routinesKey), jsonEncode(routines.map(routineToJson).toList()));
+
+  List<Memo>? loadMemos() => _readList(_memosKey, memoFromJson);
+
+  Future<void> saveMemos(List<Memo> memos) => _prefs.setString(
+      _key(_memosKey), jsonEncode(memos.map(memoToJson).toList()));
 
   ThemeMode? loadThemeMode() {
     final name = _prefs.getString(_themeKey);

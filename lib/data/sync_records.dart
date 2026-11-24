@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../models/memo.dart';
 import '../models/routine.dart';
 import '../models/task_item.dart';
 import '../models/telegram_room.dart';
@@ -8,7 +9,7 @@ import 'model_json.dart';
 class SyncRecord {
   final String id;
 
-  /// 할 일·루틴 → 업무방, 세부 항목·메모 → 할 일
+  /// 할 일·루틴 → 업무방, 세부 항목·할 일 메모 → 할 일 (메모 탭의 메모는 없음)
   final String? parentId;
 
   /// 화면에 보이는 순서
@@ -53,7 +54,7 @@ class SyncRecord {
       deleted == other.deleted;
 }
 
-const syncTables = ['rooms', 'tasks', 'sub_tasks', 'notes', 'routines'];
+const syncTables = ['rooms', 'tasks', 'sub_tasks', 'notes', 'routines', 'memos'];
 
 /// 표 이름 → (id → 행)
 typedef RecordSet = Map<String, Map<String, SyncRecord>>;
@@ -64,8 +65,9 @@ RecordSet emptyRecordSet() => {for (final t in syncTables) t: {}};
 RecordSet toRecords(
   List<TelegramRoom> rooms,
   List<TaskItem> tasks,
-  List<Routine> routines,
-) {
+  List<Routine> routines, [
+  List<Memo> memos = const [],
+]) {
   final set = emptyRecordSet();
   void put(String table, String id, int position, Map<String, Object?> data,
       [String? parentId]) {
@@ -95,11 +97,14 @@ RecordSet toRecords(
     put('routines', r.id, i, routineToJson(r)..remove('id')..remove('roomId'),
         r.roomId);
   }
+  for (final (i, m) in memos.indexed) {
+    put('memos', m.id, i, memoToJson(m)..remove('id'));
+  }
   return set;
 }
 
 /// 서버 행들 → 앱 데이터 (순서대로 정렬, 부모가 없는 세부 항목·메모는 뺀다)
-({List<TelegramRoom> rooms, List<TaskItem> tasks, List<Routine> routines})
+({List<TelegramRoom> rooms, List<TaskItem> tasks, List<Routine> routines, List<Memo> memos})
     fromRecords(RecordSet set) {
   List<SyncRecord> sorted(String table) => set[table]!.values
       .where((r) => !r.deleted)
@@ -134,5 +139,6 @@ RecordSet toRecords(
       for (final r in sorted('routines'))
         routineFromJson({...decode(r), 'roomId': r.parentId}),
     ],
+    memos: [for (final r in sorted('memos')) memoFromJson(decode(r))],
   );
 }

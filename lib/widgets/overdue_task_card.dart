@@ -7,8 +7,9 @@ import '../utils/task_actions.dart';
 import 'common/app_card.dart';
 import 'task_meta_chips.dart';
 
-/// [기한 지남] 탭의 할 일 한 줄: 제목·마감 정보와 [완료 처리]/[기한 변경]/[미완료 처리] 버튼.
-/// 프로젝트에서 배정된 업무는 담당자가 마감을 바꿀 수 없어 [기한 변경]이 없고, [완료 처리]는 완료 보고(검토중)가 된다.
+/// [기한 지남] 탭의 할 일 한 줄: 제목·마감 정보와 [완료]/[기한 변경]/[미완료 처리] 버튼.
+/// [완료]는 '완료(기한 후)'로 저장한다. 프로젝트에서 배정된 업무는 담당자가 마감을 바꿀 수 없어 [기한 변경]이 없고,
+/// [완료]는 완료 보고(검토중)가 된다.
 class OverdueTaskCard extends StatefulWidget {
   final TaskItem task;
   final String? roomName;
@@ -49,7 +50,7 @@ class _OverdueTaskCardState extends State<OverdueTaskCard> {
       FilledButton(
         style: style,
         onPressed: () => toggleTaskWithUndo(context, task),
-        child: label('완료 처리'),
+        child: label('완료'),
       ),
       if (!task.isProjectTask)
         OutlinedButton(style: style, onPressed: () => changeOverdueDue(context, task), child: label('기한 변경')),

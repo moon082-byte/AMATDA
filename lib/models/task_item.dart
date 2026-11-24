@@ -32,6 +32,9 @@ class TaskItem {
   /// [미완료 처리]한 시각. 완료와 구분해 저장하고(통계용), 목록에서는 빠진다.
   final DateTime? missedAt;
 
+  /// 마감이 지난 뒤 완료함 ('완료(기한 후)', 정시 완료와 구분해 저장)
+  final bool completedLate;
+
   const TaskItem({
     required this.id,
     required this.title,
@@ -48,6 +51,7 @@ class TaskItem {
     this.project,
     this.link,
     this.missedAt,
+    this.completedLate = false,
   });
 
   bool get isMissed => missedAt != null;
@@ -80,6 +84,7 @@ class TaskItem {
     String? Function()? link,
     ProjectLink? project,
     DateTime? Function()? missedAt,
+    bool? completedLate,
   }) {
     return TaskItem(
       id: id,
@@ -97,6 +102,7 @@ class TaskItem {
       project: project ?? this.project,
       link: link != null ? link() : this.link,
       missedAt: missedAt != null ? missedAt() : this.missedAt,
+      completedLate: completedLate ?? this.completedLate,
     );
   }
 
@@ -104,10 +110,11 @@ class TaskItem {
   TaskItem copyWith({List<SubTask>? subTasks, List<Note>? notes}) =>
       _copy(subTasks: subTasks, notes: notes);
 
-  /// 완료/미완료 토글 시 완료 시각까지 함께 갱신한다
+  /// 완료/미완료 토글 시 완료 시각까지 함께 갱신한다. 기한이 지난 뒤 완료하면 '완료(기한 후)'
   TaskItem markDone(bool done) => _copy(
         isDone: done,
         completedAt: () => done ? DateTime.now() : null,
+        completedLate: done && isOverdueAt(DateTime.now()),
       );
 
   /// 제목/마감기한/리마인드 수정 시 사용한다 (마감이 null이면 해제)
