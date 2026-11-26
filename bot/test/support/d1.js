@@ -20,10 +20,18 @@ const FILES = [
   'migrations/0015_notion_tasks.sql',
 ];
 
+/** 실제 D1처럼 UNION 등으로 이은 SELECT는 5개까지만 허용한다 (SQLite 기본값 500과 다르다) */
+const D1_MAX_COMPOUND = 5;
+function checkCompound(sql) {
+  const terms = (sql.match(/\b(UNION|INTERSECT|EXCEPT)\b/gi) ?? []).length + 1;
+  if (terms > D1_MAX_COMPOUND) throw new Error('D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR');
+}
+
 export function fakeD1() {
   const db = new DatabaseSync(':memory:');
   for (const f of FILES) db.exec(readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8'));
   const prepare = (sql) => {
+    checkCompound(sql);
     let params = [];
     const stmt = {
       bind(...p) {
@@ -33,14 +41,14 @@ export function fakeD1() {
       all: async () => ({ results: db.prepare(sql).all(...params) }),
       first: async () => db.prepare(sql).get(...params) ?? null,
       run: async () => ({ meta: { changes: Number(db.prepare(sql).run(...params).changes) } }),
+      // batch용: 실제 D1처럼 문장마다 { results }를 돌려준다
+      inBatch: () => ({ results: /^\s*(SELECT|WITH)/i.test(sql) ? db.prepare(sql).all(...params) : (db.prepare(sql).run(...params), []) }),
     };
     return stmt;
   };
   return {
     prepare,
-    batch: async (list) => {
-      for (const s of list) await s.run();
-    },
+    batch: async (list) => list.map((s) => s.inBatch()),
     exec: (sql) => db.exec(sql),
     rows: (sql) => db.prepare(sql).all(),
   };

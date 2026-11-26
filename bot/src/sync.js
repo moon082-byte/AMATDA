@@ -27,14 +27,16 @@ export async function sync(user, body, env, ctx) {
   }
   await resendMirrors(env, resend);
 
-  const union = SYNC_TABLES.map(
-    (t) => `SELECT '${t}' AS tbl, id, parent_id, position, data, deleted, version
-            FROM ${t} WHERE user_id = ?1 AND version > ?2`,
-  ).join(' UNION ALL ');
-  const [{ results }, head] = await Promise.all([
-    env.DB.prepare(`${union} ORDER BY version LIMIT ${MAX_PULL_ROWS + 1}`).bind(user.id, since).all(),
-    env.DB.prepare('SELECT version FROM users WHERE id = ?').bind(user.id).first(),
+  // D1은 UNION으로 이을 수 있는 SELECT가 5개까지라, 표마다 따로 읽어(한 번의 batch) 순번순으로 합친다.
+  // 표마다 앞의 MAX+1개만 읽어도 전체에서 앞의 MAX+1개는 빠지지 않는다.
+  const [head, ...lists] = await env.DB.batch([
+    env.DB.prepare('SELECT version FROM users WHERE id = ?').bind(user.id),
+    ...SYNC_TABLES.map((t) => env.DB.prepare(
+      `SELECT '${t}' AS tbl, id, parent_id, position, data, deleted, version
+       FROM ${t} WHERE user_id = ?1 AND version > ?2 ORDER BY version LIMIT ${MAX_PULL_ROWS + 1}`,
+    ).bind(user.id, since)),
   ]);
+  const results = lists.flatMap((l) => l.results).sort((a, b) => a.version - b.version);
   const more = results.length > MAX_PULL_ROWS;
   const rows = results.slice(0, MAX_PULL_ROWS);
 
@@ -49,7 +51,7 @@ export async function sync(user, body, env, ctx) {
     });
   }
   return {
-    version: more ? rows[rows.length - 1].version : head.version,
+    version: more ? rows[rows.length - 1].version : head.results[0].version,
     more,
     changes: grouped,
   };
