@@ -26,7 +26,9 @@ class NotionSettingsGroup extends StatelessWidget {
             icon: Icons.menu_book_rounded,
             iconColor: notion.enabled ? palette.success : palette.subText,
             title: '노션',
-            subtitle: notion.enabled ? '켜짐 · 메모를 노션 1_Inbox에 저장해요' : '꺼짐 · 메모를 노션 1_Inbox에 저장할 수 있어요',
+            subtitle: notion.enabled
+                ? '켜짐 · 할 일·메모를 노션 데이터베이스에 저장해요'
+                : '꺼짐 · 할 일·메모를 노션 데이터베이스에 저장할 수 있어요',
             trailing: Icon(Icons.chevron_right_rounded, color: palette.checkboxIdle),
           ),
         ),

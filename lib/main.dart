@@ -5,10 +5,12 @@ import 'package:provider/provider.dart';
 import 'data/local_store.dart';
 import 'providers/notification_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/app_update.dart';
 import 'services/auth_service.dart';
 import 'services/launch_link.dart';
 import 'theme/app_theme.dart';
 import 'views/home_shell.dart';
+import 'widgets/app_update_host.dart';
 import 'widgets/auth_gate.dart';
 import 'widgets/phone_frame.dart';
 
@@ -48,6 +50,7 @@ class MyApp extends StatelessWidget {
           create: (_) => NotificationProvider(store: store),
         ),
         if (auth != null) ChangeNotifierProvider.value(value: auth),
+        ChangeNotifierProvider(create: (_) => AppUpdate()..start()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
@@ -58,7 +61,9 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.dark,
             themeMode: themeProvider.themeMode,
             builder: (context, child) => PhoneFrame(
-              child: AuthGate(auth: auth, store: store, child: child!),
+              child: AppUpdateHost(
+                child: AuthGate(auth: auth, store: store, child: child!),
+              ),
             ),
             home: const HomeShell(),
           );

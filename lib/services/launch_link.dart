@@ -59,7 +59,8 @@ LoginResult captureStartupParams() {
     ..remove(_param)
     ..remove(_ackParam)
     ..remove('login')
-    ..remove('login_error');
+    ..remove('login_error')
+    ..remove('v'); // 새 버전으로 다시 불러올 때 붙인 버전 표시
   if (rest.length != params.length || telegram != null) {
     final query = rest.isEmpty ? '' : '?${Uri(queryParameters: rest).query}';
     final fragment = uri.hasFragment && telegram == null ? '#${uri.fragment}' : '';

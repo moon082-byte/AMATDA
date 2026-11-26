@@ -1,14 +1,11 @@
-// 노션 API (메모 → 노션 1_Inbox). 브라우저에서는 노션 API를 직접 부를 수 없어 서버가 대신 부른다.
+// 노션 API. 브라우저에서는 노션 API를 직접 부를 수 없어 서버가 대신 부른다.
 // 토큰은 서버 비밀값(BOT_TOKEN)에서 만든 키로 암호화해 저장한다 (봇 토큰을 바꾸면 노션 토큰을 다시 넣어야 한다).
+// 사용자가 고른 데이터베이스와 속성 매핑을 쓴다 (특정 DB·속성 이름에 묶이지 않는다).
 
 import { base64url, hmacBytes } from './crypto.js';
 
 const API = 'https://api.notion.com/v1';
 const VERSION = '2022-06-28';
-/** 노션 글 조각 하나의 최대 길이 */
-const TEXT_MAX = 2000;
-/** 노션 '내용' 속성에 넣는 요약 길이 */
-export const SUMMARY_MAX = 200;
 
 export class NotionError extends Error {
   constructor(status, message) {
@@ -28,7 +25,7 @@ export async function notion(token, method, path, body) {
   return json;
 }
 
-/** 노션 주소나 id에서 32자리 id를 뽑는다 ("https://notion.so/.../1_Inbox-3955ece3...?v=..." 도 된다) */
+/** 노션 주소나 id에서 32자리 id를 뽑는다 ("https://notion.so/.../할일-3955ece3...?v=..." 도 된다) */
 export function notionId(input) {
   const s = String(input ?? '').split('?')[0].replace(/-/g, '');
   const m = /([0-9a-f]{32})(?!.*[0-9a-f]{32})/i.exec(s);
@@ -54,40 +51,53 @@ export async function openToken(env, sealed) {
   }
 }
 
-/**
- * 메모 DB가 쓸 수 있는지 확인한다: 제목 속성(이름), '내용'(텍스트), '상태'(선택 또는 상태)
- * @returns {{ statusType: 'select'|'status' }}
- */
-export async function checkMemoDb(token, dbId) {
+/** 데이터베이스 이름과 속성 목록 (앱의 매핑 드롭다운용). 선택·상태 속성은 고를 수 있는 값도 함께 */
+export async function inspectDb(token, dbId) {
   const db = await notion(token, 'GET', `/databases/${dbId}`);
-  const props = db.properties ?? {};
-  const missing = [];
-  if (props['이름']?.type !== 'title') missing.push('이름(제목)');
-  if (props['내용']?.type !== 'rich_text') missing.push('내용(텍스트)');
-  if (!['select', 'status'].includes(props['상태']?.type)) missing.push('상태(선택)');
-  if (missing.length) throw new NotionError(400, `메모 DB에 ${missing.join(', ')} 속성이 필요해요`);
-  return { statusType: props['상태'].type };
+  const name = (db.title ?? []).map((t) => t.plain_text ?? t.text?.content ?? '').join('') || '이름 없는 데이터베이스';
+  const properties = Object.entries(db.properties ?? {}).map(([prop, p]) => ({
+    name: prop,
+    type: p.type,
+    ...(p.type === 'select' || p.type === 'status' ? { options: (p[p.type]?.options ?? []).map((o) => o.name) } : {}),
+  }));
+  return { name, properties };
 }
 
-const text = (s) => [{ type: 'text', text: { content: s } }];
+const LABEL = { title: '제목', done: '완료', date: '날짜', content: '내용', status: '처음 상태' };
+const TYPES = { title: ['title'], done: ['checkbox', 'select', 'status'], date: ['date'], content: ['rich_text'], status: ['select', 'status'] };
 
-/** 본문: 내용 전체를 2000자씩 나눈 문단들 (줄바꿈은 그대로) */
-export function bodyBlocks(content) {
-  const blocks = [];
-  for (let i = 0; i < content.length; i += TEXT_MAX) {
-    blocks.push({ object: 'block', type: 'paragraph', paragraph: { rich_text: text(content.slice(i, i + TEXT_MAX)) } });
-  }
-  return blocks.slice(0, 100);
-}
-
-/** 메모 → 노션 속성 (상태는 새로 만들 때만 '정리 대기', 수정할 때는 노션에서 바꾼 상태를 그대로 둔다) */
-export function memoProperties(memo, { statusType, isNew }) {
-  const content = String(memo.content ?? '');
-  const title = String(memo.title ?? '').trim() || content.split('\n')[0].trim().slice(0, 100) || '제목 없음';
-  const summary = content.length > SUMMARY_MAX ? `${content.slice(0, SUMMARY_MAX - 1)}…` : content;
-  return {
-    이름: { title: text(title) },
-    내용: { rich_text: summary ? text(summary) : [] },
-    ...(isNew ? { 상태: { [statusType]: { name: '정리 대기' } } } : {}),
+/** 앱이 보낸 매핑을 DB 속성과 맞춰 본다. 맞으면 저장할 모양(속성 종류 포함), 아니면 NotionError(400) */
+export function checkMap(kind, map, { properties }) {
+  const byName = Object.fromEntries(properties.map((p) => [p.name, p]));
+  const fail = (msg) => { throw new NotionError(400, msg); };
+  const prop = (field, name) => {
+    if (name == null || name === '') return null;
+    const p = byName[String(name)];
+    if (!p) fail(`'${name}' 속성을 데이터베이스에서 찾을 수 없어요`);
+    if (!TYPES[field].includes(p.type)) fail(`${LABEL[field]}에는 '${name}' 속성(${p.type})을 쓸 수 없어요`);
+    return p;
   };
+  const option = (p, value, label) => {
+    if (!value) fail(`${LABEL[label]} 값을 골라 주세요`);
+    if (p.type === 'status' && !p.options.includes(value)) fail(`'${p.name}'에 '${value}' 값이 없어요`);
+    return String(value);
+  };
+  const title = prop('title', map?.title) ?? fail('제목으로 쓸 속성을 골라 주세요');
+  const out = { title: title.name };
+  if (prop('date', map?.date)) out.date = map.date;
+  if (prop('content', map?.content)) out.content = map.content;
+  if (kind === 'task') {
+    const done = prop('done', map?.done?.prop);
+    if (done) {
+      out.done = { prop: done.name, type: done.type };
+      if (done.type !== 'checkbox') {
+        out.done.doneValue = option(done, map.done.doneValue, 'done');
+        out.done.todoValue = option(done, map.done.todoValue, 'done');
+      }
+    }
+  } else {
+    const status = prop('status', map?.status?.prop);
+    if (status) out.status = { prop: status.name, type: status.type, value: option(status, map.status.value, 'status') };
+  }
+  return out;
 }

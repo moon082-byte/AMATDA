@@ -17,6 +17,7 @@ const FILES = [
   'migrations/0012_overdue.sql',
   'migrations/0013_bot_drafts.sql',
   'migrations/0014_memos.sql',
+  'migrations/0015_notion_tasks.sql',
 ];
 
 export function fakeD1() {

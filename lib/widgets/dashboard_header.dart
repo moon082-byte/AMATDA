@@ -6,8 +6,9 @@ import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import '../utils/maybe_provider.dart';
 import 'profile_avatar.dart';
+import 'refresh_button.dart';
 
-/// 메인 화면 맨 위 줄: 좌상단 프로필(사진+닉네임, 누르면 프로필), 우상단 🔔 알림함(안 읽은 개수)·설정
+/// 메인 화면 맨 위 줄: 좌상단 프로필(사진+닉네임, 누르면 프로필), 우상단 🔄 새로고침·🔔 알림함(안 읽은 개수)·설정
 class DashboardHeader extends StatelessWidget {
   final VoidCallback onOpenProfile;
   final VoidCallback onOpenInbox;
@@ -62,6 +63,8 @@ class DashboardHeader extends StatelessWidget {
                   ),
           ),
         ),
+        RefreshButton(style: iconStyle),
+        const SizedBox(width: 6),
         if (inbox != null && inbox.available)
           IconButton(
             onPressed: onOpenInbox,
