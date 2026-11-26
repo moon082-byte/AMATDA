@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import '../theme/app_palette.dart';
+import '../utils/refresh_all.dart';
 import '../utils/date_format.dart';
 import '../widgets/add_menu_fab.dart';
 import '../widgets/common/app_page.dart';
@@ -78,6 +79,7 @@ class _TodayTasksViewState extends State<TodayTasksView> {
     return AppPage(
       title: const ['오늘 할일', '기한 지남', '루틴'][_tab],
       subtitle: _subtitle(context, overdue),
+      onRefresh: () => refreshAll(context),
       floatingActionButton: AddMenuFab(
         onAddTask: () {
           setState(() => _tab = TodayTasksView.tasksTab);

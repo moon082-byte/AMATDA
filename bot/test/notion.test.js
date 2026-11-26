@@ -1,126 +1,112 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, test } from 'node:test';
-import { sha256Hex } from '../src/crypto.js';
-import worker from '../src/index.js';
 import { notionId } from '../src/notion.js';
-import { syncNotionMemos } from '../src/notion_memos.js';
-import { fakeD1 } from './support/d1.js';
+import { syncNotion } from '../src/notion_push.js';
+import { MEMO_DB, MEMO_MAP, NOTION_TOKEN, TASK_DB, TASK_MAP, record, setup } from './support/notion_fake.js';
 
-let env;
-let notionCalls;
-let notionDown;
 const realFetch = globalThis.fetch;
-const TOKEN = 'tok_u1'.padEnd(40, 'x');
-const NOTION_TOKEN = 'ntn_test_secret_1234567890abcdef';
-const DB = '3955ece31bb580509babd28537b58808';
-const SCHEMA = { properties: { 이름: { type: 'title' }, 내용: { type: 'rich_text' }, 상태: { type: 'select' }, 생성일: { type: 'created_time' } } };
+let t;
+beforeEach(async () => { t = await setup(); });
+afterEach(() => { globalThis.fetch = realFetch; });
 
-async function call(method, path, body) {
-  const pending = [];
-  const res = await worker.fetch(new Request(`https://bot.test${path}`, {
-    method, headers: { Authorization: `Bearer ${TOKEN}` }, body: body ? JSON.stringify(body) : undefined,
-  }), env, { waitUntil: (p) => pending.push(p) });
-  await Promise.all(pending);
-  return { status: res.status, body: await res.json() };
-}
-const memo = (id, data, deleted = false) => ({ id, parentId: null, position: 0, deleted, data: JSON.stringify(data) });
-const sync = (memos) => call('POST', '/api/sync', { since: 0, device: 'dev_aaaaaaaa', changes: { memos } });
-const row = (id) => env.DB.rows(`SELECT * FROM memos WHERE id = '${id}'`)[0];
-const info = (id) => JSON.parse(row(id).data).notion;
+const info = (id) => JSON.parse(t.row('memos', id).data).notion;
+const enableMemos = (map = MEMO_MAP) =>
+  t.call('PUT', '/api/notion', { enabled: true, token: NOTION_TOKEN, memoDb: `https://www.notion.so/x/메모-${MEMO_DB}?v=abc`, memoMap: map });
 
-beforeEach(async () => {
-  env = { DB: fakeD1(), BOT_TOKEN: '123:test', ALLOWED_EMAILS: 'a@x.com' };
-  env.DB.exec(`INSERT INTO users (id, google_sub, email, created_at) VALUES ('u1', 'g1', 'a@x.com', 0);
-    INSERT INTO sessions (token_hash, user_id, created_at, last_used_at)
-      VALUES ('${await sha256Hex(TOKEN)}', 'u1', ${Date.now()}, ${Date.now()});`);
-  notionCalls = [];
-  notionDown = false;
-  globalThis.fetch = async (url, init) => {
-    const u = new URL(String(url));
-    const body = init.body ? JSON.parse(init.body) : null;
-    notionCalls.push({ method: init.method, path: u.pathname.replace('/v1', ''), body, auth: init.headers.Authorization });
-    const ok = (j) => new Response(JSON.stringify(j), { status: 200 });
-    if (notionDown) return new Response('{"message":"잠시 후"}', { status: 503 });
-    if (u.pathname === `/v1/databases/${DB}`) return ok(SCHEMA);
-    if (init.method === 'POST' && u.pathname === '/v1/pages') return ok({ id: `page-${notionCalls.length}` });
-    if (init.method === 'GET' && u.pathname.endsWith('/children')) return ok({ results: [{ id: 'blk1' }] });
-    return ok({});
-  };
-});
-afterEach(() => {
-  globalThis.fetch = realFetch;
-});
-
-const enable = () => call('PUT', '/api/notion', { enabled: true, token: NOTION_TOKEN, memoDb: `https://www.notion.so/x/1_Inbox-${DB}?v=abc` });
-
-test('노션 설정: DB 주소를 붙여넣어도 id로 저장, 토큰은 암호화하고 앱에 돌려주지 않는다', async () => {
-  assert.equal(notionId(`https://app.notion.com/p/${DB}?pvs=204`), DB);
-  const res = await enable();
+test('DB 링크를 붙여 넣으면 속성 목록을 읽어 매핑 드롭다운에 쓸 수 있다', async () => {
+  assert.equal(notionId(`https://app.notion.com/p/${TASK_DB}?pvs=204`), TASK_DB);
+  const res = await t.call('POST', '/api/notion/inspect', { token: NOTION_TOKEN, db: `https://notion.so/할일-${TASK_DB}` });
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body, { enabled: true, hasToken: true, memoDb: DB });
-  const u = env.DB.rows("SELECT notion_token, notion_status_type FROM users")[0];
-  assert.ok(!u.notion_token.includes(NOTION_TOKEN), '토큰을 그대로 저장하지 않는다');
-  assert.equal(u.notion_status_type, 'select');
-  assert.deepEqual((await call('GET', '/api/notion')).body, { enabled: true, hasToken: true, memoDb: DB });
-  assert.equal((await call('POST', '/api/notion/check', {})).body.ok, true, '저장된 값으로 연결 확인');
+  assert.equal(res.body.id, TASK_DB);
+  assert.equal(res.body.name, '할 일 목록');
+  assert.deepEqual(res.body.properties.find((p) => p.name === '진행'), { name: '진행', type: 'status', options: ['시작 전', '진행 중', '완료'] });
+  const missing = await t.call('POST', '/api/notion/inspect', { token: NOTION_TOKEN, db: 'ffffffffffffffffffffffffffffffff' });
+  assert.equal(missing.status, 400);
+  assert.match(missing.body.error, /\[연결\]에 통합을 추가/);
 });
 
-test('필요한 속성이 없는 DB는 켤 수 없다', async () => {
-  SCHEMA.properties.상태.type = 'number';
-  try {
-    const res = await enable();
+test('설정 저장: 토큰은 암호화하고 앱에 돌려주지 않는다, 할일·메모 DB와 매핑을 각각 저장', async () => {
+  const res = await t.call('PUT', '/api/notion', {
+    enabled: true, token: NOTION_TOKEN, taskDb: TASK_DB, taskMap: TASK_MAP, memoDb: MEMO_DB, memoMap: MEMO_MAP,
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.hasToken, true);
+  assert.equal(JSON.stringify(res.body).includes(NOTION_TOKEN), false);
+  assert.deepEqual(res.body.taskMap, { title: '작업', done: { prop: '끝남', type: 'checkbox' }, date: '마감', content: '메모' });
+  assert.deepEqual(res.body.memoMap.status, { prop: '상태', type: 'select', value: '정리 대기' });
+  assert.ok(!t.env.DB.rows('SELECT notion_token FROM users')[0].notion_token.includes(NOTION_TOKEN));
+  // 메모 DB만 끊기 ('' = 연결 해제)
+  const off = await t.call('PUT', '/api/notion', { memoDb: '' });
+  assert.deepEqual([off.body.enabled, off.body.taskDb, off.body.memoDb, off.body.memoMap], [true, TASK_DB, null, null]);
+});
+
+test('매핑이 DB 속성과 맞지 않으면 이유를 알려 주고 저장하지 않는다', async () => {
+  const bad = async (map, pattern) => {
+    const res = await t.call('PUT', '/api/notion', { enabled: true, token: NOTION_TOKEN, taskDb: TASK_DB, taskMap: map });
     assert.equal(res.status, 400);
-    assert.match(res.body.error, /상태\(선택\)/);
-  } finally {
-    SCHEMA.properties.상태.type = 'select';
-  }
+    assert.match(res.body.error, pattern);
+  };
+  await bad({ done: { prop: '끝남' } }, /제목으로 쓸 속성/);
+  await bad({ title: '마감' }, /제목에는 '마감' 속성\(date\)을 쓸 수 없어요/);
+  await bad({ title: '작업', date: '없는칸' }, /'없는칸' 속성을 데이터베이스에서 찾을 수 없어요/);
+  await bad({ title: '작업', done: { prop: '진행', doneValue: '끝', todoValue: '시작 전' } }, /'진행'에 '끝' 값이 없어요/);
+  const none = await t.call('PUT', '/api/notion', { enabled: true, token: NOTION_TOKEN });
+  assert.match(none.body.error, /데이터베이스를 하나 이상/);
+  assert.equal((await t.call('GET', '/api/notion')).body.enabled, false);
 });
 
-test('메모 저장 → 노션 1_Inbox에 생성(이름·내용 요약·상태=정리 대기·본문 전체), 수정 → 갱신(상태는 그대로), 삭제 → 휴지통', async () => {
-  await enable();
-  notionCalls = [];
+test('메모: 고른 매핑대로 생성(처음 상태는 새로 만들 때만), 수정 → 갱신, 삭제 → 휴지통', async () => {
+  await enableMemos();
+  t.state.calls = [];
   const long = '가'.repeat(250);
-  await sync([memo('memo_1', { title: '아이디어', content: long, updatedAt: 'v1' })]);
-  const create = notionCalls.find((c) => c.method === 'POST' && c.path === '/pages');
+  await t.sync({ memos: [record('m1', { title: '아이디어', content: long, createdAt: '2026-11-25T09:30:00.000', updatedAt: 'v1' })] });
+  const create = t.state.calls.find((c) => c.method === 'POST' && c.path === '/pages');
   assert.equal(create.auth, `Bearer ${NOTION_TOKEN}`);
-  assert.equal(create.body.parent.database_id, DB);
+  assert.equal(create.body.parent.database_id, MEMO_DB);
   assert.equal(create.body.properties.이름.title[0].text.content, '아이디어');
   assert.equal(create.body.properties.내용.rich_text[0].text.content.length, 200);
+  assert.deepEqual(create.body.properties.작성, { date: { start: '2026-11-25T09:30:00+09:00' } });
   assert.deepEqual(create.body.properties.상태, { select: { name: '정리 대기' } });
   assert.equal(create.body.children[0].paragraph.rich_text[0].text.content, long);
-  const pageId = row('memo_1').notion_page_id;
-  assert.ok(pageId);
-  assert.deepEqual(info('memo_1'), { pageId, syncedFor: 'v1', error: null });
-  assert.equal(row('memo_1').notion_dirty, 0);
+  const pageId = t.row('memos', 'm1').notion_page_id;
+  assert.deepEqual(info('m1'), { pageId, syncedFor: 'v1', error: null });
 
-  notionCalls = [];
-  await sync([memo('memo_1', { title: '아이디어 2', content: '짧게', updatedAt: 'v2' })]);
-  const patch = notionCalls.find((c) => c.method === 'PATCH' && c.path === `/pages/${pageId}`);
-  assert.equal(patch.body.properties.이름.title[0].text.content, '아이디어 2');
+  t.state.calls = [];
+  await t.sync({ memos: [record('m1', { title: '아이디어 2', content: '짧게', updatedAt: 'v2' })] });
+  const patch = t.state.calls.find((c) => c.method === 'PATCH' && c.path === `/pages/${pageId}`);
   assert.equal(patch.body.properties.상태, undefined, '노션에서 바꾼 상태는 덮어쓰지 않는다');
-  assert.ok(notionCalls.some((c) => c.method === 'DELETE' && c.path === '/blocks/blk1'));
-  assert.ok(notionCalls.some((c) => c.method === 'PATCH' && c.path === `/blocks/${pageId}/children`));
-  assert.equal(notionCalls.filter((c) => c.method === 'POST').length, 0, '새로 만들지 않는다');
+  assert.ok(t.state.calls.some((c) => c.method === 'PATCH' && c.path === `/blocks/${pageId}/children`));
 
-  notionCalls = [];
-  await sync([memo('memo_1', { title: '아이디어 2', content: '짧게', updatedAt: 'v2' }, true)]);
-  assert.deepEqual(notionCalls.map((c) => [c.method, c.path, c.body]), [['PATCH', `/pages/${pageId}`, { archived: true }]]);
+  t.state.calls = [];
+  await t.sync({ memos: [record('m1', { title: '아이디어 2', content: '짧게', updatedAt: 'v2' }, { deleted: true })] });
+  assert.deepEqual(t.state.calls.map((c) => [c.method, c.path, c.body]), [['PATCH', `/pages/${pageId}`, { archived: true }]]);
 });
 
-test('노션이 실패하면 메모에 오류를 남기고 1분마다 다시 시도한다, 연동을 끄면 보내지 않는다', async () => {
-  await enable();
-  notionDown = true;
-  await sync([memo('memo_2', { title: '실패', content: '', updatedAt: 'v1' })]);
-  assert.match(info('memo_2').error, /잠시 후/);
-  assert.equal(row('memo_2').notion_dirty, 1);
-  notionDown = false;
-  await syncNotionMemos(env);
-  assert.equal(info('memo_2').error, null);
-  assert.equal(row('memo_2').notion_dirty, 0);
+test('노션이 실패하면 오류를 남기고 다시 시도한다, 설정 화면에 실패 개수와 이유가 보인다, 끄면 보내지 않는다', async () => {
+  await enableMemos();
+  t.state.down = true;
+  await t.sync({ memos: [record('m2', { title: '실패', content: '', updatedAt: 'v1' })] });
+  assert.match(info('m2').error, /잠시 후/);
+  const view = (await t.call('GET', '/api/notion')).body;
+  assert.deepEqual([view.waiting, view.failed], [1, 1]);
+  assert.match(view.lastError, /잠시 후/);
+  t.state.down = false;
+  await syncNotion(t.env);
+  assert.equal(info('m2').error, null);
+  assert.equal(t.row('memos', 'm2').notion_dirty, 0);
 
-  await call('PUT', '/api/notion', { enabled: false });
-  notionCalls = [];
-  await sync([memo('memo_3', { title: '끔', content: '', updatedAt: 'v1' })]);
-  await syncNotionMemos(env);
-  assert.equal(notionCalls.length, 0);
+  await t.call('PUT', '/api/notion', { enabled: false });
+  t.state.calls = [];
+  await t.sync({ memos: [record('m3', { title: '끔', content: '', updatedAt: 'v1' })] });
+  await syncNotion(t.env);
+  assert.equal(t.state.calls.length, 0);
+});
+
+test('예전 메모 연동 설정(이름·내용·상태=정리 대기)은 새 매핑으로 그대로 옮긴다', async () => {
+  t.env.DB.exec(`UPDATE users SET notion_memo_db = '${MEMO_DB}', notion_status_type = 'status', notion_memo_map = NULL`);
+  const sql = readFileSync(new URL('../migrations/0015_notion_tasks.sql', import.meta.url), 'utf8');
+  t.env.DB.exec(/UPDATE users SET notion_memo_map[\s\S]*?;/.exec(sql)[0]);
+  assert.deepEqual(JSON.parse(t.env.DB.rows('SELECT notion_memo_map FROM users')[0].notion_memo_map),
+    { title: '이름', content: '내용', status: { prop: '상태', type: 'status', value: '정리 대기' } });
 });

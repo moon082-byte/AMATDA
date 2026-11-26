@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/room_provider.dart';
 import '../theme/app_palette.dart';
-import '../theme/app_typography.dart';
 import '../utils/date_format.dart';
+import '../utils/refresh_all.dart';
 import '../widgets/calendar_card.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/dashboard_banner.dart';
+import '../widgets/dashboard_greeting.dart';
 import '../widgets/day_agenda.dart';
 import '../widgets/day_routines.dart';
 import '../widgets/legacy_import.dart';
@@ -46,7 +48,6 @@ class _MainDashboardViewState extends State<MainDashboardView> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final text = context.text;
     final provider = context.watch<RoomProvider>();
     final pending = provider.totalPendingCount;
     final markedDates = provider.tasks
@@ -56,87 +57,72 @@ class _MainDashboardViewState extends State<MainDashboardView> {
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-          children: [
-            DashboardHeader(
-              onOpenProfile: () => _push(const ProfileView()),
-              onOpenInbox: () => _push(const InboxView()),
-              onOpenSettings: () => _push(const SettingsView()),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: RefreshIndicator(
+          onRefresh: () => refreshAll(context),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            children: [
+              DashboardHeader(
+                onOpenProfile: () => _push(const ProfileView()),
+                onOpenInbox: () => _push(const InboxView()),
+                onOpenSettings: () => _push(const SettingsView()),
+              ),
+              const SizedBox(height: 16),
+              DashboardGreeting(pending: pending),
+              const SizedBox(height: 24),
+              Row(
                 children: [
-                  Text(formatFullDate(DateTime.now()), style: text.label),
-                  const SizedBox(height: 6),
-                  Text.rich(
-                    TextSpan(
-                      children: pending == 0
-                          ? const [TextSpan(text: '오늘 할 일을\n모두 끝냈어요')]
-                          : [
-                              const TextSpan(text: '할 일 '),
-                              TextSpan(
-                                text: '$pending개',
-                                style: TextStyle(color: palette.accent),
-                              ),
-                              const TextSpan(text: '가\n남아 있어요'),
-                            ],
+                  Expanded(
+                    child: DashboardBanner(
+                      title: '오늘 할일',
+                      count: pending,
+                      icon: Icons.checklist_rounded,
+                      color: palette.accent,
+                      softColor: palette.accentSoft,
+                      onTap: () => _push(const TodayTasksView()),
                     ),
-                    style: text.h1,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DashboardBanner(
+                      title: '완료된 일들',
+                      count: provider.totalCompletedCount,
+                      icon: Icons.task_alt_rounded,
+                      color: palette.success,
+                      softColor: palette.successSoft,
+                      onTap: () => _push(const ArchiveView()),
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: DashboardBanner(
-                    title: '오늘 할일',
-                    count: pending,
-                    icon: Icons.checklist_rounded,
-                    color: palette.accent,
-                    softColor: palette.accentSoft,
-                    onTap: () => _push(const TodayTasksView()),
+              const SizedBox(height: 12),
+              CalendarCard(
+                markedDates: markedDates,
+                selectedDay: _selectedDay,
+                onDaySelected: (day) =>
+                    setState(() => _selectedDay = dateOnly(day)),
+              ),
+              const SizedBox(height: 28),
+              DayAgenda(
+                day: _selectedDay,
+                onOpenList: () => _push(const TodayTasksView()),
+                // 완료·미완료 처리한 할 일은 목록에 없으므로 목록만 연다 (기한 지남은 그 탭에서 펼친다)
+                onOpenTask: (task) => _push(
+                  TodayTasksView(
+                    focusTaskId: task.isDone || task.isMissed ? null : task.id,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DashboardBanner(
-                    title: '완료된 일들',
-                    count: provider.totalCompletedCount,
-                    icon: Icons.task_alt_rounded,
-                    color: palette.success,
-                    softColor: palette.successSoft,
-                    onTap: () => _push(const ArchiveView()),
-                  ),
+              ),
+              const SizedBox(height: 28),
+              DayRoutines(
+                day: _selectedDay,
+                onOpenList: () => _push(
+                  const TodayTasksView(initialTab: TodayTasksView.routineTab),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            CalendarCard(
-              markedDates: markedDates,
-              selectedDay: _selectedDay,
-              onDaySelected: (day) =>
-                  setState(() => _selectedDay = dateOnly(day)),
-            ),
-            const SizedBox(height: 28),
-            DayAgenda(
-              day: _selectedDay,
-              onOpenList: () => _push(const TodayTasksView()),
-              // 완료·미완료 처리한 할 일은 목록에 없으므로 목록만 연다 (기한 지남은 그 탭에서 펼친다)
-              onOpenTask: (task) => _push(TodayTasksView(
-                  focusTaskId: task.isDone || task.isMissed ? null : task.id)),
-            ),
-            const SizedBox(height: 28),
-            DayRoutines(
-              day: _selectedDay,
-              onOpenList: () => _push(const TodayTasksView(initialTab: TodayTasksView.routineTab)),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

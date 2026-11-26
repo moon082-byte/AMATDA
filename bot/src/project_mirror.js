@@ -4,6 +4,7 @@
 // - 담당자 기기가 동기화로 올린 변경은 project_review.js의 guardMirrors가 검사한다.
 
 import { overdueAt } from './kst.js';
+import { markNotionDirty } from './notion_push.js';
 
 export const mirrorId = (taskId) => `pt_${taskId}`;
 export const taskIdOf = (id) => (id.startsWith('pt_') ? id.slice(3) : null);
@@ -58,6 +59,7 @@ export async function writeMirror(env, t, force = false) {
      VALUES (?1, ?2, NULL, 0, ?3, 0, ?4, ?5)
      ON CONFLICT (user_id, id) DO UPDATE SET data = ?3, deleted = 0, version = ?4, updated_at = ?5`,
   ).bind(t.assignee_id, id, json, version, Date.now()).run();
+  await markNotionDirty(env, t.assignee_id, 'tasks', [id]);
 }
 
 /** [where] 조건(별칭 t = project_tasks)에 맞는 배정 업무들의 개인 할일을 다시 맞춘다 */
@@ -76,6 +78,7 @@ export async function removeMirror(env, userId, taskId) {
   const version = await bump(env, userId);
   await env.DB.prepare('UPDATE tasks SET deleted = 1, version = ?, updated_at = ? WHERE user_id = ? AND id = ?')
     .bind(version, Date.now(), userId, mirrorId(taskId)).run();
+  await markNotionDirty(env, userId, 'tasks', [mirrorId(taskId)]);
 }
 
 /** [where]에 맞는 진행 중 배정 업무들의 개인 할일을 지운다 (업무·프로젝트·방 삭제, 내보내기) */

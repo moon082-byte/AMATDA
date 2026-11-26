@@ -7,10 +7,11 @@ import '../providers/memo_provider.dart';
 import '../providers/room_provider.dart';
 import '../providers/routine_provider.dart';
 import 'api_client.dart';
+import 'sync_scheduler.dart';
 
 /// 기기 간 데이터 동기화 (서버 쪽은 bot/src/sync.js). [_shadow]는 "서버에 이렇게 저장돼 있다"고 마지막으로 확인한 행들이다.
-/// 지금 앱 데이터와 비교해 다른 행만 올리고, 다른 기기가 바꾼 행은 받아서 앱에 반영한다.
-/// 같은 항목을 두 기기에서 고치면 서버에 나중에 도착한 쪽이 이긴다.
+/// 지금 앱 데이터와 비교해 다른 행만 올리고, 다른 기기가 바꾼 행은 받아서 앱에 반영한다 (같은 항목은 나중에 도착한 쪽이 이김).
+/// 언제 맞출지는 [SyncScheduler]가 정한다.
 class SyncService extends ChangeNotifier {
   static const _maxPush = 500; // 서버 MAX_SYNC_ROWS와 같음
 
@@ -20,14 +21,13 @@ class SyncService extends ChangeNotifier {
   final RoutineProvider _routines;
   final MemoProvider? _memos;
   late final _changes = Listenable.merge([_rooms, _routines, ?_memos]);
-
   late int _cursor;
   late RecordSet _shadow;
   bool _running = false;
   bool _again = false;
   bool _applying = false;
-  Timer? _debounce;
-  Timer? _ticker;
+  Completer<void>? _done;
+  late final _scheduler = SyncScheduler(sync: syncNow, changes: _changes, applying: () => _applying);
   final _firstSync = Completer<void>();
 
   DateTime? lastSyncedAt;
@@ -49,33 +49,34 @@ class SyncService extends ChangeNotifier {
   /// 처음 한 번 서버와 맞춘 뒤 완료된다
   Future<void> get firstSync => _firstSync.future;
 
+  /// 지금 서버와 맞추는 중인지 (새로고침 버튼의 로딩 표시)
+  bool get syncing => _running;
+
   void start() {
-    _changes.addListener(_schedule);
-    _ticker = Timer.periodic(const Duration(seconds: 30), (_) => syncNow());
+    _scheduler.start();
     syncNow();
   }
 
   @override
   void dispose() {
-    _changes.removeListener(_schedule);
-    _debounce?.cancel();
-    _ticker?.cancel();
+    _scheduler.dispose();
     super.dispose();
   }
 
-  /// 앱 데이터가 바뀌면 2초 뒤에 (연속 변경은 한 번에) 올린다
-  void _schedule() {
-    if (_applying) return;
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(seconds: 2), syncNow);
-  }
-
-  Future<void> syncNow() async {
+  /// 지금 서버와 맞춘다. 이미 맞추는 중이면 한 번 더 돌도록 하고, 모두 끝나면 완료된다.
+  Future<void> syncNow() {
     if (_running) {
       _again = true;
-      return;
+      return _done!.future;
     }
+    final done = _done = Completer<void>();
+    _run().whenComplete(done.complete);
+    return done.future;
+  }
+
+  Future<void> _run() async {
     _running = true;
+    notifyListeners();
     try {
       do {
         _again = false;

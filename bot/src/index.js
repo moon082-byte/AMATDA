@@ -42,7 +42,7 @@ import { projectRoomRoute } from './project_rooms.js';
 import { pushRoute, sendDuePushes } from './push.js';
 import { sync } from './sync.js';
 import { notionRoute } from './notion_routes.js';
-import { syncNotionMemos } from './notion_memos.js';
+import { syncNotion } from './notion_push.js';
 import { sendDueReminders, webhook } from './telegram.js';
 import { botInfo, setup } from './tg_setup.js';
 import { telegramLogin } from './tg_login.js';
@@ -63,7 +63,7 @@ export default {
     // 무료 요금제의 외부 호출 한도를 넘지 않도록 텔레그램 → 푸시 순서로 차례대로 보낸다
     ctx.waitUntil(sendDueReminders(env).finally(() => sendDuePushes(env))
       .finally(() => sendDueProjectReminders(env)).finally(() => sendProjectOverdue(env))
-      .finally(() => recordOverdueInbox(env)).finally(() => syncNotionMemos(env)));
+      .finally(() => recordOverdueInbox(env)).finally(() => syncNotion(env)));
   },
 };
 

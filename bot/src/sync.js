@@ -8,7 +8,7 @@
 // - 무료 요금제의 요청당 쿼리 수 제한에 맞게 표마다 JSON 한 번으로 넣는다
 
 import { cleanDevice, recordTaskChanges } from './inbox.js';
-import { markMemosDirty, syncNotionMemos } from './notion_memos.js';
+import { markChanges, syncNotion } from './notion_push.js';
 import { resendMirrors } from './project_mirror.js';
 import { guardMirrors } from './project_review.js';
 import { MAX_PULL_ROWS, SYNC_TABLES, sanitizeSyncChanges } from './logic.js';
@@ -22,9 +22,8 @@ export async function sync(user, body, env, ctx) {
   if (total > 0) {
     // 저장하기 전에 이전 내용과 비교해, 다른 기기 알림함에 보일 할 일 변경을 남긴다
     await recordTaskChanges(env, user.id, cleanDevice(body?.device), changes.tasks);
-    await saveChanges(env, user.id, changes, total);
-    // 노션 연동을 켠 계정은 바뀐 메모를 노션 1_Inbox에 바로 반영한다 (실패하면 1분마다 다시)
-    if (await markMemosDirty(env, user.id, changes.memos)) ctx?.waitUntil?.(syncNotionMemos(env, user.id).catch(() => {}));
+    // 노션 연동을 켠 계정은 바뀐 할 일·메모를 노션에 바로 반영한다 (실패하면 1분마다 다시)
+    if (await saveChanges(env, user.id, changes, total)) ctx?.waitUntil?.(syncNotion(env, user.id).catch(() => {}));
   }
   await resendMirrors(env, resend);
 
@@ -56,7 +55,10 @@ export async function sync(user, body, env, ctx) {
   };
 }
 
-/** 변경을 사용자 순번을 매겨 저장한다 ([changes]는 SYNC_TABLES 표마다 행 목록, 텔레그램 봇도 쓴다) */
+/**
+ * 변경을 사용자 순번을 매겨 저장한다 ([changes]는 SYNC_TABLES 표마다 행 목록, 텔레그램 봇도 쓴다).
+ * 노션에 반영할 할 일·메모가 생겼으면 true (1분마다 도는 작업도 보낸다)
+ */
 export async function saveChanges(env, userId, changes, total) {
   const bumped = await env.DB.prepare(
     'UPDATE users SET version = version + ? WHERE id = ? RETURNING version',
@@ -79,4 +81,5 @@ export async function saveChanges(env, userId, changes, total) {
     next += list.length;
   }
   await env.DB.batch(statements);
+  return markChanges(env, userId, changes);
 }

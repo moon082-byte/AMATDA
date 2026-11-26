@@ -3,7 +3,7 @@ import '../data/local_store.dart';
 import '../models/memo.dart';
 
 /// 메모 목록. [store](계정별 저장소)가 있으면 바뀔 때마다 저장한다 (없으면 테스트·미리보기용 빈 목록).
-/// 동기화되면 서버가 노션 연동을 켠 계정의 메모를 노션 1_Inbox에 반영한다.
+/// 동기화되면 서버가 노션 연동을 켠 계정의 메모를 연결한 노션 데이터베이스에 반영한다.
 class MemoProvider extends ChangeNotifier {
   final LocalStore? _store;
   final List<Memo> _memos;

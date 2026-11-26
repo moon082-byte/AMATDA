@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/memo.dart';
 import '../providers/memo_provider.dart';
 import '../services/notion_service.dart';
@@ -7,6 +8,7 @@ import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
 import '../utils/maybe_provider.dart';
 import '../utils/memo_actions.dart';
+import '../utils/refresh_all.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/memo_tile.dart';
 import 'memo_edit_page.dart';
@@ -16,9 +18,13 @@ import 'memo_edit_page.dart';
 class MemoListView extends StatelessWidget {
   const MemoListView({super.key});
 
-  static Future<void> _open(BuildContext context, [Memo? memo]) => Navigator.push(
+  static Future<void> _open(BuildContext context, [Memo? memo]) =>
+      Navigator.push(
         context,
-        MaterialPageRoute(fullscreenDialog: true, builder: (_) => MemoEditPage(memo: memo)),
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => MemoEditPage(memo: memo),
+        ),
       );
 
   @override
@@ -26,7 +32,7 @@ class MemoListView extends StatelessWidget {
     final text = context.text;
     final memos = context.watch<MemoProvider>().latestFirst;
     final notion = maybeProvider<NotionService>(context);
-    final notionOn = notion?.enabled ?? false;
+    final notionOn = notion?.memoOn ?? false;
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
@@ -35,31 +41,37 @@ class MemoListView extends StatelessWidget {
         label: const Text('새 메모'),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-          children: [
-            Text('메모', style: text.h1),
-            const SizedBox(height: 4),
-            Text(
-              notionOn ? '메모 ${memos.length}개 · 노션 1_Inbox에 함께 저장돼요' : '메모 ${memos.length}개',
-              style: text.body.copyWith(color: context.palette.subText),
-            ),
-            const SizedBox(height: 20),
-            if (memos.isEmpty)
-              const EmptyState(
-                icon: Icons.sticky_note_2_rounded,
-                title: '아직 메모가 없어요',
-                message: '[새 메모]로 떠오른 생각을 적어 두세요',
+        child: RefreshIndicator(
+          onRefresh: () => refreshAll(context),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+            children: [
+              Text('메모', style: text.h1),
+              const SizedBox(height: 4),
+              Text(
+                notionOn
+                    ? '메모 ${memos.length}개 · 노션에도 함께 저장돼요'
+                    : '메모 ${memos.length}개',
+                style: text.body.copyWith(color: context.palette.subText),
               ),
-            for (final memo in memos)
-              MemoTile(
-                key: ValueKey(memo.id),
-                memo: memo,
-                notion: memo.notionState(notionOn: notionOn),
-                onTap: () => _open(context, memo),
-                onDelete: () => deleteMemoWithUndo(context, memo),
-              ),
-          ],
+              const SizedBox(height: 20),
+              if (memos.isEmpty)
+                const EmptyState(
+                  icon: Icons.sticky_note_2_rounded,
+                  title: '아직 메모가 없어요',
+                  message: '[새 메모]로 떠오른 생각을 적어 두세요',
+                ),
+              for (final memo in memos)
+                MemoTile(
+                  key: ValueKey(memo.id),
+                  memo: memo,
+                  notion: memo.notionState(notionOn: notionOn),
+                  onTap: () => _open(context, memo),
+                  onDelete: () => deleteMemoWithUndo(context, memo),
+                ),
+            ],
+          ),
         ),
       ),
     );
